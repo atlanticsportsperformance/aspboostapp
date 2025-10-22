@@ -38,7 +38,6 @@ export default function PlanCalendarPage() {
 
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [currentWeek, setCurrentWeek] = useState(1);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
   const [showWorkoutLibrary, setShowWorkoutLibrary] = useState(false);
 
@@ -52,7 +51,7 @@ export default function PlanCalendarPage() {
     if (plan) {
       fetchProgramDays();
     }
-  }, [plan, currentWeek]);
+  }, [plan]);
 
   async function fetchPlan() {
     const { data, error } = await supabase
@@ -72,6 +71,7 @@ export default function PlanCalendarPage() {
   }
 
   async function fetchProgramDays() {
+    // Fetch ALL program days for the entire plan
     const { data, error } = await supabase
       .from('program_days')
       .select(`
@@ -79,7 +79,7 @@ export default function PlanCalendarPage() {
         workouts (id, name, category, estimated_duration_minutes, plan_id)
       `)
       .eq('plan_id', planId)
-      .eq('week_number', currentWeek)
+      .order('week_number')
       .order('day_number');
 
     if (error) {
@@ -89,20 +89,12 @@ export default function PlanCalendarPage() {
     }
   }
 
-  function previousWeek() {
-    if (currentWeek > 1) {
-      setCurrentWeek(currentWeek - 1);
-    }
+  function getWorkoutsForDay(weekNumber: number, dayNumber: number): ProgramDay[] {
+    return programDays.filter(pd => pd.week_number === weekNumber && pd.day_number === dayNumber);
   }
 
-  function nextWeek() {
-    if (plan && currentWeek < plan.program_length_weeks) {
-      setCurrentWeek(currentWeek + 1);
-    }
-  }
-
-  function getWorkoutsForDay(dayNumber: number): ProgramDay[] {
-    return programDays.filter(pd => pd.day_number === dayNumber);
+  function getTotalWorkouts(): number {
+    return programDays.filter(pd => pd.workout_id !== null).length;
   }
 
   function getCategoryColor(category: string | null) {
@@ -152,90 +144,91 @@ export default function PlanCalendarPage() {
         </div>
       </div>
 
-      {/* Week Navigation */}
-      <div className="border-b border-neutral-800 bg-black/20 backdrop-blur-sm px-6 py-4">
+      {/* Program Stats */}
+      <div className="border-b border-neutral-800 bg-black/20 backdrop-blur-sm px-6 py-3">
         <div className="flex items-center justify-between">
-          <button
-            onClick={previousWeek}
-            disabled={currentWeek === 1}
-            className="p-2 hover:bg-neutral-800/50 rounded text-neutral-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <div className="text-center">
-            <div className="text-xl font-semibold text-white">
-              Week {currentWeek} of {plan.program_length_weeks}
-            </div>
-            <div className="text-sm text-neutral-400">
-              {programDays.filter(pd => pd.workout_id).length} workouts this week
-            </div>
+          <div className="text-sm text-neutral-400">
+            {plan.program_length_weeks} week program • {getTotalWorkouts()} total workouts
           </div>
-
-          <button
-            onClick={nextWeek}
-            disabled={currentWeek === plan.program_length_weeks}
-            className="p-2 hover:bg-neutral-800/50 rounded text-neutral-400 hover:text-white transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
 
-      {/* Weekly Program Grid */}
-      <div className="flex-1 overflow-auto">
-        <div className="grid grid-cols-7 gap-px bg-neutral-800 p-px min-h-full">
-          {[1, 2, 3, 4, 5, 6, 7].map((dayNumber) => {
-            const dayWorkouts = getWorkoutsForDay(dayNumber);
+      {/* Full Program Grid - All Weeks */}
+      <div className="flex-1 overflow-auto p-6">
+        <div className="space-y-8">
+          {Array.from({ length: plan.program_length_weeks }, (_, weekIndex) => {
+            const weekNumber = weekIndex + 1;
+            const weekWorkoutCount = programDays.filter(
+              pd => pd.week_number === weekNumber && pd.workout_id !== null
+            ).length;
 
             return (
-              <div
-                key={dayNumber}
-                className="bg-neutral-950 p-4 min-h-[200px]"
-              >
-                {/* Day Header */}
-                <div className="mb-3 pb-2 border-b border-neutral-800">
-                  <div className="text-sm font-semibold text-neutral-400">
-                    {dayNames[dayNumber - 1]}
-                  </div>
+              <div key={weekNumber} className="space-y-3">
+                {/* Week Header */}
+                <div className="flex items-center gap-4 pb-2">
+                  <h2 className="text-lg font-bold text-white">
+                    Week {weekNumber}
+                  </h2>
+                  <span className="text-sm text-neutral-500">
+                    {weekWorkoutCount} {weekWorkoutCount === 1 ? 'workout' : 'workouts'}
+                  </span>
                 </div>
 
-                {/* Workouts for this day */}
-                <div className="space-y-2">
-                  {dayWorkouts.map((pd) => (
-                    pd.workouts && (
-                      <button
-                        key={pd.id}
-                        className="w-full text-left p-3 bg-neutral-900/50 hover:bg-neutral-800/50 border border-neutral-800 hover:border-neutral-700 rounded-lg transition-all group"
+                {/* Week Grid */}
+                <div className="grid grid-cols-7 gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7].map((dayNumber) => {
+                    const dayWorkouts = getWorkoutsForDay(weekNumber, dayNumber);
+
+                    return (
+                      <div
+                        key={dayNumber}
+                        className="bg-neutral-900/30 border border-neutral-800 rounded-lg p-3 min-h-[120px]"
                       >
-                        <div className="flex items-start gap-2">
-                          <div className={`w-1 h-full ${getCategoryColor(pd.workouts.category)} rounded-full shrink-0`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate group-hover:text-blue-400 transition-colors">
-                              {pd.workouts.name}
-                            </div>
-                            {pd.workouts.estimated_duration_minutes && (
-                              <div className="text-xs text-neutral-500">
-                                {pd.workouts.estimated_duration_minutes} min
-                              </div>
-                            )}
+                        {/* Day Header */}
+                        <div className="mb-2 pb-2 border-b border-neutral-800">
+                          <div className="text-xs font-semibold text-neutral-500">
+                            {dayNames[dayNumber - 1]}
                           </div>
                         </div>
-                      </button>
-                    )
-                  ))}
 
-                  {/* Add workout button */}
-                  <button
-                    onClick={() => setShowWorkoutLibrary(true)}
-                    className="w-full p-3 border-2 border-dashed border-neutral-800 hover:border-neutral-600 rounded-lg text-neutral-600 hover:text-neutral-400 transition-all text-sm"
-                  >
-                    + Add Workout
-                  </button>
+                        {/* Workouts for this day */}
+                        <div className="space-y-1.5">
+                          {dayWorkouts.map((pd) => (
+                            pd.workouts && (
+                              <button
+                                key={pd.id}
+                                className="w-full text-left p-2 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 rounded transition-all group"
+                              >
+                                <div className="flex items-start gap-1.5">
+                                  <div className={`w-0.5 h-full ${getCategoryColor(pd.workouts.category)} rounded-full shrink-0`} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="text-xs font-medium text-white truncate group-hover:text-blue-400 transition-colors">
+                                      {pd.workouts.name}
+                                    </div>
+                                    {pd.workouts.estimated_duration_minutes && (
+                                      <div className="text-[10px] text-neutral-500 mt-0.5">
+                                        {pd.workouts.estimated_duration_minutes}min
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            )
+                          ))}
+
+                          {/* Add workout button */}
+                          {dayWorkouts.filter(pd => pd.workout_id).length === 0 && (
+                            <button
+                              onClick={() => setShowWorkoutLibrary(true)}
+                              className="w-full p-2 border border-dashed border-neutral-800 hover:border-neutral-600 rounded text-neutral-600 hover:text-neutral-400 transition-all text-xs"
+                            >
+                              +
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );
@@ -261,8 +254,8 @@ export default function PlanCalendarPage() {
               <p className="text-neutral-500 text-sm mt-2">You'll be able to:</p>
               <ul className="list-disc list-inside text-neutral-500 text-sm mt-2 space-y-1">
                 <li>Browse template workouts</li>
-                <li>Copy workout to this plan (Week {currentWeek})</li>
-                <li>Assign to specific day</li>
+                <li>Copy workout to this plan</li>
+                <li>Assign to specific week and day</li>
                 <li>Maintain full independence from template</li>
               </ul>
             </div>
