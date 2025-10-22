@@ -26,6 +26,7 @@ interface RoutineExercise {
   exercise_id: string | null;
   is_placeholder: boolean;
   placeholder_id: string | null;
+  placeholder_name: string | null;
   order_index: number;
   sets: number | null;
   reps_min: number | null;
@@ -167,9 +168,18 @@ export default function WorkoutSidebar({
                                 : 'bg-neutral-900/30 hover:bg-neutral-900/50 border border-neutral-800'
                             }`}
                           >
-                            <h4 className="text-sm font-medium text-white truncate mb-0.5">
-                              {exercise.exercises?.name || 'Exercise'}
-                            </h4>
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="text-sm font-medium text-white truncate">
+                                {exercise.is_placeholder
+                                  ? exercise.placeholder_name || 'Placeholder Exercise'
+                                  : exercise.exercises?.name || 'Exercise'}
+                              </h4>
+                              {exercise.is_placeholder && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-semibold bg-blue-500/20 border border-blue-500/30 text-blue-300 shrink-0">
+                                  PH
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-neutral-400 truncate">
                               {getExerciseSummary(exercise)}
                             </p>
@@ -207,9 +217,18 @@ export default function WorkoutSidebar({
                         : 'bg-neutral-900/30 hover:bg-neutral-900/50 border border-neutral-800'
                     }`}
                   >
-                    <h4 className="text-sm font-medium text-white truncate mb-1">
-                      {exercise.exercises?.name || 'Exercise'}
-                    </h4>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="text-sm font-medium text-white truncate">
+                        {exercise.is_placeholder
+                          ? exercise.placeholder_name || 'Placeholder Exercise'
+                          : exercise.exercises?.name || 'Exercise'}
+                      </h4>
+                      {exercise.is_placeholder && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-semibold bg-blue-500/20 border border-blue-500/30 text-blue-300 shrink-0">
+                          PH
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-neutral-400 truncate">
                       {getExerciseSummary(exercise)}
                     </p>

@@ -35,6 +35,7 @@ interface RoutineExercise {
   exercise_id: string | null;
   is_placeholder: boolean;
   placeholder_id: string | null;
+  placeholder_name: string | null;
   order_index: number;
   sets: number | null;
   reps_min: number | null;
@@ -135,8 +136,15 @@ export default function ExerciseDetailPanel({
               <span className="text-xl">♡</span>
             </button>
             <h2 className="text-2xl font-bold text-white">
-              {exercise.exercises?.name || 'Exercise'}
+              {exercise.is_placeholder
+                ? exercise.placeholder_name || 'Placeholder Exercise'
+                : exercise.exercises?.name || 'Exercise'}
             </h2>
+            {exercise.is_placeholder && (
+              <span className="inline-flex items-center px-2 py-1 rounded-sm text-xs font-semibold bg-blue-500/20 border border-blue-500/30 text-blue-300">
+                PLACEHOLDER
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button className="p-2 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">

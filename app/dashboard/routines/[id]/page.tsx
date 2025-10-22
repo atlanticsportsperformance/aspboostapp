@@ -41,6 +41,7 @@ interface RoutineExercise {
   exercise_id: string | null;
   is_placeholder: boolean;
   placeholder_id: string | null;
+  placeholder_name: string | null;
   order_index: number;
   sets: number | null;
   reps_min: number | null;
@@ -72,6 +73,9 @@ interface Routine {
   is_standalone: boolean;
   tags?: string[];
   category?: 'hitting' | 'throwing' | 'strength_conditioning';
+  plan_id: string | null;
+  athlete_id: string | null;
+  source_routine_id: string | null;
   placeholder_definitions: {
     placeholders: PlaceholderDef[];
   };
@@ -89,6 +93,24 @@ export default function RoutineBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+
+  // Determine ownership context
+  function getRoutineContext() {
+    if (!routine) return 'template';
+    if (routine.athlete_id) return 'athlete';
+    if (routine.plan_id) return 'plan';
+    return 'template';
+  }
+
+  function getContextBadge() {
+    const context = getRoutineContext();
+    const badges = {
+      template: { label: 'Template Library', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+      plan: { label: 'Plan-Owned', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+      athlete: { label: 'Athlete-Owned', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
+    };
+    return badges[context];
+  }
 
   useEffect(() => {
     if (routineId) fetchRoutine();
@@ -221,6 +243,7 @@ export default function RoutineBuilderPage() {
         exercise_id: isPlaceholder ? null : exerciseId,
         is_placeholder: isPlaceholder,
         placeholder_id: placeholderId || null,
+        placeholder_name: isPlaceholder ? placeholderName : null,
         order_index: maxOrder + 1,
         sets: 3
       })
@@ -358,15 +381,20 @@ export default function RoutineBuilderPage() {
 
           {/* Routine Header - Ultra Compact */}
           <div className="space-y-2">
-            {/* Name */}
-            <input
-              type="text"
-              value={routine.name}
-              onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
-              onBlur={handleSave}
-              className="w-full text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
-              placeholder="Routine name..."
-            />
+            {/* Name and Context Badge */}
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={routine.name}
+                onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
+                onBlur={handleSave}
+                className="flex-1 text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
+                placeholder="Routine name..."
+              />
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
+                {getContextBadge().label}
+              </span>
+            </div>
 
             {/* Compact Grid: Scheme, Category, Description, Tags */}
             <div className="grid grid-cols-12 gap-2 items-start">

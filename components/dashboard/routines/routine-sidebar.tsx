@@ -25,6 +25,7 @@ interface RoutineExercise {
   exercise_id: string | null;
   is_placeholder: boolean;
   placeholder_id: string | null;
+  placeholder_name: string | null;
   order_index: number;
   sets: number | null;
   reps_min: number | null;
