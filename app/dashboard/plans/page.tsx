@@ -48,10 +48,30 @@ export default function PlansPage() {
       return;
     }
 
+    // Get current user's organization_id from staff table
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('You must be logged in to create a plan');
+      return;
+    }
+
+    const { data: staffData, error: staffError } = await supabase
+      .from('staff')
+      .select('org_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (staffError || !staffData) {
+      console.error('Error fetching staff org:', staffError);
+      alert('Unable to determine your organization. Please contact support.');
+      return;
+    }
+
     const { data, error } = await supabase
       .from('training_plans')
       .insert({
         name: newPlanName.trim(),
+        organization_id: staffData.org_id,
         description: null,
         start_date: null,
         end_date: null
