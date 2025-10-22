@@ -1,14 +1,23 @@
 # Database Migration Status - Cell 4.4
 
-## ⚠️ FIXED: RLS Policy Error
+## ⚠️ FIXES APPLIED
 
+### Fix 1: RLS Policy Error
 **Issue:** The original migration script referenced a `users` table that doesn't exist in your database.
 
 **Fix Applied:** Updated all RLS policies to use the `staff` table instead:
 - Changed `SELECT organization_id FROM users WHERE id = auth.uid()`
 - To `SELECT org_id FROM staff WHERE user_id = auth.uid()`
 
-**Status:** ✅ Migration scripts are now ready to run
+### Fix 2: Organization ID Column Error
+**Issue:** The migration tried to create indexes on `workouts.organization_id` and `routines.organization_id` which don't exist.
+
+**Fix Applied:** Commented out these indexes in ADD_OWNERSHIP_CONTEXTS.sql:
+- Removed `idx_workouts_templates` index on organization_id
+- Removed `idx_routines_templates` index on organization_id
+- Organization scoping will be handled through RLS policies instead
+
+**Status:** ✅ Both migration scripts are now ready to run
 
 ---
 
@@ -150,7 +159,7 @@ Before running migrations:
 
 ## 🚨 Known Issues
 
-None at this time. The RLS policy error has been fixed.
+None at this time. Both the RLS policy error and organization_id column error have been fixed.
 
 ---
 
