@@ -5,12 +5,14 @@ import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AddWorkoutToPlanDialog from '@/components/dashboard/plans/add-workout-to-plan-dialog';
+import WorkoutDetailSlideover from '@/components/dashboard/plans/workout-detail-slideover';
 
 interface Workout {
   id: string;
   name: string;
   category: string | null;
   estimated_duration_minutes: number | null;
+  notes: string | null;
   plan_id: string | null;
 }
 
@@ -41,6 +43,7 @@ export default function PlanCalendarPage() {
   const [loading, setLoading] = useState(true);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
   const [showWorkoutLibrary, setShowWorkoutLibrary] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState<{ workout: Workout; week: number; day: number } | null>(null);
 
   const dayNames = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
 
@@ -77,7 +80,7 @@ export default function PlanCalendarPage() {
       .from('program_days')
       .select(`
         *,
-        workouts (id, name, category, estimated_duration_minutes, plan_id)
+        workouts (id, name, category, estimated_duration_minutes, notes, plan_id)
       `)
       .eq('plan_id', planId)
       .order('week_number')
@@ -230,6 +233,7 @@ export default function PlanCalendarPage() {
                             pd.workouts && (
                               <button
                                 key={pd.id}
+                                onClick={() => setSelectedWorkout({ workout: pd.workouts!, week: weekNumber, day: dayNumber })}
                                 className="w-full text-left p-1.5 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 rounded transition-all group"
                               >
                                 <div className="flex items-start gap-1">
@@ -290,6 +294,20 @@ export default function PlanCalendarPage() {
           onClose={() => setShowWorkoutLibrary(false)}
           onSuccess={() => {
             setShowWorkoutLibrary(false);
+            fetchProgramDays();
+          }}
+        />
+      )}
+
+      {/* Workout Detail Slide-over */}
+      {selectedWorkout && (
+        <WorkoutDetailSlideover
+          workout={selectedWorkout.workout}
+          weekNumber={selectedWorkout.week}
+          dayNumber={selectedWorkout.day}
+          onClose={() => setSelectedWorkout(null)}
+          onUpdate={() => {
+            setSelectedWorkout(null);
             fetchProgramDays();
           }}
         />
