@@ -53,10 +53,21 @@
 /lib                    # Supabase client & utilities
 /hooks                  # Custom React hooks
 /styles                 # Global styles & Tailwind config
+/docs                   # 📚 Project documentation & summaries
 /tests                  # Unit & integration tests
 /e2e                    # End-to-end tests (Playwright, future)
 /supabase               # Database migrations & seeds
 ```
+
+## Documentation
+
+All project documentation is organized in the [`/docs`](./docs) folder:
+- [Database Schema](./docs/DATABASE_SCHEMA.md)
+- [Exercise Library Summary](./docs/EXERCISE_LIBRARY_SUMMARY.md)
+- [Next Phase Handoff](./docs/NEXT_PHASE_HANDOFF.md)
+- [Phase Completion Summaries](./docs)
+
+See [`/docs/README.md`](./docs/README.md) for full documentation index.
 
 ## Getting Started
 

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm install:*)",
+      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\components\\dashboard\\athletes\\athlete-program-tab.tsx\" \"c:\\Users\\Owner\\Desktop\\completeapp\\components\\dashboard\\athletes\\athlete-kpis-tab.tsx\" \"c:\\Users\\Owner\\Desktop\\completeapp\\components\\dashboard\\athletes\\athlete-baselines-tab.tsx\" \"c:\\Users\\Owner\\Desktop\\completeapp\\components\\dashboard\\athletes\\athlete-documents-tab.tsx\" \"c:\\Users\\Owner\\Desktop\\completeapp\\components\\dashboard\\athletes\\athlete-notes-tab.tsx\")",
+      "Bash(findstr:*)",
+      "Bash(awk:*)",
+      "Bash(echo:*)",
+      "Bash(move page.tsx page-old.tsx)",
+      "Bash(move page-new.tsx page.tsx)",
+      "Bash(ren page.tsx page-old.tsx)",
+      "Bash(ren:*)",
+      "Bash(cat:*)",
+      "Bash(psql:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -45,5 +45,5 @@ export async function getEnabledFeatures(): Promise<string[]> {
     return [];
   }
 
-  return data.map((flag) => flag.key);
+  return data.map((flag: { key: string }) => flag.key);
 }
