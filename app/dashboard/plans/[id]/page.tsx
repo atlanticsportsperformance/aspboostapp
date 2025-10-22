@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AddWorkoutToPlanDialog from '@/components/dashboard/plans/add-workout-to-plan-dialog';
 
 interface Workout {
   id: string;
@@ -281,31 +282,17 @@ export default function PlanCalendarPage() {
         </div>
       </div>
 
-      {/* Workout Library Modal - Placeholder for now */}
-      {showWorkoutLibrary && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1a] border border-white/10 rounded-lg w-full max-w-4xl max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-white/10">
-              <h2 className="text-xl font-bold text-white">Add Workout to Program</h2>
-              <button
-                onClick={() => setShowWorkoutLibrary(false)}
-                className="text-gray-400 hover:text-white transition-colors text-2xl"
-              >
-                ×
-              </button>
-            </div>
-            <div className="p-6">
-              <p className="text-neutral-400">Workout library integration coming soon...</p>
-              <p className="text-neutral-500 text-sm mt-2">You'll be able to:</p>
-              <ul className="list-disc list-inside text-neutral-500 text-sm mt-2 space-y-1">
-                <li>Browse template workouts</li>
-                <li>Copy workout to this plan</li>
-                <li>Assign to specific week and day</li>
-                <li>Maintain full independence from template</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+      {/* Workout Library Modal */}
+      {showWorkoutLibrary && plan && (
+        <AddWorkoutToPlanDialog
+          planId={planId}
+          programLengthWeeks={plan.program_length_weeks}
+          onClose={() => setShowWorkoutLibrary(false)}
+          onSuccess={() => {
+            setShowWorkoutLibrary(false);
+            fetchProgramDays();
+          }}
+        />
       )}
     </div>
   );
