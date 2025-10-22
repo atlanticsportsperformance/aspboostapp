@@ -76,8 +76,9 @@ CREATE INDEX IF NOT EXISTS idx_workouts_plan_id ON workouts(plan_id) WHERE plan_
 -- Index for finding all workouts for an athlete
 CREATE INDEX IF NOT EXISTS idx_workouts_athlete_id ON workouts(athlete_id) WHERE athlete_id IS NOT NULL;
 
--- Index for template workouts (Library context)
-CREATE INDEX IF NOT EXISTS idx_workouts_templates ON workouts(organization_id) WHERE plan_id IS NULL AND athlete_id IS NULL;
+-- NOTE: Template workouts index commented out - workouts table doesn't have organization_id column
+-- This will be handled by RLS policies instead
+-- CREATE INDEX IF NOT EXISTS idx_workouts_templates ON workouts(organization_id) WHERE plan_id IS NULL AND athlete_id IS NULL;
 
 -- Index for finding all routines in a plan
 CREATE INDEX IF NOT EXISTS idx_routines_plan_id ON routines(plan_id) WHERE plan_id IS NOT NULL;
@@ -85,8 +86,9 @@ CREATE INDEX IF NOT EXISTS idx_routines_plan_id ON routines(plan_id) WHERE plan_
 -- Index for finding all routines for an athlete
 CREATE INDEX IF NOT EXISTS idx_routines_athlete_id ON routines(athlete_id) WHERE athlete_id IS NOT NULL;
 
--- Index for template routines (Library context)
-CREATE INDEX IF NOT EXISTS idx_routines_templates ON routines(organization_id) WHERE plan_id IS NULL AND athlete_id IS NULL;
+-- NOTE: Template routines index commented out - routines table doesn't have organization_id column
+-- This will be handled by RLS policies instead
+-- CREATE INDEX IF NOT EXISTS idx_routines_templates ON routines(organization_id) WHERE plan_id IS NULL AND athlete_id IS NULL;
 
 -- Index for routine lineage tracking
 CREATE INDEX IF NOT EXISTS idx_routines_source ON routines(source_routine_id) WHERE source_routine_id IS NOT NULL;
