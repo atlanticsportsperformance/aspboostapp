@@ -154,8 +154,8 @@ export default function PlanCalendarPage() {
       </div>
 
       {/* Full Program Grid - All Weeks */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="space-y-8">
+      <div className="flex-1 overflow-auto p-4">
+        <div className="space-y-3">
           {Array.from({ length: plan.program_length_weeks }, (_, weekIndex) => {
             const weekNumber = weekIndex + 1;
             const weekWorkoutCount = programDays.filter(
@@ -163,50 +163,50 @@ export default function PlanCalendarPage() {
             ).length;
 
             return (
-              <div key={weekNumber} className="space-y-3">
+              <div key={weekNumber} className="space-y-1.5">
                 {/* Week Header */}
-                <div className="flex items-center gap-4 pb-2">
-                  <h2 className="text-lg font-bold text-white">
+                <div className="flex items-center gap-3 px-2 py-1">
+                  <h2 className="text-sm font-bold text-white">
                     Week {weekNumber}
                   </h2>
-                  <span className="text-sm text-neutral-500">
+                  <span className="text-xs text-neutral-500">
                     {weekWorkoutCount} {weekWorkoutCount === 1 ? 'workout' : 'workouts'}
                   </span>
                 </div>
 
                 {/* Week Grid */}
-                <div className="grid grid-cols-7 gap-2">
+                <div className="grid grid-cols-7 gap-1.5">
                   {[1, 2, 3, 4, 5, 6, 7].map((dayNumber) => {
                     const dayWorkouts = getWorkoutsForDay(weekNumber, dayNumber);
 
                     return (
                       <div
                         key={dayNumber}
-                        className="bg-neutral-900/30 border border-neutral-800 rounded-lg p-3 min-h-[120px]"
+                        className="bg-neutral-900/30 border border-neutral-800 rounded p-2 min-h-[100px]"
                       >
                         {/* Day Header */}
-                        <div className="mb-2 pb-2 border-b border-neutral-800">
-                          <div className="text-xs font-semibold text-neutral-500">
+                        <div className="mb-1.5 pb-1 border-b border-neutral-800">
+                          <div className="text-[10px] font-semibold text-neutral-500 uppercase">
                             {dayNames[dayNumber - 1]}
                           </div>
                         </div>
 
                         {/* Workouts for this day */}
-                        <div className="space-y-1.5">
+                        <div className="space-y-1">
                           {dayWorkouts.map((pd) => (
                             pd.workouts && (
                               <button
                                 key={pd.id}
-                                className="w-full text-left p-2 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 rounded transition-all group"
+                                className="w-full text-left p-1.5 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 rounded transition-all group"
                               >
-                                <div className="flex items-start gap-1.5">
+                                <div className="flex items-start gap-1">
                                   <div className={`w-0.5 h-full ${getCategoryColor(pd.workouts.category)} rounded-full shrink-0`} />
                                   <div className="flex-1 min-w-0">
-                                    <div className="text-xs font-medium text-white truncate group-hover:text-blue-400 transition-colors">
+                                    <div className="text-[11px] font-medium text-white truncate group-hover:text-blue-400 transition-colors leading-tight">
                                       {pd.workouts.name}
                                     </div>
                                     {pd.workouts.estimated_duration_minutes && (
-                                      <div className="text-[10px] text-neutral-500 mt-0.5">
+                                      <div className="text-[9px] text-neutral-500 mt-0.5">
                                         {pd.workouts.estimated_duration_minutes}min
                                       </div>
                                     )}
@@ -220,7 +220,7 @@ export default function PlanCalendarPage() {
                           {dayWorkouts.filter(pd => pd.workout_id).length === 0 && (
                             <button
                               onClick={() => setShowWorkoutLibrary(true)}
-                              className="w-full p-2 border border-dashed border-neutral-800 hover:border-neutral-600 rounded text-neutral-600 hover:text-neutral-400 transition-all text-xs"
+                              className="w-full p-1.5 border border-dashed border-neutral-800 hover:border-neutral-600 rounded text-neutral-600 hover:text-neutral-400 transition-all text-xs"
                             >
                               +
                             </button>
