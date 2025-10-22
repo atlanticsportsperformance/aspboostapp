@@ -97,6 +97,38 @@ export default function PlanCalendarPage() {
     return programDays.filter(pd => pd.workout_id !== null).length;
   }
 
+  async function handleAddWeek() {
+    if (!plan) return;
+
+    const newWeekCount = plan.program_length_weeks + 1;
+
+    // Update plan length
+    const { error: planError } = await supabase
+      .from('training_plans')
+      .update({ program_length_weeks: newWeekCount })
+      .eq('id', planId);
+
+    if (planError) {
+      console.error('Error updating plan length:', planError);
+      alert('Failed to add week');
+      return;
+    }
+
+    // Initialize the new week's structure
+    const { error: initError } = await supabase.rpc('initialize_program_structure', {
+      p_plan_id: planId,
+      p_weeks: newWeekCount
+    });
+
+    if (initError) {
+      console.error('Error initializing new week:', initError);
+    }
+
+    // Refresh data
+    await fetchPlan();
+    await fetchProgramDays();
+  }
+
   function getCategoryColor(category: string | null) {
     const colors: { [key: string]: string } = {
       hitting: 'bg-red-500',
@@ -233,6 +265,19 @@ export default function PlanCalendarPage() {
               </div>
             );
           })}
+
+          {/* Add Week Button */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={handleAddWeek}
+              className="px-6 py-3 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Week
+            </button>
+          </div>
         </div>
       </div>
 
