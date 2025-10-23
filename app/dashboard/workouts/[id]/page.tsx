@@ -335,7 +335,7 @@ export default function WorkoutBuilderPage() {
       exercise_id: isPlaceholder ? null : exerciseId,
       is_placeholder: isPlaceholder,
       placeholder_id: placeholderId || null,
-      placeholder_name: isPlaceholder ? placeholderName : null,
+      placeholder_name: isPlaceholder ? (placeholderName || null) : null,
       order_index: 0
     };
 
