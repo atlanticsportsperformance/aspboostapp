@@ -88,6 +88,14 @@ export default function WorkoutSidebar({
       });
     }
 
+    // Intensity %
+    if (exercise.intensity_targets && exercise.intensity_targets.length > 0) {
+      const intensity = exercise.intensity_targets[0];
+      if (intensity.percent && intensity.metric_label) {
+        parts.push(`${intensity.percent}% ${intensity.metric_label}`);
+      }
+    }
+
     // Rest
     if (exercise.rest_seconds) {
       const minutes = Math.floor(exercise.rest_seconds / 60);

@@ -452,6 +452,12 @@ export default function ExerciseDetailPanel({
             <textarea
               value={exercise.notes || ''}
               onChange={(e) => onUpdate({ notes: e.target.value })}
+              onBlur={() => {
+                // Force save on blur to ensure data is persisted
+                if (exercise.notes) {
+                  onUpdate({ notes: exercise.notes });
+                }
+              }}
               rows={4}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="Add workout-specific notes or instructions for this exercise..."
