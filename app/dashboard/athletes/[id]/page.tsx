@@ -12,12 +12,54 @@ import TrainingTab from '@/components/dashboard/athletes/athlete-training-tab';
 import PerformanceTab from '@/components/dashboard/athletes/athlete-performance-tab';
 import NotesDocumentsTab from '@/components/dashboard/athletes/athlete-notes-documents-tab';
 
+interface Profile {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  phone: string | null;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  level: string;
+  jersey_number?: string | null;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  description: string | null;
+  total_weeks: number;
+  created_by: string;
+}
+
+interface PlanAssignment {
+  id: string;
+  athlete_id: string;
+  plan_id: string;
+  is_active: boolean;
+  start_date: string;
+  plans?: Plan;
+}
+
+interface Athlete {
+  id: string;
+  user_id: string | null;
+  primary_position: string | null;
+  secondary_position: string | null;
+  grad_year: number | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 interface AthleteData {
-  athlete: any;
-  profile: any;
-  teams: any[];
-  currentPlan: any;
-  planAssignment: any;
+  athlete: Athlete;
+  profile: Profile | null;
+  teams: Team[];
+  currentPlan: Plan | null;
+  planAssignment: PlanAssignment | null;
 }
 
 export default function AthleteDetailPage() {
@@ -84,7 +126,7 @@ export default function AthleteDetailPage() {
 
       console.log('3. Team members:', teamMembersData, teamMembersError);
 
-      const teams = (teamMembersData || []).map((tm: any) => ({
+      const teams = (teamMembersData || []).map((tm: { jersey_number: string | null; teams: Team }) => ({
         ...tm.teams,
         jersey_number: tm.jersey_number
       }));
