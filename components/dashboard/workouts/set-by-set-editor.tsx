@@ -17,6 +17,7 @@ interface SetConfiguration {
   intensity_percent?: number;
   rest_seconds?: number;
   notes?: string;
+  is_amrap?: boolean; // Individual set AMRAP
 }
 
 interface SetBySetEditorProps {
@@ -66,7 +67,8 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
       metric_values: { ...template.metric_values },
       intensity_type: template.intensity_type,
       intensity_percent: template.intensity_percent,
-      rest_seconds: template.rest_seconds
+      rest_seconds: template.rest_seconds,
+      is_amrap: template.is_amrap
     }));
     setSets(newSets);
     onUpdateSets(newSets);
@@ -87,26 +89,37 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
             </div>
             <div className="flex-1 grid grid-cols-4 gap-2">
               {/* Dynamic metric fields */}
-              {enabledMeasurements.map((measurement) => (
-                <div key={measurement.id}>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    {measurement.name} {measurement.unit && `(${measurement.unit})`}
-                  </label>
-                  <input
-                    type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
-                    step={measurement.type === 'decimal' ? '0.01' : '1'}
-                    value={set.metric_values?.[measurement.id] || ''}
-                    onChange={(e) => {
-                      const value = measurement.type === 'integer' ? (e.target.value ? parseInt(e.target.value) : null) :
-                                   measurement.type === 'decimal' ? (e.target.value ? parseFloat(e.target.value) : null) :
-                                   e.target.value || null;
-                      updateMetricValue(index, measurement.id, value);
-                    }}
-                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    placeholder="0"
-                  />
-                </div>
-              ))}
+              {enabledMeasurements.map((measurement) => {
+                // Show AMRAP text for reps when is_amrap is true for this set
+                const isRepsWithAMRAP = measurement.id === 'reps' && set.is_amrap;
+
+                return (
+                  <div key={measurement.id}>
+                    <label className="block text-xs text-gray-400 mb-1">
+                      {measurement.name} {measurement.unit && `(${measurement.unit})`}
+                    </label>
+                    {isRepsWithAMRAP ? (
+                      <div className="w-full px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                        AMRAP
+                      </div>
+                    ) : (
+                      <input
+                        type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
+                        step={measurement.type === 'decimal' ? '0.01' : '1'}
+                        value={set.metric_values?.[measurement.id] || ''}
+                        onChange={(e) => {
+                          const value = measurement.type === 'integer' ? (e.target.value ? parseInt(e.target.value) : null) :
+                                       measurement.type === 'decimal' ? (e.target.value ? parseFloat(e.target.value) : null) :
+                                       e.target.value || null;
+                          updateMetricValue(index, measurement.id, value);
+                        }}
+                        className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    )}
+                  </div>
+                );
+              })}
 
               {/* Intensity % */}
               {enabledMeasurements.length > 0 && (
@@ -156,6 +169,19 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                 />
               </div>
             </div>
+
+            {/* AMRAP Checkbox - Only show if reps is enabled */}
+            {enabledMeasurements.some(m => m.id === 'reps') && (
+              <label className="flex items-center gap-2 cursor-pointer px-2 py-1 bg-white/5 rounded border border-white/10">
+                <input
+                  type="checkbox"
+                  checked={set.is_amrap || false}
+                  onChange={(e) => updateSet(index, { is_amrap: e.target.checked })}
+                  className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+                <span className="text-white text-xs font-medium">AMRAP</span>
+              </label>
+            )}
 
             {/* Copy to All Button */}
             <button

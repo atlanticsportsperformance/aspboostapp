@@ -390,28 +390,31 @@ export default function ExerciseDetailPanel({
                   />
                 </div>
               )}
-
-              {/* Rest */}
-              <div className="flex flex-col">
-                <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
-                <input
-                  type="number"
-                  value={exercise.rest_seconds || ''}
-                  onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="60"
-                />
               </div>
 
-              {/* Tempo */}
-              <div className="flex flex-col">
-                <label className="block text-xs text-gray-400 mb-1">Tempo</label>
-                <input
-                  type="text"
-                  placeholder="3-0-1-0"
-                  className="w-24 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* Rest & Tempo - Second Row */}
+              <div className="flex flex-wrap gap-4 mt-4">
+                {/* Rest */}
+                <div className="flex flex-col">
+                  <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
+                  <input
+                    type="number"
+                    value={exercise.rest_seconds || ''}
+                    onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
+                    className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="60"
+                  />
+                </div>
+
+                {/* Tempo */}
+                <div className="flex flex-col">
+                  <label className="block text-xs text-gray-400 mb-1">Tempo</label>
+                  <input
+                    type="text"
+                    placeholder="3-0-1-0"
+                    className="w-24 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </>
           ) : (
