@@ -185,10 +185,10 @@ export default function WorkoutBuilderPage() {
 
     // Sort routines and exercises
     if (data.routines) {
-      data.routines.sort((a, b) => a.order_index - b.order_index);
+      data.routines.sort((a: Routine, b: Routine) => a.order_index - b.order_index);
       data.routines.forEach((r: Routine) => {
         if (r.routine_exercises) {
-          r.routine_exercises.sort((a, b) => a.order_index - b.order_index);
+          r.routine_exercises.sort((a: RoutineExercise, b: RoutineExercise) => a.order_index - b.order_index);
         }
       });
     }
