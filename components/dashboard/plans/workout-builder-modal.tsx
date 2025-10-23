@@ -534,14 +534,24 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
   }
 
   async function handleUpdateExercise(updates: Partial<RoutineExercise>) {
-    if (!selectedExerciseId) return;
+    if (!selectedExerciseId || !workout) return;
 
+    // Optimistically update local state first for immediate UI feedback
+    setWorkout({
+      ...workout,
+      routines: workout.routines.map(routine => ({
+        ...routine,
+        routine_exercises: routine.routine_exercises.map(ex =>
+          ex.id === selectedExerciseId ? { ...ex, ...updates } : ex
+        )
+      }))
+    });
+
+    // Then update database in background
     await supabase
       .from('routine_exercises')
       .update(updates)
       .eq('id', selectedExerciseId);
-
-    fetchWorkout();
   }
 
   async function handleDeleteExercise(exerciseId: string) {
