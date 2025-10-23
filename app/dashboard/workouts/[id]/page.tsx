@@ -56,9 +56,16 @@ interface RoutineExercise {
   rpe_target: number | null;
   rest_seconds: number | null;
   notes: string | null;
-  metric_targets?: Record<string, any>;
-  intensity_targets?: any[] | null;
+  metric_targets?: Record<string, string | number | boolean | null>;
+  intensity_targets?: Array<{
+    id: string;
+    metric: string;
+    metric_label: string;
+    percent: number;
+  }> | null;
   set_configurations: SetConfiguration[] | null;
+  enabled_measurements?: string[] | null;
+  is_amrap?: boolean;
   exercises: Exercise | null;
 }
 
@@ -194,7 +201,13 @@ export default function WorkoutBuilderPage() {
     if (!workout) return;
     setSaving(true);
 
-    const updateData: any = {
+    const updateData: {
+      name: string;
+      estimated_duration_minutes: number | null;
+      notes: string | null;
+      tags?: string[];
+      category?: 'hitting' | 'throwing' | 'strength_conditioning';
+    } = {
       name: workout.name,
       estimated_duration_minutes: workout.estimated_duration_minutes,
       notes: workout.notes,
@@ -307,7 +320,17 @@ export default function WorkoutBuilderPage() {
     console.log('✅ Inherited plan_id:', newRoutine.plan_id);
     console.log('✅ Inherited athlete_id:', newRoutine.athlete_id);
 
-    const exerciseData: any = {
+    const exerciseData: {
+      routine_id: string;
+      exercise_id: string | null;
+      is_placeholder: boolean;
+      placeholder_id: string | null;
+      placeholder_name: string | null;
+      order_index: number;
+      sets?: number;
+      reps_min?: number;
+      rest_seconds?: number;
+    } = {
       routine_id: newRoutine.id,
       exercise_id: isPlaceholder ? null : exerciseId,
       is_placeholder: isPlaceholder,
@@ -964,8 +987,25 @@ export default function WorkoutBuilderPage() {
             if (sourceRoutine.routine_exercises && sourceRoutine.routine_exercises.length > 0) {
               console.log('📋 Source routine exercises:', sourceRoutine.routine_exercises);
 
-              const exercisesToCopy = sourceRoutine.routine_exercises.map((ex: any) => {
-                const exerciseData: any = {
+              const exercisesToCopy = sourceRoutine.routine_exercises.map((ex: RoutineExercise) => {
+                const exerciseData: {
+                  routine_id: string;
+                  exercise_id: string | null;
+                  order_index: number;
+                  sets: number;
+                  rest_seconds?: number | null;
+                  notes?: string | null;
+                  metric_targets?: Record<string, string | number | boolean | null>;
+                  intensity_targets?: Array<{
+                    id: string;
+                    metric: string;
+                    metric_label: string;
+                    percent: number;
+                  }> | null;
+                  set_configurations?: SetConfiguration[] | null;
+                  enabled_measurements?: string[] | null;
+                  is_amrap?: boolean | null;
+                } = {
                   routine_id: newRoutine.id,
                   exercise_id: ex.exercise_id,
                   order_index: ex.order_index,

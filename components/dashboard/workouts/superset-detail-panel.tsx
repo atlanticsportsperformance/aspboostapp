@@ -55,22 +55,10 @@ export default function SupersetDetailPanel({
   onSelectExercise
 }: SupersetDetailPanelProps) {
   const [localName, setLocalName] = useState(routine.name);
-  const [localNotes, setLocalNotes] = useState(routine.notes || '');
 
   useEffect(() => {
     setLocalName(routine.name);
-    setLocalNotes(routine.notes || '');
-  }, [routine.id]);
-  const getSchemeBadge = (scheme: string) => {
-    const schemes: Record<string, { label: string; color: string }> = {
-      superset: { label: 'Superset', color: 'bg-blue-500/20 text-blue-300' },
-      circuit: { label: 'Circuit', color: 'bg-purple-500/20 text-purple-300' },
-      emom: { label: 'EMOM', color: 'bg-green-500/20 text-green-300' },
-      amrap: { label: 'AMRAP', color: 'bg-yellow-500/20 text-yellow-300' }
-    };
-    const config = schemes[scheme] || schemes.superset;
-    return <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>{config.label}</span>;
-  };
+  }, [routine.id, routine.name]);
 
   const getExerciseSummary = (exercise: RoutineExercise) => {
     const parts: string[] = [];

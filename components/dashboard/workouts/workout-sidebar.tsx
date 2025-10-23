@@ -30,7 +30,7 @@ interface RoutineExercise {
   order_index: number;
   sets: number | null;
   reps_min: number | null;
-  metric_targets?: Record<string, any>;
+  metric_targets?: Record<string, string | number | boolean | null>;
   exercises: Exercise | null;
 }
 
@@ -149,7 +149,7 @@ export default function WorkoutSidebar({
                 <div className="ml-4 space-y-2">
                   {routine.routine_exercises
                     .sort((a, b) => a.order_index - b.order_index)
-                    .map((exercise, index) => (
+                    .map((exercise) => (
                       <div key={exercise.id} className="flex items-start gap-2">
                         {/* Letter Label - Same for all exercises in block */}
                         <div className="w-6 h-6 rounded bg-neutral-800/50 flex items-center justify-center shrink-0 mt-1.5">

@@ -51,7 +51,7 @@ interface RoutineExercise {
   intensity_type: string | null;
   intensity_percent: number | null;
   intensity_targets: IntensityTarget[] | null;
-  metric_targets: Record<string, any> | null; // Flexible storage for all metrics
+  metric_targets: Record<string, string | number | boolean | null> | null; // Flexible storage for all metrics
   notes: string | null;
   set_configurations: SetConfiguration[] | null;
   exercises: Exercise | null;
@@ -90,7 +90,7 @@ export default function SimpleExerciseCard({
   };
 
   // Helper to update metric target value
-  const updateMetricValue = (metricId: string, value: any) => {
+  const updateMetricValue = (metricId: string, value: string | number | null) => {
     const currentTargets = exercise.metric_targets || {};
     const newTargets = { ...currentTargets, [metricId]: value };
     onUpdate({ metric_targets: newTargets });
