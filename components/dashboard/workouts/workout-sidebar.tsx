@@ -73,9 +73,39 @@ export default function WorkoutSidebar({
   const [linkingExerciseId, setLinkingExerciseId] = useState<string | null>(null);
   const getExerciseSummary = (exercise: RoutineExercise) => {
     const parts: string[] = [];
-    if (exercise.sets) parts.push(`${exercise.sets} Sets`);
-    if (exercise.reps_min) parts.push(`${exercise.reps_min} reps`);
-    if (exercise.metric_targets?.weight) parts.push(`${exercise.metric_targets.weight} lbs`);
+
+    // Sets
+    if (exercise.sets) parts.push(`${exercise.sets} ${exercise.sets === 1 ? 'Set' : 'Sets'}`);
+
+    // Metrics from metric_targets
+    if (exercise.metric_targets) {
+      Object.entries(exercise.metric_targets).forEach(([key, value]) => {
+        if (value != null && value !== '') {
+          // Format the metric name and value
+          const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+          parts.push(`${value} ${formattedKey}`);
+        }
+      });
+    }
+
+    // Rest
+    if (exercise.rest_seconds) {
+      const minutes = Math.floor(exercise.rest_seconds / 60);
+      const seconds = exercise.rest_seconds % 60;
+      if (minutes > 0) {
+        parts.push(`${minutes}:${seconds.toString().padStart(2, '0')} rest`);
+      } else {
+        parts.push(`${seconds}s rest`);
+      }
+    }
+
+    // Notes preview (first line only, truncated)
+    if (exercise.notes) {
+      const firstLine = exercise.notes.split('\n')[0];
+      const truncated = firstLine.length > 30 ? firstLine.substring(0, 30) + '...' : firstLine;
+      parts.push(truncated);
+    }
+
     return parts.length > 0 ? parts.join(', ') : 'Not configured';
   };
 
@@ -98,7 +128,7 @@ export default function WorkoutSidebar({
   };
 
   return (
-    <div className="w-80 h-full bg-neutral-950/30 backdrop-blur-sm border-r border-neutral-800 flex flex-col">
+    <div className="w-96 h-full bg-neutral-950/30 backdrop-blur-sm border-r border-neutral-800 flex flex-col">
       {/* Sidebar Header */}
       <div className="p-4 border-b border-neutral-800">
         <h2 className="text-lg font-semibold text-white mb-1">Workout Structure</h2>
