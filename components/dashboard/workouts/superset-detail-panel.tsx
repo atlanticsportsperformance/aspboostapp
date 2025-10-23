@@ -43,7 +43,7 @@ interface Routine {
 
 interface SupersetDetailPanelProps {
   routine: Routine;
-  onUpdate: (updates: Partial<Routine>) => void;
+  onUpdate: (updates: Partial<Routine>) => Promise<void> | void;
   onDelete: () => void;
   onSelectExercise: (exerciseId: string) => void;
 }

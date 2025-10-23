@@ -865,7 +865,7 @@ export default function WorkoutBuilderPage() {
         )}
 
         {/* Right Detail Panel - Show Superset or Exercise Details */}
-        {selectedRoutineId && !selectedExerciseId && selectedRoutine?.scheme !== 'straight' ? (
+        {selectedRoutineId && !selectedExerciseId && selectedRoutine?.scheme !== 'straight' && selectedRoutine ? (
           <SupersetDetailPanel
             routine={selectedRoutine}
             onUpdate={handleUpdateRoutine}
