@@ -14,6 +14,8 @@ interface Workout {
 interface AddWorkoutToPlanDialogProps {
   planId: string;
   programLengthWeeks: number;
+  weekNumber?: number;
+  dayNumber?: number;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -21,6 +23,8 @@ interface AddWorkoutToPlanDialogProps {
 export default function AddWorkoutToPlanDialog({
   planId,
   programLengthWeeks,
+  weekNumber,
+  dayNumber,
   onClose,
   onSuccess
 }: AddWorkoutToPlanDialogProps) {
@@ -30,9 +34,12 @@ export default function AddWorkoutToPlanDialog({
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedWeek, setSelectedWeek] = useState(weekNumber || 1);
+  const [selectedDay, setSelectedDay] = useState(dayNumber || 1);
   const [copying, setCopying] = useState(false);
+
+  // Pre-filled week/day from dropdown
+  const hasPreselectedDay = weekNumber !== undefined && dayNumber !== undefined;
 
   const WORKOUT_CATEGORIES = [
     { value: 'hitting', label: 'Hitting' },
@@ -52,6 +59,7 @@ export default function AddWorkoutToPlanDialog({
     const { data, error } = await supabase
       .from('workouts')
       .select('id, name, category, estimated_duration_minutes, tags')
+      .eq('is_template', true)         // ✅ ONLY templates
       .is('plan_id', null)
       .is('athlete_id', null)
       .order('name');
@@ -59,6 +67,7 @@ export default function AddWorkoutToPlanDialog({
     if (error) {
       console.error('Error fetching workouts:', error);
     } else {
+      console.log('✅ Template workouts for plan library:', data?.length);
       setWorkouts(data || []);
     }
     setLoading(false);
@@ -179,7 +188,7 @@ export default function AddWorkoutToPlanDialog({
           const exercisesToCopy = routine.routine_exercises.map((ex: any) => ({
             routine_id: newRoutine.id,
             exercise_id: ex.exercise_id,
-            is_placeholder: ex.is_placeholder,
+            is_placeholder: ex.is_placeholder || false,
             placeholder_id: ex.placeholder_id,
             placeholder_name: ex.placeholder_name,
             order_index: ex.order_index,
@@ -200,18 +209,21 @@ export default function AddWorkoutToPlanDialog({
       }
     }
 
-    // Step 5: Link the workout to the program day
+    // Step 5: Link the workout to the program day by creating a new program_day entry
     const { error: programDayError } = await supabase
       .from('program_days')
-      .update({ workout_id: newWorkout.id })
-      .eq('plan_id', planId)
-      .eq('week_number', selectedWeek)
-      .eq('day_number', selectedDay)
-      .is('workout_id', null); // Only update if slot is empty
+      .insert({
+        plan_id: planId,
+        week_number: selectedWeek,
+        day_number: selectedDay,
+        workout_id: newWorkout.id,
+        order_index: 0
+      });
 
     if (programDayError) {
       console.error('Error linking workout to program day:', programDayError);
-      alert('Workout copied but failed to assign to program day');
+      console.error('Error details:', JSON.stringify(programDayError, null, 2));
+      alert(`Workout copied but failed to assign to program day: ${programDayError.message || 'Unknown error'}`);
     }
 
     setCopying(false);
@@ -260,33 +272,41 @@ export default function AddWorkoutToPlanDialog({
             </div>
           </div>
 
-          {/* Assignment Controls */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Assign to Week</label>
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
-              >
-                {Array.from({ length: programLengthWeeks }, (_, i) => i + 1).map(week => (
-                  <option key={week} value={week}>Week {week}</option>
-                ))}
-              </select>
+          {/* Assignment Controls - only show if not preselected */}
+          {!hasPreselectedDay ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Assign to Week</label>
+                <select
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
+                >
+                  {Array.from({ length: programLengthWeeks }, (_, i) => i + 1).map(week => (
+                    <option key={week} value={week}>Week {week}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Assign to Day</label>
+                <select
+                  value={selectedDay}
+                  onChange={(e) => setSelectedDay(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
+                >
+                  {dayNames.map((name, index) => (
+                    <option key={index + 1} value={index + 1}>{name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-2">Assign to Day</label>
-              <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
-              >
-                {dayNames.map((name, index) => (
-                  <option key={index + 1} value={index + 1}>{name}</option>
-                ))}
-              </select>
+          ) : (
+            <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+              <p className="text-sm text-blue-400">
+                Will add to <span className="font-semibold">Week {selectedWeek}, {dayNames[selectedDay - 1]}</span>
+              </p>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Workout List */}

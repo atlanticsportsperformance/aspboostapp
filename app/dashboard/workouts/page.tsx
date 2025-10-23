@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { WorkoutTagsManager } from '@/components/dashboard/workouts/workout-tags-manager';
 
@@ -36,11 +36,13 @@ export default function WorkoutsPage() {
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [managerOpen, setManagerOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
+  // Refetch whenever we navigate to this page
   useEffect(() => {
     fetchWorkouts();
-  }, []);
+  }, [pathname]);
 
   async function fetchWorkouts() {
     console.log('Fetching workouts...');
@@ -54,12 +56,16 @@ export default function WorkoutsPage() {
           routine_exercises (id)
         )
       `)
+      .eq('is_template', true)           // ✅ ONLY templates
+      .is('plan_id', null)                // ✅ NOT in a plan
+      .is('athlete_id', null)             // ✅ NOT for an athlete
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching workouts:', error);
     } else {
-      console.log('Workouts loaded:', data);
+      console.log('✅ Template workouts loaded:', data?.length);
+      console.log('✅ Filtered to templates only (is_template=true, plan_id=null, athlete_id=null)');
       setWorkouts(data || []);
     }
 
@@ -67,32 +73,29 @@ export default function WorkoutsPage() {
   }
 
   async function handleCreateWorkout() {
-    console.log('=== CREATING WORKOUT ===');
+    console.log('=== CREATING TEMPLATE WORKOUT ===');
 
     const { data, error } = await supabase
       .from('workouts')
       .insert({
         name: 'New Workout',
         estimated_duration_minutes: 60,
-        is_template: false
+        is_template: true,              // ✅ TEMPLATE (for library)
+        plan_id: null,                  // ✅ NOT in a plan
+        athlete_id: null,               // ✅ NOT for an athlete
+        placeholder_definitions: { placeholders: [] }
       })
       .select()
       .single();
 
-    console.log('Insert result:', { data, error });
-    console.log('Error details:', error ? {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    } : 'No error');
-
     if (error) {
-      console.error('Error creating workout:', error);
-      console.error('Full error object:', JSON.stringify(error, null, 2));
+      console.error('❌ Error creating workout:', error);
       alert(`Failed to create workout: ${error.message || 'Unknown error'}`);
     } else {
-      console.log('Workout created:', data);
+      console.log('✅ Template workout created:', data);
+      console.log('✅ is_template:', data.is_template);
+      console.log('✅ plan_id:', data.plan_id);
+      console.log('✅ athlete_id:', data.athlete_id);
       router.push(`/dashboard/workouts/${data.id}`);
     }
   }
@@ -181,28 +184,40 @@ export default function WorkoutsPage() {
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
 
-    // First, get all routines for this workout
+    // Step 1: Delete workout_instances (athlete assignments)
+    await supabase
+      .from('workout_instances')
+      .delete()
+      .eq('workout_id', id);
+
+    // Step 2: Delete program_days (plan calendar assignments)
+    await supabase
+      .from('program_days')
+      .delete()
+      .eq('workout_id', id);
+
+    // Step 3: Get all routines for this workout
     const { data: routines } = await supabase
       .from('routines')
       .select('id')
       .eq('workout_id', id);
 
     if (routines && routines.length > 0) {
-      // Delete all routine_exercises for these routines
+      // Step 4: Delete all routine_exercises for these routines
       const routineIds = routines.map(r => r.id);
       await supabase
         .from('routine_exercises')
         .delete()
         .in('routine_id', routineIds);
 
-      // Delete all routines
+      // Step 5: Delete all routines
       await supabase
         .from('routines')
         .delete()
         .eq('workout_id', id);
     }
 
-    // Finally delete the workout
+    // Step 6: Finally delete the workout
     const { error } = await supabase
       .from('workouts')
       .delete()
@@ -210,7 +225,8 @@ export default function WorkoutsPage() {
 
     if (error) {
       console.error('Error deleting workout:', error);
-      alert('Failed to delete workout');
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      alert(`Failed to delete workout: ${error.message || 'Unknown error. Check console for details.'}`);
     } else {
       console.log('Workout deleted');
       fetchWorkouts();
@@ -303,7 +319,7 @@ export default function WorkoutsPage() {
         )}
       </div>
 
-      {/* Workout Grid */}
+      {/* Workout List */}
       {filteredWorkouts.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-400 mb-4">
@@ -319,86 +335,117 @@ export default function WorkoutsPage() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredWorkouts.map((workout) => {
-            const routineCount = workout.routines?.length || 0;
-            const exerciseCount = workout.routines?.reduce(
-              (sum, r) => sum + (r.routine_exercises?.length || 0),
-              0
-            ) || 0;
+        <div className="bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
+          {/* List Header */}
+          <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
+            <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+              <div className="col-span-4">Workout Name</div>
+              <div className="col-span-2">Category</div>
+              <div className="col-span-2">Details</div>
+              <div className="col-span-2">Tags</div>
+              <div className="col-span-2 text-right">Actions</div>
+            </div>
+          </div>
 
-            return (
-              <div
-                key={workout.id}
-                className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-white/[0.07] transition-colors"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <Link
-                      href={`/dashboard/workouts/${workout.id}`}
-                      className="text-lg font-semibold text-white hover:text-blue-400 transition-colors block mb-2"
-                    >
-                      {workout.name}
-                    </Link>
-                    <div className="flex items-center gap-2">
-                      {getCategoryBadge(workout.category)}
-                      {workout.is_template && (
-                        <span className="inline-block px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 text-xs rounded">
-                          Template
-                        </span>
+          {/* List Items */}
+          <div className="divide-y divide-neutral-800">
+            {filteredWorkouts.map((workout) => {
+              const routineCount = workout.routines?.length || 0;
+              const exerciseCount = workout.routines?.reduce(
+                (sum, r) => sum + (r.routine_exercises?.length || 0),
+                0
+              ) || 0;
+
+              return (
+                <Link
+                  key={workout.id}
+                  href={`/dashboard/workouts/${workout.id}`}
+                  className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
+                >
+                  <div className="grid grid-cols-12 gap-4 items-center">
+                    {/* Workout Name */}
+                    <div className="col-span-4">
+                      <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                        {workout.name}
+                      </div>
+                      {workout.estimated_duration_minutes && (
+                        <div className="text-xs text-neutral-500 mt-1">
+                          ~{workout.estimated_duration_minutes} min
+                        </div>
                       )}
                     </div>
-                  </div>
-                  {/* Tags - top right */}
-                  {workout.tags && workout.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 justify-end ml-2">
-                      {workout.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-300"
-                        >
-                          {tag}
-                        </span>
-                      ))}
+
+                    {/* Category */}
+                    <div className="col-span-2">
+                      {getCategoryBadge(workout.category)}
                     </div>
-                  )}
-                </div>
 
-                <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
-                  <span>{routineCount} Routine{routineCount !== 1 ? 's' : ''}</span>
-                  <span>•</span>
-                  <span>{exerciseCount} Exercise{exerciseCount !== 1 ? 's' : ''}</span>
-                  {workout.estimated_duration_minutes && (
-                    <>
-                      <span>•</span>
-                      <span>~{workout.estimated_duration_minutes} min</span>
-                    </>
-                  )}
-                </div>
+                    {/* Details */}
+                    <div className="col-span-2 text-sm text-neutral-400">
+                      <div>{routineCount} Routine{routineCount !== 1 ? 's' : ''}</div>
+                      <div className="text-xs text-neutral-500">{exerciseCount} Exercise{exerciseCount !== 1 ? 's' : ''}</div>
+                    </div>
 
-                <div className="flex gap-2">
-                  <Link
-                    href={`/dashboard/workouts/${workout.id}`}
-                    className="flex-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors text-center"
-                  >
-                    Edit
-                  </Link>
-                  <button
-                    onClick={() => handleDuplicate(workout)}
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded transition-colors"
-                  >
-                    Duplicate
-                  </button>
-                  <button
-                    onClick={() => handleDelete(workout.id, workout.name)}
-                    className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm rounded transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+                    {/* Tags */}
+                    <div className="col-span-2">
+                      {workout.tags && workout.tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {workout.tags.slice(0, 2).map((tag) => (
+                            <span
+                              key={tag}
+                              className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-300"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                          {workout.tags.length > 2 && (
+                            <span className="px-2 py-0.5 text-xs text-neutral-500">
+                              +{workout.tags.length - 2}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-neutral-600">—</span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-2 flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDuplicate(workout);
+                        }}
+                        className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                        title="Duplicate workout"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDelete(workout.id, workout.name);
+                        }}
+                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                        title="Delete workout"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

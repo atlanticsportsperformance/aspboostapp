@@ -46,6 +46,8 @@ interface RoutineExercise {
   metric_targets?: Record<string, any>;
   intensity_targets?: IntensityTarget[] | null;
   set_configurations?: any[] | null;
+  enabled_measurements?: string[] | null;
+  is_amrap?: boolean;
   exercises: Exercise | null;
 }
 
@@ -69,8 +71,8 @@ export default function ExerciseDetailPanel({
   onUpdate,
   onDelete
 }: ExerciseDetailPanelProps) {
-  const [activeTab, setActiveTab] = useState<'measurements' | 'amrap' | 'each-side'>('measurements');
   const [enablePerSet, setEnablePerSet] = useState(false);
+  const [showMeasurementsDropdown, setShowMeasurementsDropdown] = useState(false);
 
   if (!exercise || !routine) {
     return (
@@ -83,10 +85,6 @@ export default function ExerciseDetailPanel({
       </div>
     );
   }
-
-  const getEnabledMeasurements = () => {
-    return exercise.exercises?.metric_schema?.measurements?.filter(m => m.enabled) || [];
-  };
 
   const getMetricValue = (metricId: string) => {
     return exercise.metric_targets?.[metricId] ?? null;
@@ -103,7 +101,7 @@ export default function ExerciseDetailPanel({
       onUpdate({ intensity_targets: null });
       return;
     }
-    const measurement = getEnabledMeasurements().find(m => m.id === metric);
+    const measurement = getDisplayMeasurements().find(m => m.id === metric);
     onUpdate({
       intensity_targets: [{
         id: Date.now().toString(),
@@ -126,15 +124,85 @@ export default function ExerciseDetailPanel({
     }
   };
 
+  // Get all available measurements (from exercise schema or standard set)
+  const getAllAvailableMeasurements = () => {
+    const exerciseMeasurements = exercise.exercises?.metric_schema?.measurements || [];
+
+    // Standard measurements that can always be added
+    const standardMeasurements = [
+      { id: 'reps', name: 'Reps', type: 'integer', unit: '', enabled: true },
+      { id: 'weight', name: 'Weight', type: 'decimal', unit: 'lbs', enabled: true },
+      { id: 'time', name: 'Time', type: 'integer', unit: 'sec', enabled: true },
+      { id: 'distance', name: 'Distance', type: 'decimal', unit: 'ft', enabled: true },
+      { id: 'exit_velo', name: 'Exit Velo', type: 'decimal', unit: 'mph', enabled: true },
+      { id: 'peak_velo', name: 'Peak Velo', type: 'decimal', unit: 'mph', enabled: true }
+    ];
+
+    // Merge exercise measurements with standard ones (no duplicates)
+    const allMeasurements = [...exerciseMeasurements];
+    standardMeasurements.forEach(std => {
+      if (!allMeasurements.find(m => m.id === std.id)) {
+        allMeasurements.push(std);
+      }
+    });
+
+    return allMeasurements;
+  };
+
+  // Get measurements that should be displayed (based on enabled_measurements)
+  const getDisplayMeasurements = () => {
+    const allMeasurements = getAllAvailableMeasurements();
+
+    if (exercise.enabled_measurements && exercise.enabled_measurements.length > 0) {
+      // Filter to only enabled ones
+      return allMeasurements.filter(m => exercise.enabled_measurements!.includes(m.id));
+    }
+
+    // If null/empty, show all from exercise schema (backwards compatible)
+    return exercise.exercises?.metric_schema?.measurements || [];
+  };
+
+  // Check if a measurement is enabled
+  const isMeasurementEnabled = (measurementId: string) => {
+    if (!exercise.enabled_measurements) {
+      // If null, check if it's in the exercise's default schema
+      return exercise.exercises?.metric_schema?.measurements?.some(m => m.id === measurementId) || false;
+    }
+    return exercise.enabled_measurements.includes(measurementId);
+  };
+
+  // Toggle a measurement on/off
+  const toggleMeasurement = (measurementId: string) => {
+    const current = exercise.enabled_measurements || [];
+
+    if (current.includes(measurementId)) {
+      // Remove
+      const updated = current.filter(id => id !== measurementId);
+      onUpdate({ enabled_measurements: updated.length > 0 ? updated : null });
+    } else {
+      // Add
+      onUpdate({ enabled_measurements: [...current, measurementId] });
+    }
+  };
+
+  // Toggle AMRAP for all sets
+  const toggleAllSetsAMRAP = (value: boolean) => {
+    if (value) {
+      onUpdate({
+        is_amrap: true,
+        set_configurations: null // Clear per-set config
+      });
+    } else {
+      onUpdate({ is_amrap: false });
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-white/5 backdrop-blur-sm overflow-hidden">
       {/* Header */}
       <div className="px-6 py-4 border-b border-white/10 bg-gradient-to-r from-white/5 to-transparent">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <button className="text-gray-400 hover:text-white transition-colors">
-              <span className="text-xl">♡</span>
-            </button>
             <h2 className="text-2xl font-bold text-white">
               {exercise.is_placeholder
                 ? exercise.placeholder_name || 'Placeholder Exercise'
@@ -147,22 +215,21 @@ export default function ExerciseDetailPanel({
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
+            <button
+              className="p-2 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
+              title="Replace Exercise"
+            >
               <span className="text-lg">↻</span>
-            </button>
-            <button className="p-2 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
-              <span className="text-lg">□</span>
             </button>
             <button
               onClick={onDelete}
               className="p-2 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 transition-colors"
+              title="Delete Exercise"
             >
               <span className="text-lg">🗑</span>
             </button>
           </div>
         </div>
-
-        {/* Optional: Can add tabs here later for different views */}
       </div>
 
       {/* Scrollable Content */}
@@ -188,68 +255,109 @@ export default function ExerciseDetailPanel({
 
           {!enablePerSet ? (
             /* Simple Mode - Compact Grid */
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {/* Sets */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Sets</label>
-                <input
-                  type="number"
-                  value={exercise.sets || ''}
-                  onChange={(e) => onUpdate({ sets: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="3"
-                />
+            <>
+              {/* Measurements Selector & AMRAP */}
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-white/10">
+                {/* Measurements Dropdown */}
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setShowMeasurementsDropdown(!showMeasurementsDropdown)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
+                  >
+                    <span className="text-gray-400">
+                      {getDisplayMeasurements().length === 0
+                        ? 'Select Measurements'
+                        : `${getDisplayMeasurements().length} measurement${getDisplayMeasurements().length !== 1 ? 's' : ''} selected`}
+                    </span>
+                    <span className="text-gray-400">{showMeasurementsDropdown ? '▲' : '▼'}</span>
+                  </button>
+
+                  {showMeasurementsDropdown && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                      {getAllAvailableMeasurements().map((measurement) => (
+                        <label
+                          key={measurement.id}
+                          className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isMeasurementEnabled(measurement.id)}
+                            onChange={() => toggleMeasurement(measurement.id)}
+                            className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                          />
+                          <span className="text-white flex-1">{measurement.name}</span>
+                          <span className="text-gray-400 text-xs">{measurement.unit}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* AMRAP Checkbox - Only show if Reps is enabled */}
+                {isMeasurementEnabled('reps') && (
+                  <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
+                    <input
+                      type="checkbox"
+                      checked={exercise.is_amrap || false}
+                      onChange={(e) => toggleAllSetsAMRAP(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                    />
+                    <span className="text-white text-sm font-medium">AMRAP</span>
+                  </label>
+                )}
               </div>
 
-              {/* Dynamic Metrics */}
-              {getEnabledMeasurements().map((measurement) => (
-                <div key={measurement.id}>
-                  <label className="block text-xs text-gray-400 mb-1">
-                    {measurement.name} {measurement.unit && `(${measurement.unit})`}
-                  </label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {/* Sets */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Sets</label>
                   <input
-                    type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
-                    step={measurement.type === 'decimal' ? '0.01' : '1'}
-                    value={getMetricValue(measurement.id) || ''}
-                    onChange={(e) => {
-                      if (measurement.type === 'integer') {
-                        updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
-                      } else if (measurement.type === 'decimal') {
-                        updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
-                      } else {
-                        updateMetricValue(measurement.id, e.target.value || null);
-                      }
-                    }}
+                    type="number"
+                    value={exercise.sets || ''}
+                    onChange={(e) => onUpdate({ sets: e.target.value ? parseInt(e.target.value) : null })}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
+                    placeholder="3"
                   />
                 </div>
-              ))}
 
-              {/* Rest */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
-                <input
-                  type="number"
-                  value={exercise.rest_seconds || ''}
-                  onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="60"
-                />
-              </div>
+                {/* Dynamic Metrics */}
+                {getDisplayMeasurements().map((measurement) => {
+                  // Show AMRAP text for reps when is_amrap is true
+                  const isRepsWithAMRAP = measurement.id === 'reps' && exercise.is_amrap;
 
-              {/* Tempo */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Tempo</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 3-0-1-0"
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+                  return (
+                    <div key={measurement.id}>
+                      <label className="block text-xs text-gray-400 mb-1">
+                        {measurement.name} {measurement.unit && `(${measurement.unit})`}
+                      </label>
+                      {isRepsWithAMRAP ? (
+                        <div className="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                          AMRAP
+                        </div>
+                      ) : (
+                        <input
+                          type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
+                          step={measurement.type === 'decimal' ? '0.01' : '1'}
+                          value={getMetricValue(measurement.id) || ''}
+                          onChange={(e) => {
+                            if (measurement.type === 'integer') {
+                              updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
+                            } else if (measurement.type === 'decimal') {
+                              updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
+                            } else {
+                              updateMetricValue(measurement.id, e.target.value || null);
+                            }
+                          }}
+                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
 
               {/* Intensity Dropdown */}
-              {getEnabledMeasurements().length > 0 && (
+              {getDisplayMeasurements().length > 0 && (
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Intensity</label>
                   <select
@@ -258,9 +366,11 @@ export default function ExerciseDetailPanel({
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
                   >
                     <option value="">None</option>
-                    {getEnabledMeasurements().map((m) => (
-                      <option key={m.id} value={m.id}>% {m.name}</option>
-                    ))}
+                    {getDisplayMeasurements()
+                      .filter((m) => m.name.toLowerCase() !== 'reps')
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>% {m.name}</option>
+                      ))}
                   </select>
                 </div>
               )}
@@ -280,13 +390,39 @@ export default function ExerciseDetailPanel({
                   />
                 </div>
               )}
-            </div>
+              </div>
+
+              {/* Rest & Tempo - Separate Row */}
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                {/* Rest */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
+                  <input
+                    type="number"
+                    value={exercise.rest_seconds || ''}
+                    onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="60"
+                  />
+                </div>
+
+                {/* Tempo */}
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tempo</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 3-0-1-0"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </>
           ) : (
             /* Per-Set Mode */
             <SetBySetEditor
               totalSets={exercise.sets || 3}
               initialSets={exercise.set_configurations || []}
-              enabledMeasurements={getEnabledMeasurements()}
+              enabledMeasurements={getDisplayMeasurements()}
               onUpdateSets={(sets) => onUpdate({ set_configurations: sets })}
             />
           )}

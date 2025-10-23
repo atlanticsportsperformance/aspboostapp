@@ -119,9 +119,11 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                       className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
                     >
                       <option value="">None</option>
-                      {enabledMeasurements.map((m) => (
-                        <option key={m.id} value={m.id}>% {m.name}</option>
-                      ))}
+                      {enabledMeasurements
+                        .filter((m) => m.name.toLowerCase() !== 'reps')
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>% {m.name}</option>
+                        ))}
                     </select>
                   </div>
 

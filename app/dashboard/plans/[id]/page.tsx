@@ -5,7 +5,22 @@ import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AddWorkoutToPlanDialog from '@/components/dashboard/plans/add-workout-to-plan-dialog';
+import AddRoutineToPlanDialog from '@/components/dashboard/plans/add-routine-to-plan-dialog';
 import WorkoutDetailSlideover from '@/components/dashboard/plans/workout-detail-slideover';
+import { CreateWorkoutInPlanModal } from '@/components/dashboard/plans/create-workout-in-plan-modal';
+import { WorkoutBuilderModal } from '@/components/dashboard/plans/workout-builder-modal';
+import { DraggableWorkoutCard } from '@/components/dashboard/plans/draggable-workout-card';
+import { DroppableDayCell } from '@/components/dashboard/plans/droppable-day-cell';
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 
 interface Workout {
   id: string;
@@ -14,6 +29,7 @@ interface Workout {
   estimated_duration_minutes: number | null;
   notes: string | null;
   plan_id: string | null;
+  athlete_id: string | null;
 }
 
 interface ProgramDay {
@@ -42,10 +58,22 @@ export default function PlanCalendarPage() {
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [programDays, setProgramDays] = useState<ProgramDay[]>([]);
-  const [showWorkoutLibrary, setShowWorkoutLibrary] = useState(false);
+  const [showWorkoutLibrary, setShowWorkoutLibrary] = useState<{ week: number; day: number } | null>(null);
+  const [showRoutineLibrary, setShowRoutineLibrary] = useState<{ week: number; day: number } | null>(null);
   const [selectedWorkout, setSelectedWorkout] = useState<{ workout: Workout; week: number; day: number } | null>(null);
+  const [showCreateWorkout, setShowCreateWorkout] = useState<{ week: number; day: number } | null>(null);
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
+  const [activeWorkout, setActiveWorkout] = useState<ProgramDay | null>(null);
 
   const dayNames = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
 
   useEffect(() => {
     fetchPlan();
@@ -133,6 +161,129 @@ export default function PlanCalendarPage() {
     await fetchProgramDays();
   }
 
+  async function handleDeleteWorkout(programDayId: string, workoutId: string) {
+    if (!confirm('Delete this workout from the plan? This cannot be undone.')) {
+      return;
+    }
+
+    // Step 1: Unlink from program_days
+    await supabase.from('program_days').delete().eq('id', programDayId);
+
+    // Step 2: Delete the workout (CASCADE deletes routines/exercises)
+    await supabase.from('workouts').delete().eq('id', workoutId);
+
+    // Refresh
+    await fetchProgramDays();
+  }
+
+  async function handleDuplicateWorkout(programDayId: string, workoutId: string) {
+    // Fetch full workout with routines and exercises
+    const { data: fullWorkout, error } = await supabase
+      .from('workouts')
+      .select(`
+        *,
+        routines (
+          *,
+          routine_exercises (*)
+        )
+      `)
+      .eq('id', workoutId)
+      .single();
+
+    if (error || !fullWorkout) {
+      alert('Failed to load workout');
+      return;
+    }
+
+    // Create duplicate workout
+    const { data: newWorkout } = await supabase
+      .from('workouts')
+      .insert({
+        name: fullWorkout.name + ' (Copy)',
+        category: fullWorkout.category,
+        estimated_duration_minutes: fullWorkout.estimated_duration_minutes,
+        notes: fullWorkout.notes,
+        tags: fullWorkout.tags,
+        is_template: false,
+        plan_id: planId,
+        athlete_id: null,
+        placeholder_definitions: fullWorkout.placeholder_definitions
+      })
+      .select()
+      .single();
+
+    if (!newWorkout) {
+      alert('Failed to create duplicate');
+      return;
+    }
+
+    // Copy routines
+    for (const routine of fullWorkout.routines || []) {
+      const { data: newRoutine } = await supabase
+        .from('routines')
+        .insert({
+          workout_id: newWorkout.id,
+          name: routine.name,
+          scheme: routine.scheme,
+          order_index: routine.order_index,
+          rest_between_rounds_seconds: routine.rest_between_rounds_seconds,
+          notes: routine.notes,
+          superset_block_name: routine.superset_block_name,
+          text_info: routine.text_info,
+          is_standalone: false,
+          plan_id: planId,
+          athlete_id: null
+        })
+        .select()
+        .single();
+
+      if (!newRoutine) continue;
+
+      // Copy exercises
+      const exercisesToCopy = routine.routine_exercises.map((ex: any) => ({
+        routine_id: newRoutine.id,
+        exercise_id: ex.exercise_id,
+        is_placeholder: ex.is_placeholder || false,
+        placeholder_id: ex.placeholder_id,
+        placeholder_name: ex.placeholder_name,
+        order_index: ex.order_index,
+        sets: ex.sets,
+        reps_min: ex.reps_min,
+        reps_max: ex.reps_max,
+        rest_seconds: ex.rest_seconds,
+        notes: ex.notes,
+        metric_targets: ex.metric_targets,
+        intensity_targets: ex.intensity_targets,
+        set_configurations: ex.set_configurations
+      }));
+
+      if (exercisesToCopy.length > 0) {
+        await supabase.from('routine_exercises').insert(exercisesToCopy);
+      }
+    }
+
+    // Get the original program_day to find same day
+    const { data: originalPd } = await supabase
+      .from('program_days')
+      .select('week_number, day_number')
+      .eq('id', programDayId)
+      .single();
+
+    if (originalPd) {
+      // Add to same day
+      await supabase.from('program_days').insert({
+        plan_id: planId,
+        week_number: originalPd.week_number,
+        day_number: originalPd.day_number,
+        workout_id: newWorkout.id,
+        order_index: 0
+      });
+    }
+
+    // Refresh
+    await fetchProgramDays();
+  }
+
   function getCategoryColor(category: string | null) {
     const colors: { [key: string]: string } = {
       hitting: 'bg-red-500',
@@ -140,6 +291,64 @@ export default function PlanCalendarPage() {
       strength_conditioning: 'bg-green-500',
     };
     return colors[category?.toLowerCase() || ''] || 'bg-neutral-500';
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const { active } = event;
+    const programDay = programDays.find(pd => pd.id === active.id);
+    if (programDay) {
+      setActiveWorkout(programDay);
+    }
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    setActiveWorkout(null);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    // Parse the droppable ID: format is "day-{week}-{day}"
+    const overId = over.id as string;
+    if (!overId.startsWith('day-')) {
+      return;
+    }
+
+    const [, weekStr, dayStr] = overId.split('-');
+    const targetWeek = parseInt(weekStr);
+    const targetDay = parseInt(dayStr);
+
+    // Find the program day being dragged
+    const programDay = programDays.find(pd => pd.id === active.id);
+    if (!programDay || !programDay.workout_id) {
+      return;
+    }
+
+    // If moving to same location, do nothing
+    if (programDay.week_number === targetWeek && programDay.day_number === targetDay) {
+      return;
+    }
+
+    console.log(`Moving workout from Week ${programDay.week_number}, Day ${programDay.day_number} to Week ${targetWeek}, Day ${targetDay}`);
+
+    // Update the program_day record
+    const { error } = await supabase
+      .from('program_days')
+      .update({
+        week_number: targetWeek,
+        day_number: targetDay
+      })
+      .eq('id', programDay.id);
+
+    if (error) {
+      console.error('Error moving workout:', error);
+      alert('Failed to move workout');
+    } else {
+      // Refresh the calendar
+      await fetchProgramDays();
+    }
   }
 
   if (loading || !plan) {
@@ -151,46 +360,53 @@ export default function PlanCalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 flex flex-col">
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 flex flex-col">
       {/* Header */}
       <div className="border-b border-neutral-800 bg-black/30 backdrop-blur-sm">
-        <div className="px-6 py-4">
+        <div className="px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <Link
               href="/dashboard/plans"
-              className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
+              className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 text-sm lg:text-base"
             >
-              <span>←</span> Back to Plans
+              <span>←</span> <span className="hidden sm:inline">Back to Plans</span><span className="sm:hidden">Back</span>
             </Link>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <button
-                onClick={() => setShowWorkoutLibrary(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-all"
+                onClick={() => setShowWorkoutLibrary({ week: 1, day: 1 })}
+                className="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs lg:text-sm font-medium transition-all"
               >
-                + Add Workout
+                <span className="hidden sm:inline">+ Add Workout</span>
+                <span className="sm:hidden">+</span>
               </button>
             </div>
           </div>
 
           {/* Plan Name */}
-          <h1 className="text-2xl font-bold text-white mb-2">{plan.name}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-white mb-2">{plan.name}</h1>
           {plan.description && (
-            <p className="text-neutral-400 text-sm">{plan.description}</p>
+            <p className="text-neutral-400 text-xs lg:text-sm">{plan.description}</p>
           )}
         </div>
       </div>
 
       {/* Program Stats */}
-      <div className="border-b border-neutral-800 bg-black/20 backdrop-blur-sm px-6 py-3">
+      <div className="border-b border-neutral-800 bg-black/20 backdrop-blur-sm px-4 lg:px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-neutral-400">
+          <div className="text-xs lg:text-sm text-neutral-400">
             {plan.program_length_weeks} week program • {getTotalWorkouts()} total workouts
           </div>
         </div>
       </div>
 
       {/* Full Program Grid - All Weeks */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto p-2 lg:p-4">
         <div className="space-y-3">
           {Array.from({ length: plan.program_length_weeks }, (_, weekIndex) => {
             const weekNumber = weekIndex + 1;
@@ -201,69 +417,46 @@ export default function PlanCalendarPage() {
             return (
               <div key={weekNumber} className="space-y-1.5">
                 {/* Week Header */}
-                <div className="flex items-center gap-3 px-2 py-1">
-                  <h2 className="text-sm font-bold text-white">
+                <div className="flex items-center gap-2 lg:gap-3 px-1 lg:px-2 py-1">
+                  <h2 className="text-xs lg:text-sm font-bold text-white">
                     Week {weekNumber}
                   </h2>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-[10px] lg:text-xs text-neutral-500">
                     {weekWorkoutCount} {weekWorkoutCount === 1 ? 'workout' : 'workouts'}
                   </span>
                 </div>
 
-                {/* Week Grid */}
-                <div className="grid grid-cols-7 gap-1.5">
+                {/* Week Grid - Horizontal scroll on mobile, full grid on desktop */}
+                <div className="lg:grid lg:grid-cols-7 lg:gap-1.5 flex overflow-x-auto gap-2 lg:overflow-x-visible snap-x snap-mandatory lg:snap-none pb-2 lg:pb-0">
                   {[1, 2, 3, 4, 5, 6, 7].map((dayNumber) => {
                     const dayWorkouts = getWorkoutsForDay(weekNumber, dayNumber);
 
                     return (
-                      <div
+                      <DroppableDayCell
                         key={dayNumber}
-                        className="bg-neutral-900/30 border border-neutral-800 rounded p-2 min-h-[100px]"
+                        weekNumber={weekNumber}
+                        dayNumber={dayNumber}
+                        dayName={dayNames[dayNumber - 1]}
+                        onCreateWorkout={() => setShowCreateWorkout({ week: weekNumber, day: dayNumber })}
+                        onCopyWorkout={() => setShowWorkoutLibrary({ week: weekNumber, day: dayNumber })}
+                        onAddRoutine={() => setShowRoutineLibrary({ week: weekNumber, day: dayNumber })}
                       >
-                        {/* Day Header */}
-                        <div className="mb-1.5 pb-1 border-b border-neutral-800">
-                          <div className="text-[10px] font-semibold text-neutral-500 uppercase">
-                            {dayNames[dayNumber - 1]}
-                          </div>
-                        </div>
-
                         {/* Workouts for this day */}
                         <div className="space-y-1">
                           {dayWorkouts.map((pd) => (
                             pd.workouts && (
-                              <button
+                              <DraggableWorkoutCard
                                 key={pd.id}
-                                onClick={() => setSelectedWorkout({ workout: pd.workouts!, week: weekNumber, day: dayNumber })}
-                                className="w-full text-left p-1.5 bg-neutral-800/50 hover:bg-neutral-700/50 border border-neutral-700 hover:border-neutral-600 rounded transition-all group"
-                              >
-                                <div className="flex items-start gap-1">
-                                  <div className={`w-0.5 h-full ${getCategoryColor(pd.workouts.category)} rounded-full shrink-0`} />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-[11px] font-medium text-white truncate group-hover:text-blue-400 transition-colors leading-tight">
-                                      {pd.workouts.name}
-                                    </div>
-                                    {pd.workouts.estimated_duration_minutes && (
-                                      <div className="text-[9px] text-neutral-500 mt-0.5">
-                                        {pd.workouts.estimated_duration_minutes}min
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </button>
+                                programDayId={pd.id}
+                                workout={pd.workouts}
+                                onClick={() => setEditingWorkoutId(pd.workouts!.id)}
+                                onDelete={() => handleDeleteWorkout(pd.id, pd.workouts!.id)}
+                                onDuplicate={() => handleDuplicateWorkout(pd.id, pd.workouts!.id)}
+                              />
                             )
                           ))}
-
-                          {/* Add workout button */}
-                          {dayWorkouts.filter(pd => pd.workout_id).length === 0 && (
-                            <button
-                              onClick={() => setShowWorkoutLibrary(true)}
-                              className="w-full p-1.5 border border-dashed border-neutral-800 hover:border-neutral-600 rounded text-neutral-600 hover:text-neutral-400 transition-all text-xs"
-                            >
-                              +
-                            </button>
-                          )}
                         </div>
-                      </div>
+                      </DroppableDayCell>
                     );
                   })}
                 </div>
@@ -291,9 +484,11 @@ export default function PlanCalendarPage() {
         <AddWorkoutToPlanDialog
           planId={planId}
           programLengthWeeks={plan.program_length_weeks}
-          onClose={() => setShowWorkoutLibrary(false)}
+          weekNumber={showWorkoutLibrary.week}
+          dayNumber={showWorkoutLibrary.day}
+          onClose={() => setShowWorkoutLibrary(null)}
           onSuccess={() => {
-            setShowWorkoutLibrary(false);
+            setShowWorkoutLibrary(null);
             fetchProgramDays();
           }}
         />
@@ -312,6 +507,70 @@ export default function PlanCalendarPage() {
           }}
         />
       )}
+
+      {/* Create Workout Modal */}
+      {showCreateWorkout && (
+        <CreateWorkoutInPlanModal
+          planId={planId}
+          weekNumber={showCreateWorkout.week}
+          dayNumber={showCreateWorkout.day}
+          onClose={() => setShowCreateWorkout(null)}
+          onSuccess={(workoutId) => {
+            setShowCreateWorkout(null);
+            fetchProgramDays();
+            setEditingWorkoutId(workoutId); // Open the builder modal
+          }}
+        />
+      )}
+
+      {/* Routine Library Dialog */}
+      {showRoutineLibrary && (
+        <AddRoutineToPlanDialog
+          planId={planId}
+          weekNumber={showRoutineLibrary.week}
+          dayNumber={showRoutineLibrary.day}
+          onClose={() => setShowRoutineLibrary(null)}
+          onSuccess={() => {
+            setShowRoutineLibrary(null);
+            fetchProgramDays();
+          }}
+        />
+      )}
+
+      {/* Workout Builder Modal */}
+      {editingWorkoutId && (
+        <WorkoutBuilderModal
+          workoutId={editingWorkoutId}
+          planId={planId}
+          onClose={() => setEditingWorkoutId(null)}
+          onSaved={() => {
+            fetchProgramDays(); // Refresh the calendar
+          }}
+        />
+      )}
+
+      {/* Drag Overlay */}
+      <DragOverlay>
+        {activeWorkout && activeWorkout.workouts ? (
+          <div className={`p-2 rounded shadow-2xl border-l-4 opacity-90 ${
+            activeWorkout.workouts.category === 'hitting'
+              ? 'bg-red-500/20 border-red-500'
+              : activeWorkout.workouts.category === 'throwing'
+              ? 'bg-blue-500/20 border-blue-500'
+              : 'bg-green-500/20 border-green-500'
+          }`}>
+            <div className="text-[11px] font-medium text-white">
+              {activeWorkout.workouts.name}
+            </div>
+            {activeWorkout.workouts.estimated_duration_minutes && (
+              <div className="text-[9px] text-neutral-400 mt-0.5">
+                {activeWorkout.workouts.estimated_duration_minutes}min
+              </div>
+            )}
+          </div>
+        ) : null}
+      </DragOverlay>
     </div>
+    </DndContext>
   );
 }

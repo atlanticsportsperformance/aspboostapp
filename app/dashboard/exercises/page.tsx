@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CreateExerciseDialog } from '@/components/dashboard/exercises/create-exercise-dialog';
 import { CustomMeasurementsManager } from '@/components/dashboard/exercises/custom-measurements-manager';
+import { BulkEditDialog } from '@/components/dashboard/exercises/bulk-edit-dialog';
 
 interface Exercise {
   id: string;
@@ -38,6 +39,8 @@ export default function ExercisesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
   useEffect(() => {
     fetchExercises();
@@ -124,6 +127,41 @@ export default function ExercisesPage() {
     setDialogOpen(true);
   }
 
+  function toggleSelectAll() {
+    if (selectedExercises.length === filteredExercises.length) {
+      setSelectedExercises([]);
+    } else {
+      setSelectedExercises(filteredExercises.map(ex => ex.id));
+    }
+  }
+
+  function toggleSelectExercise(exerciseId: string) {
+    if (selectedExercises.includes(exerciseId)) {
+      setSelectedExercises(selectedExercises.filter(id => id !== exerciseId));
+    } else {
+      setSelectedExercises([...selectedExercises, exerciseId]);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (selectedExercises.length === 0) return;
+    if (!confirm(`Delete ${selectedExercises.length} exercise(s)? This cannot be undone.`)) return;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('exercises')
+      .update({ is_active: false })
+      .in('id', selectedExercises);
+
+    if (error) {
+      console.error('Error bulk deleting exercises:', error);
+      alert('Failed to delete exercises');
+    } else {
+      setSelectedExercises([]);
+      fetchExercises();
+    }
+  }
+
   function getTagColor(tag: string) {
     const colors: { [key: string]: string } = {
       strength: 'bg-purple-500/20 text-purple-300 border-purple-500/50',
@@ -156,21 +194,50 @@ export default function ExercisesPage() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Exercise Library</h1>
-          <p className="text-gray-400 mt-1">{exercises.length} exercises</p>
+          <p className="text-gray-400 mt-1">
+            {selectedExercises.length > 0
+              ? `${selectedExercises.length} selected`
+              : `${exercises.length} exercises`}
+          </p>
         </div>
         <div className="flex gap-3">
-          <button
-            onClick={() => setManagerOpen(true)}
-            className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
-          >
-            ⚙️ Manage Library
-          </button>
-          <button
-            onClick={handleCreateNew}
-            className="px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all"
-          >
-            + Create Exercise
-          </button>
+          {selectedExercises.length > 0 ? (
+            <>
+              <button
+                onClick={() => setShowBulkEditDialog(true)}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
+              >
+                Bulk Edit ({selectedExercises.length})
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all"
+              >
+                Delete ({selectedExercises.length})
+              </button>
+              <button
+                onClick={() => setSelectedExercises([])}
+                className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setManagerOpen(true)}
+                className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
+              >
+                ⚙️ Manage Library
+              </button>
+              <button
+                onClick={handleCreateNew}
+                className="px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all"
+              >
+                + Create Exercise
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -274,7 +341,12 @@ export default function ExercisesPage() {
           <thead className="bg-white/5 border-b border-white/10">
             <tr>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">
-                <input type="checkbox" className="rounded" />
+                <input
+                  type="checkbox"
+                  checked={selectedExercises.length === filteredExercises.length && filteredExercises.length > 0}
+                  onChange={toggleSelectAll}
+                  className="rounded cursor-pointer"
+                />
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Thumbnail</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Name</th>
@@ -290,11 +362,15 @@ export default function ExercisesPage() {
               filteredExercises.map((exercise) => (
                 <tr
                   key={exercise.id}
-                  onClick={() => handleEdit(exercise)}
-                  className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+                  className="border-b border-white/5 hover:bg-white/5 transition-colors"
                 >
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <input type="checkbox" className="rounded" />
+                    <input
+                      type="checkbox"
+                      checked={selectedExercises.includes(exercise.id)}
+                      onChange={() => toggleSelectExercise(exercise.id)}
+                      className="rounded cursor-pointer"
+                    />
                   </td>
                   <td className="px-6 py-4">
                     <div className="w-10 h-10 rounded bg-[#C9A857]/20 flex items-center justify-center text-[#C9A857] font-bold text-xs">
@@ -348,17 +424,24 @@ export default function ExercisesPage() {
                       })}
                     </div>
                   </td>
-                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="relative">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
                       <button
-                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Could add dropdown menu here
-                        }}
+                        onClick={() => handleEdit(exercise)}
+                        className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                        title="Edit exercise"
                       >
-                        <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(exercise.id)}
+                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                        title="Delete exercise"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
                     </div>
@@ -389,6 +472,19 @@ export default function ExercisesPage() {
           onSuccess={() => {
             setDialogOpen(false);
             setEditingExercise(null);
+            fetchExercises();
+          }}
+        />
+      )}
+
+      {/* Bulk Edit Dialog */}
+      {showBulkEditDialog && (
+        <BulkEditDialog
+          exerciseIds={selectedExercises}
+          onClose={() => setShowBulkEditDialog(false)}
+          onSuccess={() => {
+            setShowBulkEditDialog(false);
+            setSelectedExercises([]);
             fetchExercises();
           }}
         />

@@ -134,7 +134,7 @@ export default function PlansPage() {
         </div>
       </div>
 
-      {/* Plans Grid */}
+      {/* Plans List */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {plans.length === 0 ? (
           <div className="text-center py-16">
@@ -153,46 +153,59 @@ export default function PlansPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className="bg-neutral-900/50 border border-neutral-800 rounded-lg p-6 hover:border-neutral-700 transition-all group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-blue-400 transition-colors">
-                      {plan.name}
-                    </h3>
-                    {plan.description && (
-                      <p className="text-sm text-neutral-400 line-clamp-2">{plan.description}</p>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeletePlan(plan.id)}
-                    className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                    title="Delete plan"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs text-neutral-500 mb-4">
-                  <div>
-                    Created {new Date(plan.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-
-                <Link
-                  href={`/dashboard/plans/${plan.id}`}
-                  className="block w-full px-4 py-2 bg-neutral-800/50 hover:bg-neutral-700/50 text-white rounded-md text-center font-medium transition-all"
-                >
-                  Open Calendar
-                </Link>
+          <div className="bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
+            {/* List Header */}
+            <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
+              <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                <div className="col-span-5">Plan Name</div>
+                <div className="col-span-2">Created</div>
+                <div className="col-span-3">Description</div>
+                <div className="col-span-2 text-right">Actions</div>
               </div>
-            ))}
+            </div>
+
+            {/* List Items */}
+            <div className="divide-y divide-neutral-800">
+              {plans.map((plan) => (
+                <Link
+                  key={plan.id}
+                  href={`/dashboard/plans/${plan.id}`}
+                  className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
+                >
+                  <div className="grid grid-cols-12 gap-4 items-center">
+                    <div className="col-span-5">
+                      <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                        {plan.name}
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-sm text-neutral-400">
+                      {new Date(plan.created_at).toLocaleDateString()}
+                    </div>
+                    <div className="col-span-3 text-sm text-neutral-500 truncate">
+                      {plan.description || '—'}
+                    </div>
+                    <div className="col-span-2 flex items-center justify-end gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDeletePlan(plan.id);
+                        }}
+                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                        title="Delete plan"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      <svg className="w-5 h-5 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         )}
       </div>

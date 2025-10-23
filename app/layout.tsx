@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ASP Workout Platform",
+  title: "ASP BOOST",
   description: "Professional workout programming for baseball and softball athletes",
 };
 

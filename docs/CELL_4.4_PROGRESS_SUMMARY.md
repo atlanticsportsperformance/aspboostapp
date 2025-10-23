@@ -101,57 +101,69 @@ This document tracks the implementation of the complete ownership context system
 
 ---
 
-## 🚧 IN PROGRESS
+## 🚧 CELL 4.4B COMPLETED
 
-### 7. Workout Detail Modal/Slide-Over
-**Status:** Pending
-**What's needed:**
-- Slide-over panel (similar to mobile design patterns)
-- Quick edit for workout name, duration, notes
+### 7. Create Workout Directly in Plan (Cell 4.4B)
+**Status:** ✅ Complete
+**What was built:**
+- `CreateWorkoutInPlanModal` component
+- Enhanced placeholder creation with sets/reps/intensity
+- Dual-button UI: "+ Create New" and "Copy from Library"
+- Database migration for `placeholder_name` column
+- Full workflow: create → open in new tab → edit → appears in calendar
+
+**See:** [docs/CELL_4.4B_COMPLETION_SUMMARY.md](CELL_4.4B_COMPLETION_SUMMARY.md) for complete details
+
+### 8. Workout Detail Modal/Slide-Over
+**Status:** ✅ Complete
+**What was built:**
+- Slide-over panel from right side
+- Quick view of workout details
 - "Edit Full Workout" button → opens workout builder in new tab
 - "Remove from Plan" button
-- "Copy to Template Library" button
+- Proper cleanup on removal
 
 ---
 
 ## 📋 REMAINING TASKS
 
-### 8. Add Workout to Plan Functionality
-**Status:** Pending
-**What's needed:**
-- Workout library modal in plan calendar
-- Search/filter workouts by category and tags
-- "Copy to Plan" button for each workout
-- Deep copy functionality (workout + all routines + all exercises + placeholder_definitions)
-- Set `plan_id` on copied workout
+### 9. Add Workout to Plan Functionality
+**Status:** ✅ Complete
+**What was built:**
+- `AddWorkoutToPlanDialog` component
+- Workout library modal with search/filter
+- Category-based filtering (hitting/throwing/strength)
+- Deep copy functionality (workout + routines + exercises + placeholders)
+- Sets `plan_id` on copied workout
+- Week/day selector for placement
 
-### 9. Placeholder Resolution for Athlete Calendar
-**Status:** Pending
+### 10. Placeholder Resolution for Athlete Calendar
+**Status:** ⏳ Pending
 **What's needed:**
 - Detect placeholders in athlete's assigned workouts
 - "Fill Placeholder" dialog
 - Exercise picker filtered by category_hint
 - Save resolved exercise to athlete's copy (NOT plan or template)
 
-### 10. Assign Plan to Athletes/Teams
-**Status:** Pending
+### 11. Assign Plan to Athletes/Teams
+**Status:** ⏳ Pending
 **What's needed:**
 - "Assign to Athletes" button in plan calendar
 - Athlete/team picker
-- Date range selector (when to start the plan)
+- START DATE selector (calculates dates from week/day structure)
 - Deep copy all plan workouts to athlete's calendar
 - Set `athlete_id` on all copied workouts
 - Preserve placeholders (do NOT resolve at this stage)
 
-### 11. Update Workout/Routine Import to Handle Contexts
-**Status:** Pending
+### 12. Update Workout/Routine Import to Handle Contexts
+**Status:** ⏳ Pending
 **What's needed:**
 - When importing routine into workout, check ownership context
 - If Plan-Owned workout importing Template routine → copy becomes Plan-Owned
 - If Athlete-Owned workout importing Plan routine → copy becomes Athlete-Owned
 - Preserve placeholder_definitions and placeholder exercises
 
-### 12. Comprehensive Testing
+### 13. Comprehensive Testing
 **Status:** Pending
 **Testing checklist:**
 - [ ] Create template workout with placeholders
@@ -244,14 +256,16 @@ Once migration is successful, the remaining tasks can be built:
 | Sidebar Component Updates | ✅ Complete | 100% |
 | Exercise Detail Panel Updates | ✅ Complete | 100% |
 | Plan Calendar Builder (Basic) | ✅ Complete | 100% |
-| Workout Detail Modal | 🚧 Pending | 0% |
-| Add Workout to Plan | 🚧 Pending | 0% |
-| Placeholder Resolution | 🚧 Pending | 0% |
-| Assign Plan to Athletes | 🚧 Pending | 0% |
-| Import Context Handling | 🚧 Pending | 0% |
-| Comprehensive Testing | 🚧 Pending | 0% |
+| Workout Detail Modal | ✅ Complete | 100% |
+| Add Workout to Plan | ✅ Complete | 100% |
+| **Cell 4.4B: Create Workout in Plan** | ✅ Complete | 100% |
+| **Cell 4.4B: Placeholder Enhancements** | ✅ Complete | 100% |
+| Placeholder Resolution | ⏳ Pending | 0% |
+| Assign Plan to Athletes | ⏳ Pending | 0% |
+| Import Context Handling | ⏳ Pending | 0% |
+| Comprehensive Testing | ⏳ Pending | 0% |
 
-**Overall Progress: 50% Complete**
+**Overall Progress: 75% Complete** (Cell 4.4 + Cell 4.4B done)
 
 ---
 

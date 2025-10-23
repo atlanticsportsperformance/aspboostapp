@@ -9,7 +9,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
   { href: '/dashboard/staff', label: 'Staff', icon: '👥' },
-  { href: '/dashboard/teams', label: 'Teams', icon: '⚾' },
+  { href: '/dashboard/teams', label: 'Groups', icon: '⚾' },
 ];
 
 const programmingLinks = [
@@ -17,7 +17,6 @@ const programmingLinks = [
   { href: '/dashboard/routines', label: 'Routines', icon: '🔄' },
   { href: '/dashboard/workouts', label: 'Workouts', icon: '🏋️' },
   { href: '/dashboard/plans', label: 'Plans', icon: '📋' },
-  { href: '/dashboard/calendar', label: 'Calendar', icon: '📅' },
 ];
 
 const quickActions = [
@@ -35,6 +34,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [programmingOpen, setProgrammingOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
@@ -139,17 +139,16 @@ export default function DashboardLayout({
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/50 z-30"
+          className="lg:hidden fixed inset-0 bg-black/70 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className="w-64 bg-[#0A0A0A] lg:bg-white/[0.02] border-r border-white/10 flex flex-col h-screen fixed top-0 left-0 lg:sticky lg:top-0 z-40 transition-transform duration-300 -translate-x-full lg:translate-x-0"
-        style={{
-          transform: mounted && sidebarOpen ? 'translateX(0)' : undefined
-        }}
+        className={`w-64 bg-[#0A0A0A] lg:bg-white/[0.02] border-r border-white/10 flex flex-col h-screen fixed top-0 left-0 lg:sticky lg:top-0 z-50 transition-transform duration-300 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
       >
         {/* Header */}
         <div className="p-6 border-b border-white/10">
@@ -185,29 +184,48 @@ export default function DashboardLayout({
             );
           })}
 
-          {/* Programming Section */}
+          {/* Programming Section - Collapsible */}
           <div className="pt-4">
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Programming
-            </div>
-            {programmingLinks.map((link) => {
-              const isActive = mounted && pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
-                  style={isActive ? {
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                    color: 'white'
-                  } : undefined}
-                >
-                  <span className="text-lg">{link.icon}</span>
-                  <span className="text-sm font-medium">{link.label}</span>
-                </Link>
-              );
-            })}
+            <button
+              onClick={() => setProgrammingOpen(!programmingOpen)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-lg">📋</span>
+                <span className="text-sm font-medium">Programming</span>
+              </div>
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 ${programmingOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {programmingOpen && (
+              <div className="mt-1 space-y-1">
+                {programmingLinks.map((link) => {
+                  const isActive = mounted && pathname === link.href;
+                  return (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex items-center space-x-3 px-3 py-2 ml-3 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
+                      style={isActive ? {
+                        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                        color: 'white'
+                      } : undefined}
+                    >
+                      <span className="text-lg">{link.icon}</span>
+                      <span className="text-sm font-medium">{link.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </nav>
 

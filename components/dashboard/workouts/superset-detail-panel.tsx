@@ -97,7 +97,17 @@ export default function SupersetDetailPanel({
             />
           </div>
           <div className="flex items-center gap-2">
-            {getSchemeBadge(routine.scheme)}
+            {/* Scheme Dropdown */}
+            <select
+              value={routine.scheme}
+              onChange={(e) => onUpdate({ scheme: e.target.value })}
+              className="px-3 py-1 rounded-full text-sm font-medium bg-white/10 border border-white/20 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-gray-900 [&>option]:text-white"
+            >
+              <option value="superset">Superset</option>
+              <option value="circuit">Circuit</option>
+              <option value="emom">EMOM</option>
+              <option value="amrap">AMRAP</option>
+            </select>
             <button
               onClick={onDelete}
               className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 rounded-lg text-red-300 text-sm font-medium transition-colors"

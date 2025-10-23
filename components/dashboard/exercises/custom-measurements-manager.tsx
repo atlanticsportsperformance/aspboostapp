@@ -17,6 +17,14 @@ interface TagUsage {
   count: number;
 }
 
+interface Placeholder {
+  id: string;
+  name: string;
+  category: string;
+  description: string | null;
+  usedBy: string[]; // Array of workout names where this placeholder is used
+}
+
 interface CustomMeasurementsManagerProps {
   onClose: () => void;
   onUpdate: () => void; // Callback to refresh exercise list
@@ -34,9 +42,10 @@ const LOCKED_MEASUREMENTS = [
 ];
 
 export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasurementsManagerProps) {
-  const [activeTab, setActiveTab] = useState<'measurements' | 'tags'>('measurements');
+  const [activeTab, setActiveTab] = useState<'measurements' | 'tags' | 'placeholders'>('measurements');
   const [measurements, setMeasurements] = useState<CustomMeasurementUsage[]>([]);
   const [tags, setTags] = useState<TagUsage[]>([]);
+  const [placeholders, setPlaceholders] = useState<Placeholder[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit states
@@ -56,9 +65,19 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   const [createMeasurementType, setCreateMeasurementType] = useState<'integer' | 'decimal' | 'text'>('decimal');
   const [createTagName, setCreateTagName] = useState('');
 
+  const [showCreatePlaceholder, setShowCreatePlaceholder] = useState(false);
+  const [createPlaceholderName, setCreatePlaceholderName] = useState('');
+  const [createPlaceholderCategory, setCreatePlaceholderCategory] = useState('strength_conditioning');
+  const [createPlaceholderDescription, setCreatePlaceholderDescription] = useState('');
+  const [editingPlaceholder, setEditingPlaceholder] = useState<string | null>(null);
+  const [editPlaceholderName, setEditPlaceholderName] = useState('');
+  const [editPlaceholderCategory, setEditPlaceholderCategory] = useState('');
+  const [editPlaceholderDescription, setEditPlaceholderDescription] = useState('');
+
   useEffect(() => {
     fetchCustomMeasurements();
     fetchTags();
+    fetchPlaceholders();
   }, []);
 
   async function fetchCustomMeasurements() {
@@ -217,6 +236,121 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     tagList.sort((a, b) => a.name.localeCompare(b.name));
 
     setTags(tagList);
+  }
+
+  async function fetchPlaceholders() {
+    const supabase = createClient();
+
+    // Fetch all placeholder exercises
+    const { data: placeholderExercises, error } = await supabase
+      .from('exercises')
+      .select('id, name, category, description')
+      .eq('is_placeholder', true)
+      .eq('is_active', true)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching placeholders:', error);
+      return;
+    }
+
+    // Map to Placeholder interface
+    const placeholdersList: Placeholder[] = (placeholderExercises || []).map((ph) => ({
+      id: ph.id,
+      name: ph.name,
+      category: ph.category,
+      description: ph.description,
+      usedBy: [] // Could fetch workout usage if needed
+    }));
+
+    setPlaceholders(placeholdersList);
+  }
+
+  async function createPlaceholder() {
+    if (!createPlaceholderName.trim()) {
+      alert('Placeholder name is required');
+      return;
+    }
+
+    const supabase = createClient();
+
+    // Placeholders start with empty metric_schema
+    // Measurements are added per-instance via enabled_measurements
+    const { data, error } = await supabase
+      .from('exercises')
+      .insert({
+        name: createPlaceholderName.trim(),
+        category: createPlaceholderCategory,
+        description: createPlaceholderDescription.trim() || null,
+        is_placeholder: true,
+        is_active: true,
+        tags: ['placeholder'],
+        metric_schema: { measurements: [] }
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating placeholder:', error);
+      alert('Failed to create placeholder');
+      return;
+    }
+
+    // Reset form
+    setShowCreatePlaceholder(false);
+    setCreatePlaceholderName('');
+    setCreatePlaceholderCategory('strength_conditioning');
+    setCreatePlaceholderDescription('');
+
+    // Refresh placeholders
+    fetchPlaceholders();
+    onUpdate();
+  }
+
+  async function handleDeletePlaceholder(placeholderId: string) {
+    if (!confirm('Delete this placeholder? This cannot be undone.')) return;
+
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('exercises')
+      .update({ is_active: false })
+      .eq('id', placeholderId);
+
+    if (error) {
+      console.error('Error deleting placeholder:', error);
+      alert('Failed to delete placeholder');
+    } else {
+      fetchPlaceholders();
+      onUpdate();
+    }
+  }
+
+  async function handleUpdatePlaceholder(placeholderId: string) {
+    if (!editPlaceholderName.trim()) {
+      alert('Placeholder name is required');
+      return;
+    }
+
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('exercises')
+      .update({
+        name: editPlaceholderName.trim(),
+        category: editPlaceholderCategory,
+        description: editPlaceholderDescription.trim() || null
+      })
+      .eq('id', placeholderId);
+
+    if (error) {
+      console.error('Error updating placeholder:', error);
+      alert('Failed to update placeholder');
+    } else {
+      setEditingPlaceholder(null);
+      fetchPlaceholders();
+      onUpdate();
+    }
   }
 
   async function handleDeleteTag(tagName: string) {
@@ -537,6 +671,16 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
           >
             Tags
           </button>
+          <button
+            onClick={() => setActiveTab('placeholders')}
+            className={`px-4 py-3 font-medium transition-all border-b-2 ${
+              activeTab === 'placeholders'
+                ? 'text-[#C9A857] border-[#C9A857]'
+                : 'text-gray-400 border-transparent hover:text-white'
+            }`}
+          >
+            Placeholders
+          </button>
         </div>
 
         {/* Content */}
@@ -546,7 +690,9 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
               <p className="text-gray-400 mt-4">Loading...</p>
             </div>
-          ) : activeTab === 'measurements' ? (
+          ) : (
+            <>
+              {activeTab === 'measurements' ? (
             // Measurements Tab
             <div className="space-y-4">
               {/* Create New Measurement Button/Form */}
@@ -757,7 +903,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                 </div>
               )}
             </div>
-          ) : (
+              ) : activeTab === 'tags' ? (
             // Tags Tab
             <div className="space-y-4">
               {/* Create New Tag Button/Form */}
@@ -878,6 +1024,195 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
               ))}
               </div>
             </div>
+              ) : activeTab === 'placeholders' ? (
+            // Placeholders Tab
+            <div className="space-y-4">
+              {/* Create New Placeholder Button/Form */}
+              {showCreatePlaceholder ? (
+                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
+                  <h4 className="text-white font-semibold mb-3">Create New Placeholder</h4>
+                  <p className="text-xs text-gray-400 mb-4">
+                    Placeholders are exercise templates that can be filled with specific exercises when building plans.
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Placeholder Name *</label>
+                      <input
+                        type="text"
+                        value={createPlaceholderName}
+                        onChange={(e) => setCreatePlaceholderName(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                        placeholder="e.g., Main Throwing Exercise, Corrective Exercise 1"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Category *</label>
+                      <select
+                        value={createPlaceholderCategory}
+                        onChange={(e) => setCreatePlaceholderCategory(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm [&>option]:bg-neutral-900 [&>option]:text-white"
+                      >
+                        <option value="strength_conditioning">Strength + Conditioning</option>
+                        <option value="hitting">Hitting</option>
+                        <option value="throwing">Throwing</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">This helps filter exercises when replacing the placeholder</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Description (optional)</label>
+                      <textarea
+                        value={createPlaceholderDescription}
+                        onChange={(e) => setCreatePlaceholderDescription(e.target.value)}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm resize-none"
+                        rows={2}
+                        placeholder="e.g., Athlete selects their primary throwing movement"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={createPlaceholder}
+                        className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-all text-sm font-medium"
+                      >
+                        Create
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowCreatePlaceholder(false);
+                          setCreatePlaceholderName('');
+                          setCreatePlaceholderCategory('strength_conditioning');
+                          setCreatePlaceholderDescription('');
+                        }}
+                        className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-all text-sm font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowCreatePlaceholder(true)}
+                  className="w-full px-4 py-3 bg-[#C9A857]/20 border border-[#C9A857]/50 text-[#C9A857] rounded-lg hover:bg-[#C9A857]/30 transition-all font-medium"
+                >
+                  + Create New Placeholder
+                </button>
+              )}
+
+              {/* List of placeholders */}
+              <div className="space-y-3">
+                {placeholders.length === 0 ? (
+                  <div className="text-center py-12 text-gray-400">
+                    <div className="text-5xl mb-4">📝</div>
+                    <p className="text-lg font-medium">No placeholders yet</p>
+                    <p className="text-sm mt-2">Create a placeholder to use in your workout plans</p>
+                  </div>
+                ) : (
+                  placeholders.map((placeholder) => (
+                    <div
+                      key={placeholder.id}
+                      className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all"
+                    >
+                      {editingPlaceholder === placeholder.id ? (
+                        // Edit Mode
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Placeholder Name</label>
+                            <input
+                              type="text"
+                              value={editPlaceholderName}
+                              onChange={(e) => setEditPlaceholderName(e.target.value)}
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Category</label>
+                            <select
+                              value={editPlaceholderCategory}
+                              onChange={(e) => setEditPlaceholderCategory(e.target.value)}
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm [&>option]:bg-neutral-900 [&>option]:text-white"
+                            >
+                              <option value="strength_conditioning">Strength + Conditioning</option>
+                              <option value="hitting">Hitting</option>
+                              <option value="throwing">Throwing</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Description</label>
+                            <textarea
+                              value={editPlaceholderDescription}
+                              onChange={(e) => setEditPlaceholderDescription(e.target.value)}
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm resize-none"
+                              rows={2}
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button
+                              onClick={() => handleUpdatePlaceholder(placeholder.id)}
+                              className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-all text-sm font-medium"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingPlaceholder(null)}
+                              className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-all text-sm font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // View Mode
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-white font-semibold text-lg">{placeholder.name}</h3>
+                              <span className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded text-xs font-medium border border-blue-500/50">
+                                PH
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-400 mb-1">
+                              Category: <span className="text-gray-300 capitalize">{placeholder.category.replace('_', ' ')}</span>
+                            </div>
+                            {placeholder.description && (
+                              <div className="text-sm text-gray-400 italic mt-2">
+                                {placeholder.description}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setEditingPlaceholder(placeholder.id);
+                                setEditPlaceholderName(placeholder.name);
+                                setEditPlaceholderCategory(placeholder.category);
+                                setEditPlaceholderDescription(placeholder.description || '');
+                              }}
+                              className="p-2 hover:bg-blue-500/20 rounded-lg transition-all group"
+                              title="Edit placeholder"
+                            >
+                              <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeletePlaceholder(placeholder.id)}
+                              className="p-2 hover:bg-red-500/20 rounded-lg transition-all group"
+                              title="Delete placeholder"
+                            >
+                              <svg className="w-5 h-5 text-red-400 group-hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+              ) : null}
+            </>
           )}
         </div>
 

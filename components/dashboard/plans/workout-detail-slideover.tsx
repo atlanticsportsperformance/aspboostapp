@@ -11,6 +11,7 @@ interface Workout {
   estimated_duration_minutes: number | null;
   notes: string | null;
   plan_id: string | null;
+  athlete_id: string | null;
 }
 
 interface WorkoutDetailSlideoverProps {
@@ -49,12 +50,12 @@ export default function WorkoutDetailSlideover({
   }
 
   async function handleRemoveFromPlan() {
-    if (!confirm('Remove this workout from the plan? The workout will still exist in your library.')) return;
+    if (!confirm('Remove and delete this workout from the plan?')) return;
 
     setRemoving(true);
 
-    // Unlink workout from program_days (set workout_id to null)
-    const { error } = await supabase
+    // Step 1: Unlink from program_days
+    await supabase
       .from('program_days')
       .update({ workout_id: null })
       .eq('plan_id', workout.plan_id)
@@ -62,11 +63,22 @@ export default function WorkoutDetailSlideover({
       .eq('day_number', dayNumber)
       .eq('workout_id', workout.id);
 
-    if (error) {
-      console.error('Error removing workout:', error);
-      alert('Failed to remove workout');
-      setRemoving(false);
-      return;
+    // Step 2: DELETE the workout (CASCADE will delete routines and exercises)
+    // Only delete if it's plan-owned (not a template)
+    if (workout.plan_id && !workout.athlete_id) {
+      const { error: deleteError } = await supabase
+        .from('workouts')
+        .delete()
+        .eq('id', workout.id);
+
+      if (deleteError) {
+        console.error('❌ Error deleting workout:', deleteError);
+        alert('Failed to delete workout');
+        setRemoving(false);
+        return;
+      }
+
+      console.log('✅ Workout deleted from plan');
     }
 
     onUpdate();

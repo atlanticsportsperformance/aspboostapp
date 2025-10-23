@@ -93,6 +93,7 @@ export default function RoutineBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
 
   // Determine ownership context
   function getRoutineContext() {
@@ -268,6 +269,92 @@ export default function RoutineBuilderPage() {
     setShowAddExercise(false);
   }
 
+  async function handleAddMultipleExercises(exerciseIds: string[]) {
+    if (!routine || exerciseIds.length === 0) return;
+
+    const maxOrder = Math.max(0, ...routine.routine_exercises.map(e => e.order_index));
+
+    // Create array of exercises to insert
+    const exercisesToInsert = exerciseIds.map((exerciseId, index) => ({
+      routine_id: routine.id,
+      exercise_id: exerciseId,
+      is_placeholder: false,
+      placeholder_id: null,
+      placeholder_name: null,
+      order_index: maxOrder + index + 1,
+      sets: 3
+    }));
+
+    const { data, error } = await supabase
+      .from('routine_exercises')
+      .insert(exercisesToInsert)
+      .select(`
+        *,
+        exercises (id, name, category, tags, description, metric_schema)
+      `);
+
+    if (error) {
+      console.error('Error adding exercises:', error);
+      alert('Failed to add exercises');
+    } else {
+      setRoutine({
+        ...routine,
+        routine_exercises: [...routine.routine_exercises, ...data]
+      });
+      // Auto-select the first newly added exercise
+      if (data.length > 0) {
+        setSelectedExerciseId(data[0].id);
+      }
+    }
+
+    setShowAddExercise(false);
+  }
+
+  async function handleAddMultiplePlaceholders(placeholderIds: string[]) {
+    console.log('🔵 Routine: handleAddMultiplePlaceholders called with:', placeholderIds);
+    if (!routine || placeholderIds.length === 0) {
+      console.log('❌ No routine or empty placeholderIds');
+      return;
+    }
+
+    const maxOrder = Math.max(0, ...routine.routine_exercises.map(e => e.order_index));
+
+    // Placeholders from library are real exercises with is_placeholder=true
+    const exercisesToInsert = placeholderIds.map((placeholderId, index) => ({
+      routine_id: routine.id,
+      exercise_id: placeholderId,
+      is_placeholder: false,
+      placeholder_id: null,
+      placeholder_name: null,
+      order_index: maxOrder + index + 1,
+      sets: 3
+    }));
+
+    const { data, error } = await supabase
+      .from('routine_exercises')
+      .insert(exercisesToInsert)
+      .select(`
+        *,
+        exercises (id, name, category, tags, description, metric_schema)
+      `);
+
+    if (error) {
+      console.error('Error adding placeholders:', error);
+      alert('Failed to add placeholders');
+    } else {
+      setRoutine({
+        ...routine,
+        routine_exercises: [...routine.routine_exercises, ...data]
+      });
+      // Auto-select the first newly added placeholder
+      if (data.length > 0) {
+        setSelectedExerciseId(data[0].id);
+      }
+    }
+
+    setShowAddExercise(false);
+  }
+
   function getPlaceholderName(placeholderId: string | null): string {
     if (!placeholderId || !routine) return 'Unknown Placeholder';
     const placeholder = routine.placeholder_definitions?.placeholders?.find(p => p.id === placeholderId);
@@ -360,35 +447,35 @@ export default function RoutineBuilderPage() {
     <div className="flex flex-col h-screen bg-black">
       {/* Top Header Bar */}
       <div className="border-b border-neutral-800 bg-black/30 backdrop-blur-sm">
-        <div className="px-6 py-4">
+        <div className="px-4 lg:px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <Link
               href="/dashboard/routines"
-              className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2"
+              className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 text-sm lg:text-base"
             >
-              <span>←</span> Back to Routines
+              <span>←</span> <span className="hidden sm:inline">Back to Routines</span><span className="sm:hidden">Back</span>
             </Link>
-            <div className="flex gap-3">
+            <div className="flex gap-2 lg:gap-3">
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 bg-neutral-800/50 border border-neutral-600 hover:bg-neutral-700/50 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-sm font-medium transition-all"
+                className="px-3 lg:px-4 py-2 bg-neutral-800/50 border border-neutral-600 hover:bg-neutral-700/50 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-xs lg:text-sm font-medium transition-all"
               >
-                {saving ? 'Saving...' : 'Save Routine'}
+                {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
 
-          {/* Routine Header - Ultra Compact */}
-          <div className="space-y-2">
+          {/* Routine Header - Responsive */}
+          <div className="space-y-3">
             {/* Name and Context Badge */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
               <input
                 type="text"
                 value={routine.name}
                 onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
                 onBlur={handleSave}
-                className="flex-1 text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
+                className="w-full sm:flex-1 text-xl lg:text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
                 placeholder="Routine name..."
               />
               <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
@@ -396,10 +483,10 @@ export default function RoutineBuilderPage() {
               </span>
             </div>
 
-            {/* Compact Grid: Scheme, Category, Description, Tags */}
-            <div className="grid grid-cols-12 gap-2 items-start">
+            {/* Responsive Grid: Scheme, Category, Description, Tags */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 lg:gap-2 items-start">
               {/* Scheme */}
-              <div className="col-span-2">
+              <div className="sm:col-span-1 lg:col-span-2">
                 <label className="block text-xs text-neutral-400 mb-1">Scheme</label>
                 <select
                   value={routine.scheme}
@@ -417,7 +504,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Category */}
-              <div className="col-span-3">
+              <div className="sm:col-span-1 lg:col-span-3">
                 <label className="block text-xs text-neutral-400 mb-1">Category</label>
                 <select
                   value={routine.category || 'strength_conditioning'}
@@ -432,7 +519,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Description */}
-              <div className="col-span-4">
+              <div className="sm:col-span-2 lg:col-span-4">
                 <label className="block text-xs text-neutral-400 mb-1">Description</label>
                 <input
                   type="text"
@@ -445,7 +532,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Tags */}
-              <div className="col-span-3">
+              <div className="sm:col-span-2 lg:col-span-3">
                 <label className="block text-xs text-neutral-400 mb-1">Tags</label>
                 <WorkoutTagsEditor
                   tags={routine.tags || []}
@@ -458,17 +545,61 @@ export default function RoutineBuilderPage() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <RoutineSidebar
-          exercises={sortedExercises}
-          selectedExerciseId={selectedExerciseId}
-          onSelectExercise={setSelectedExerciseId}
-          onDeleteExercise={handleDeleteExercise}
-          onMoveExercise={handleMoveExercise}
-          onAddExercise={() => setShowAddExercise(true)}
-          getPlaceholderName={getPlaceholderName}
-        />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Desktop Sidebar - Hidden on mobile */}
+        <div className="hidden lg:block">
+          <RoutineSidebar
+            exercises={sortedExercises}
+            selectedExerciseId={selectedExerciseId}
+            onSelectExercise={setSelectedExerciseId}
+            onDeleteExercise={handleDeleteExercise}
+            onMoveExercise={handleMoveExercise}
+            onAddExercise={() => setShowAddExercise(true)}
+            getPlaceholderName={getPlaceholderName}
+          />
+        </div>
+
+        {/* Mobile Sidebar - Slide-up drawer */}
+        {showMobileSidebar && (
+          <>
+            {/* Overlay */}
+            <div
+              className="lg:hidden fixed inset-0 bg-black/70 z-40"
+              onClick={() => setShowMobileSidebar(false)}
+            />
+            {/* Drawer */}
+            <div className="lg:hidden fixed inset-x-0 bottom-0 z-50 bg-neutral-950 border-t border-neutral-800 rounded-t-2xl max-h-[80vh] flex flex-col">
+              <div className="p-4 border-b border-neutral-800 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">Exercises ({sortedExercises.length})</h2>
+                <button
+                  onClick={() => setShowMobileSidebar(false)}
+                  className="p-2 hover:bg-neutral-800/50 rounded text-neutral-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <RoutineSidebar
+                  exercises={sortedExercises}
+                  selectedExerciseId={selectedExerciseId}
+                  onSelectExercise={(id) => {
+                    setSelectedExerciseId(id);
+                    setShowMobileSidebar(false);
+                  }}
+                  onDeleteExercise={handleDeleteExercise}
+                  onMoveExercise={handleMoveExercise}
+                  onAddExercise={() => {
+                    setShowAddExercise(true);
+                    setShowMobileSidebar(false);
+                  }}
+                  getPlaceholderName={getPlaceholderName}
+                />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Detail Panel */}
         <ExerciseDetailPanel
@@ -477,6 +608,38 @@ export default function RoutineBuilderPage() {
           onUpdate={(updates) => selectedExercise && handleUpdateExercise(selectedExercise.id, updates)}
           onDelete={() => selectedExercise && handleDeleteExercise(selectedExercise.id)}
         />
+      </div>
+
+      {/* Mobile Floating Buttons - OUTSIDE overflow container */}
+      <div className="lg:hidden fixed bottom-20 right-4 z-[60] flex flex-col gap-3">
+        {/* Add Exercise Button */}
+        <button
+          onClick={() => setShowAddExercise(true)}
+          className="w-14 h-14 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95"
+          title="Add Exercise"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+
+        {/* Show Exercises Button */}
+        <button
+          onClick={() => setShowMobileSidebar(true)}
+          className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all active:scale-95"
+          title="Show Exercises"
+        >
+          <div className="relative">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            {sortedExercises.length > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center">
+                {sortedExercises.length}
+              </span>
+            )}
+          </div>
+        </button>
       </div>
 
       {/* Add Exercise Dialog */}
@@ -488,6 +651,8 @@ export default function RoutineBuilderPage() {
             placeholder_definitions: routine.placeholder_definitions || { placeholders: [] }
           }}
           onAdd={handleAddExercise}
+          onAddMultiple={handleAddMultipleExercises}
+          onAddMultiplePlaceholders={handleAddMultiplePlaceholders}
           onClose={() => setShowAddExercise(false)}
         />
       )}
