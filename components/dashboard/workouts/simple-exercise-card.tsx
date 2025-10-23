@@ -185,22 +185,22 @@ export default function SimpleExerciseCard({
               ) : (
                 /* Simple Configuration */
                 <div className="space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="flex flex-wrap gap-3">
                     {/* Sets - Always shown */}
-                    <div>
+                    <div className="flex flex-col">
                       <label className="block text-xs text-gray-400 mb-1">Sets</label>
                       <input
                         type="number"
                         value={exercise.sets || ''}
                         onChange={(e) => onUpdate({ sets: e.target.value ? parseInt(e.target.value) : null })}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="3"
                       />
                     </div>
 
                     {/* Dynamic metric fields based on metric_schema */}
                     {getEnabledMeasurements().map((measurement) => (
-                      <div key={measurement.id}>
+                      <div key={measurement.id} className="flex flex-col">
                         <label className="block text-xs text-gray-400 mb-1">
                           {measurement.name} {measurement.unit && `(${measurement.unit})`}
                         </label>
@@ -217,7 +217,7 @@ export default function SimpleExerciseCard({
                               updateMetricValue(measurement.id, e.target.value || null);
                             }
                           }}
-                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
                         />
                       </div>
@@ -226,7 +226,7 @@ export default function SimpleExerciseCard({
                     {/* Intensity % - Inline with other fields */}
                     {getEnabledMeasurements().length > 0 && (
                       <>
-                        <div>
+                        <div className="flex flex-col">
                           <label className="block text-xs text-gray-400 mb-1">Intensity</label>
                           <select
                             value={exercise.intensity_targets?.[0]?.metric || ''}
@@ -246,7 +246,7 @@ export default function SimpleExerciseCard({
                                 }]
                               });
                             }}
-                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
+                            className="w-32 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
                           >
                             <option value="">None</option>
                             {getEnabledMeasurements().map((m) => (
@@ -256,7 +256,7 @@ export default function SimpleExerciseCard({
                         </div>
 
                         {exercise.intensity_targets?.[0]?.metric && (
-                          <div>
+                          <div className="flex flex-col">
                             <label className="block text-xs text-gray-400 mb-1">%</label>
                             <input
                               type="number"
@@ -272,7 +272,7 @@ export default function SimpleExerciseCard({
                                   });
                                 }
                               }}
-                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                               placeholder="75"
                               min="0"
                               max="200"
@@ -281,15 +281,18 @@ export default function SimpleExerciseCard({
                         )}
                       </>
                     )}
+                  </div>
 
-                    {/* Rest - Always shown */}
-                    <div>
+                  {/* Rest & Tempo - Second Row */}
+                  <div className="flex flex-wrap gap-3">
+                    {/* Rest */}
+                    <div className="flex flex-col">
                       <label className="block text-xs text-gray-400 mb-1">Rest (s)</label>
                       <input
                         type="number"
                         value={exercise.rest_seconds || ''}
                         onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
-                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="60"
                       />
                     </div>

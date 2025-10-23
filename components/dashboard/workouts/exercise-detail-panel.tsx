@@ -258,16 +258,29 @@ export default function ExerciseDetailPanel({
             <>
               {/* Measurements Selector & AMRAP */}
               <div className="flex items-center gap-4 mb-4 pb-4 border-b border-white/10">
-                {/* Measurements Dropdown */}
-                <div className="relative flex-1">
+                {/* AMRAP Checkbox - First, only show if Reps is enabled */}
+                {isMeasurementEnabled('reps') && (
+                  <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
+                    <input
+                      type="checkbox"
+                      checked={exercise.is_amrap || false}
+                      onChange={(e) => toggleAllSetsAMRAP(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                    />
+                    <span className="text-white text-sm font-medium">AMRAP</span>
+                  </label>
+                )}
+
+                {/* Measurements Dropdown - Made smaller */}
+                <div className="relative" style={{ width: '200px' }}>
                   <button
                     onClick={() => setShowMeasurementsDropdown(!showMeasurementsDropdown)}
                     className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-between"
                   >
                     <span className="text-gray-400">
                       {getDisplayMeasurements().length === 0
-                        ? 'Select Measurements'
-                        : `${getDisplayMeasurements().length} measurement${getDisplayMeasurements().length !== 1 ? 's' : ''} selected`}
+                        ? 'Measurements'
+                        : `${getDisplayMeasurements().length} selected`}
                     </span>
                     <span className="text-gray-400">{showMeasurementsDropdown ? '▲' : '▼'}</span>
                   </button>
@@ -292,30 +305,17 @@ export default function ExerciseDetailPanel({
                     </div>
                   )}
                 </div>
-
-                {/* AMRAP Checkbox - Only show if Reps is enabled */}
-                {isMeasurementEnabled('reps') && (
-                  <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
-                    <input
-                      type="checkbox"
-                      checked={exercise.is_amrap || false}
-                      onChange={(e) => toggleAllSetsAMRAP(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                    />
-                    <span className="text-white text-sm font-medium">AMRAP</span>
-                  </label>
-                )}
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="flex flex-wrap gap-4">
                 {/* Sets */}
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-xs text-gray-400 mb-1">Sets</label>
                   <input
                     type="number"
                     value={exercise.sets || ''}
                     onChange={(e) => onUpdate({ sets: e.target.value ? parseInt(e.target.value) : null })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="3"
                   />
                 </div>
@@ -326,12 +326,12 @@ export default function ExerciseDetailPanel({
                   const isRepsWithAMRAP = measurement.id === 'reps' && exercise.is_amrap;
 
                   return (
-                    <div key={measurement.id}>
+                    <div key={measurement.id} className="flex flex-col">
                       <label className="block text-xs text-gray-400 mb-1">
                         {measurement.name} {measurement.unit && `(${measurement.unit})`}
                       </label>
                       {isRepsWithAMRAP ? (
-                        <div className="w-full px-3 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                        <div className="w-20 px-2 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
                           AMRAP
                         </div>
                       ) : (
@@ -348,7 +348,7 @@ export default function ExerciseDetailPanel({
                               updateMetricValue(measurement.id, e.target.value || null);
                             }
                           }}
-                          className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                           placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
                         />
                       )}
@@ -358,12 +358,12 @@ export default function ExerciseDetailPanel({
 
               {/* Intensity Dropdown */}
               {getDisplayMeasurements().length > 0 && (
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-xs text-gray-400 mb-1">Intensity</label>
                   <select
                     value={exercise.intensity_targets?.[0]?.metric || ''}
                     onChange={(e) => handleIntensityMetricChange(e.target.value)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
+                    className="w-32 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
                   >
                     <option value="">None</option>
                     {getDisplayMeasurements()
@@ -377,44 +377,41 @@ export default function ExerciseDetailPanel({
 
               {/* Intensity % */}
               {exercise.intensity_targets?.[0]?.metric && (
-                <div>
+                <div className="flex flex-col">
                   <label className="block text-xs text-gray-400 mb-1">%</label>
                   <input
                     type="number"
                     value={exercise.intensity_targets[0].percent || ''}
                     onChange={(e) => handleIntensityPercentChange(e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="75"
                     min="0"
                     max="200"
                   />
                 </div>
               )}
+
+              {/* Rest */}
+              <div className="flex flex-col">
+                <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
+                <input
+                  type="number"
+                  value={exercise.rest_seconds || ''}
+                  onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
+                  className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="60"
+                />
               </div>
 
-              {/* Rest & Tempo - Separate Row */}
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                {/* Rest */}
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
-                  <input
-                    type="number"
-                    value={exercise.rest_seconds || ''}
-                    onChange={(e) => onUpdate({ rest_seconds: e.target.value ? parseInt(e.target.value) : null })}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="60"
-                  />
-                </div>
-
-                {/* Tempo */}
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tempo</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 3-0-1-0"
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+              {/* Tempo */}
+              <div className="flex flex-col">
+                <label className="block text-xs text-gray-400 mb-1">Tempo</label>
+                <input
+                  type="text"
+                  placeholder="3-0-1-0"
+                  className="w-24 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
               </div>
             </>
           ) : (
