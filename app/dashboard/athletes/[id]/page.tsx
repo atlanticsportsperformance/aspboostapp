@@ -126,7 +126,8 @@ export default function AthleteDetailPage() {
 
       console.log('3. Team members:', teamMembersData, teamMembersError);
 
-      const teams = (teamMembersData || []).map((tm: { jersey_number: string | null; teams: Team }) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const teams = (teamMembersData || []).map((tm: any) => ({
         ...tm.teams,
         jersey_number: tm.jersey_number
       }));
