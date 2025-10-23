@@ -444,50 +444,51 @@ export default function RoutineBuilderPage() {
   const selectedExercise = routine.routine_exercises.find(e => e.id === selectedExerciseId);
 
   return (
-    <div className="flex flex-col h-screen bg-black">
-      {/* Top Header Bar */}
-      <div className="border-b border-neutral-800 bg-black/30 backdrop-blur-sm">
-        <div className="px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <Link
-              href="/dashboard/routines"
-              className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 text-sm lg:text-base"
-            >
-              <span>←</span> <span className="hidden sm:inline">Back to Routines</span><span className="sm:hidden">Back</span>
-            </Link>
-            <div className="flex gap-2 lg:gap-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-3 lg:px-4 py-2 bg-neutral-800/50 border border-neutral-600 hover:bg-neutral-700/50 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-xs lg:text-sm font-medium transition-all"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+    <div className="fixed inset-0 bg-[#0a0a0a] z-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-neutral-900 border-b border-neutral-800 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            href="/dashboard/routines"
+            className="text-gray-400 hover:text-white transition-colors flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </Link>
+
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saving...' : '💾 Save'}
+          </button>
+        </div>
+
+        {/* Routine Header */}
+        <div className="space-y-2">
+          {/* Name and Badge */}
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={routine.name}
+              onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
+              onBlur={handleSave}
+              className="flex-1 text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
+              placeholder="Routine name..."
+            />
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
+              {getContextBadge().label}
+            </span>
           </div>
 
-          {/* Routine Header - Responsive */}
-          <div className="space-y-3">
-            {/* Name and Context Badge */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <input
-                type="text"
-                value={routine.name}
-                onChange={(e) => setRoutine({ ...routine, name: e.target.value })}
-                onBlur={handleSave}
-                className="w-full sm:flex-1 text-xl lg:text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
-                placeholder="Routine name..."
-              />
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
-                {getContextBadge().label}
-              </span>
-            </div>
-
-            {/* Responsive Grid: Scheme, Category, Description, Tags */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 lg:gap-2 items-start">
-              {/* Scheme */}
-              <div className="sm:col-span-1 lg:col-span-2">
-                <label className="block text-xs text-neutral-400 mb-1">Scheme</label>
+          {/* Compact Grid: Scheme, Category, Description, Tags */}
+          <div className="grid grid-cols-12 gap-2 items-start">
+            {/* Scheme */}
+            <div className="col-span-2">
+              <label className="block text-xs text-neutral-400 mb-1">Scheme</label>
                 <select
                   value={routine.scheme}
                   onChange={(e) => setRoutine({ ...routine, scheme: e.target.value })}
@@ -504,7 +505,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Category */}
-              <div className="sm:col-span-1 lg:col-span-3">
+              <div className="col-span-3">
                 <label className="block text-xs text-neutral-400 mb-1">Category</label>
                 <select
                   value={routine.category || 'strength_conditioning'}
@@ -519,7 +520,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Description */}
-              <div className="sm:col-span-2 lg:col-span-4">
+              <div className="col-span-4">
                 <label className="block text-xs text-neutral-400 mb-1">Description</label>
                 <input
                   type="text"
@@ -532,7 +533,7 @@ export default function RoutineBuilderPage() {
               </div>
 
               {/* Tags */}
-              <div className="sm:col-span-2 lg:col-span-3">
+              <div className="col-span-3">
                 <label className="block text-xs text-neutral-400 mb-1">Tags</label>
                 <WorkoutTagsEditor
                   tags={routine.tags || []}
