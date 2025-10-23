@@ -329,7 +329,9 @@ export default function WorkoutBuilderPage() {
       order_index: number;
       sets?: number;
       reps_min?: number;
+      reps_max?: number;
       rest_seconds?: number;
+      notes?: string;
     } = {
       routine_id: newRoutine.id,
       exercise_id: isPlaceholder ? null : exerciseId,
@@ -341,12 +343,15 @@ export default function WorkoutBuilderPage() {
 
     // Add sets/reps/intensity if provided (for placeholders)
     if (sets) {
-      exerciseData.sets = parseInt(sets) || null;
+      const setsNum = parseInt(sets);
+      if (setsNum) exerciseData.sets = setsNum;
     }
     if (reps) {
       const repsNum = parseInt(reps);
-      exerciseData.reps_min = repsNum || null;
-      exerciseData.reps_max = repsNum || null;
+      if (repsNum) {
+        exerciseData.reps_min = repsNum;
+        exerciseData.reps_max = repsNum;
+      }
     }
     if (intensity) {
       exerciseData.notes = intensity;
