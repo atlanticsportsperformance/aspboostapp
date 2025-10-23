@@ -87,19 +87,19 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
             <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
               <span className="text-white font-bold text-sm">{set.set_number}</span>
             </div>
-            <div className="flex-1 grid grid-cols-4 gap-2">
+            <div className="flex-1 flex flex-wrap gap-2">
               {/* Dynamic metric fields */}
               {enabledMeasurements.map((measurement) => {
                 // Show AMRAP text for reps when is_amrap is true for this set
                 const isRepsWithAMRAP = measurement.id === 'reps' && set.is_amrap;
 
                 return (
-                  <div key={measurement.id}>
+                  <div key={measurement.id} className="flex flex-col">
                     <label className="block text-xs text-gray-400 mb-1">
                       {measurement.name} {measurement.unit && `(${measurement.unit})`}
                     </label>
                     {isRepsWithAMRAP ? (
-                      <div className="w-full px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                      <div className="w-20 px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
                         AMRAP
                       </div>
                     ) : (
@@ -113,7 +113,7 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                                        e.target.value || null;
                           updateMetricValue(index, measurement.id, value);
                         }}
-                        className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="0"
                       />
                     )}
@@ -124,12 +124,12 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
               {/* Intensity % */}
               {enabledMeasurements.length > 0 && (
                 <>
-                  <div>
+                  <div className="flex flex-col">
                     <label className="block text-xs text-gray-400 mb-1">Intensity</label>
                     <select
                       value={set.intensity_type || ''}
                       onChange={(e) => updateSet(index, { intensity_type: e.target.value || undefined })}
-                      className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
+                      className="w-32 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
                     >
                       <option value="">None</option>
                       {enabledMeasurements
@@ -141,13 +141,13 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                   </div>
 
                   {set.intensity_type && (
-                    <div>
+                    <div className="flex flex-col">
                       <label className="block text-xs text-gray-400 mb-1">%</label>
                       <input
                         type="number"
                         value={set.intensity_percent || ''}
                         onChange={(e) => updateSet(index, { intensity_percent: e.target.value ? parseInt(e.target.value) : undefined })}
-                        className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-16 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="75"
                         min="0"
                         max="200"
@@ -158,13 +158,13 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
               )}
 
               {/* Rest */}
-              <div>
+              <div className="flex flex-col">
                 <label className="block text-xs text-gray-400 mb-1">Rest (s)</label>
                 <input
                   type="number"
                   value={set.rest_seconds || ''}
                   onChange={(e) => updateSet(index, { rest_seconds: e.target.value ? parseInt(e.target.value) : undefined })}
-                  className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="60"
                 />
               </div>
