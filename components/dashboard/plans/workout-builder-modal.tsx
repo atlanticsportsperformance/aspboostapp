@@ -611,6 +611,38 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
     setSelectedExerciseId(exerciseId);
   }
 
+  async function handleLinkExerciseToBlock(exerciseId: string, targetRoutineId: string) {
+    // Find the current routine for this exercise
+    const currentRoutine = workout?.routines.find(r =>
+      r.routine_exercises.some(e => e.id === exerciseId)
+    );
+
+    if (!currentRoutine) return;
+
+    // Get the target routine to determine the next order_index
+    const targetRoutine = workout?.routines.find(r => r.id === targetRoutineId);
+    const nextOrderIndex = targetRoutine?.routine_exercises.length || 0;
+
+    // Move the exercise to the target block
+    await supabase
+      .from('routine_exercises')
+      .update({
+        routine_id: targetRoutineId,
+        order_index: nextOrderIndex
+      })
+      .eq('id', exerciseId);
+
+    // If the old routine was a 'straight' routine with only this exercise, delete it
+    if (currentRoutine.scheme === 'straight' && currentRoutine.routine_exercises.length === 1) {
+      await supabase
+        .from('routines')
+        .delete()
+        .eq('id', currentRoutine.id);
+    }
+
+    fetchWorkout();
+  }
+
   const selectedExercise = workout?.routines
     .flatMap(r => r.routine_exercises)
     .find(e => e.id === selectedExerciseId);
@@ -745,7 +777,7 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
             onAddExercise={() => setShowAddExercise(true)}
             onImportRoutine={() => setShowImportRoutine(true)}
             onCreateBlock={handleCreateBlock}
-            onLinkExerciseToBlock={() => {}} // Not implemented in modal
+            onLinkExerciseToBlock={handleLinkExerciseToBlock}
           />
         </div>
 
@@ -799,7 +831,7 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
                     setShowMobileSidebar(false);
                   }}
                   onCreateBlock={handleCreateBlock}
-                  onLinkExerciseToBlock={() => {}}
+                  onLinkExerciseToBlock={handleLinkExerciseToBlock}
                 />
               </div>
             </div>

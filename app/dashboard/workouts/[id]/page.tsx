@@ -501,7 +501,9 @@ export default function WorkoutBuilderPage() {
     if (!workout) return;
 
     // Create an empty block at the bottom
-    const maxOrderIndex = Math.max(...(workout.routines.map(r => r.order_index) || [0]));
+    const maxOrderIndex = workout.routines.length > 0
+      ? Math.max(...workout.routines.map(r => r.order_index))
+      : -1;
 
     const { data: newRoutine, error: routineError } = await supabase
       .from('routines')
@@ -694,53 +696,56 @@ export default function WorkoutBuilderPage() {
   const selectedExercise = selectedRoutine?.routine_exercises.find(e => e.id === selectedExerciseId);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 flex flex-col">
-      {/* Top Bar */}
-      <div className="border-b border-neutral-800 bg-black/30 backdrop-blur-sm">
-        <div className="px-4 lg:px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <Link href="/dashboard/workouts" className="text-neutral-400 hover:text-white transition-colors flex items-center gap-2 text-sm lg:text-base">
-              <span>←</span> <span className="hidden sm:inline">Back to Workouts</span><span className="sm:hidden">Back</span>
-            </Link>
-            <div className="flex gap-2 lg:gap-3">
-              <button
-                onClick={() => setShowAssignDialog(true)}
-                className="hidden sm:block px-3 lg:px-4 py-2 bg-neutral-900/50 border border-neutral-700 hover:bg-neutral-800/50 text-neutral-300 hover:text-white rounded-md text-xs lg:text-sm font-medium transition-all"
-              >
-                Assign
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-3 lg:px-4 py-2 bg-neutral-800/50 border border-neutral-600 hover:bg-neutral-700/50 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md text-xs lg:text-sm font-medium transition-all"
-              >
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
+    <div className="fixed inset-0 bg-[#0a0a0a] z-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-neutral-900 border-b border-neutral-800 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/dashboard/workouts" className="text-gray-400 hover:text-white transition-colors flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Close
+          </Link>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowAssignDialog(true)}
+              className="px-4 py-2 rounded-lg bg-neutral-800 text-white font-medium hover:bg-neutral-700 transition-colors"
+            >
+              Assign
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : '💾 Save'}
+            </button>
+          </div>
+        </div>
+
+        {/* Workout Header */}
+        <div className="space-y-2">
+          {/* Name and Badge */}
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={workout.name}
+              onChange={(e) => setWorkout({ ...workout, name: e.target.value })}
+              onBlur={handleSave}
+              className="flex-1 text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
+              placeholder="Workout name..."
+            />
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
+              {getContextBadge().label}
+            </span>
           </div>
 
-          {/* Workout Header - Responsive */}
-          <div className="space-y-3">
-            {/* Name and Context Badge */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
-              <input
-                type="text"
-                value={workout.name}
-                onChange={(e) => setWorkout({ ...workout, name: e.target.value })}
-                onBlur={handleSave}
-                className="w-full sm:flex-1 text-xl lg:text-2xl font-semibold bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 text-white outline-none transition-colors pb-1"
-                placeholder="Workout name..."
-              />
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold border shrink-0 ${getContextBadge().color}`}>
-                {getContextBadge().label}
-              </span>
-            </div>
-
-            {/* Responsive Grid: Duration, Category, Notes, Tags */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 lg:gap-2 items-start">
-              {/* Duration */}
-              <div className="sm:col-span-1 lg:col-span-2">
-                <label className="block text-xs text-neutral-400 mb-1">Duration (min)</label>
+          {/* Compact Grid: Duration, Category, Notes, Tags */}
+          <div className="grid grid-cols-12 gap-2 items-start">
+            {/* Duration */}
+            <div className="col-span-2">
+              <label className="block text-xs text-neutral-400 mb-1">Duration</label>
                 <input
                   type="number"
                   value={workout.estimated_duration_minutes || ''}
@@ -749,49 +754,49 @@ export default function WorkoutBuilderPage() {
                   className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
                   placeholder="60"
                 />
-              </div>
+            </div>
 
-              {/* Category */}
-              <div className="sm:col-span-1 lg:col-span-3">
-                <label className="block text-xs text-neutral-400 mb-1">Category</label>
-                <select
-                  value={workout.category || 'strength_conditioning'}
-                  onChange={(e) => setWorkout({ ...workout, category: e.target.value as 'hitting' | 'throwing' | 'strength_conditioning' })}
-                  onBlur={handleSave}
-                  className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
-                >
-                  <option value="hitting">Hitting</option>
-                  <option value="throwing">Throwing</option>
-                  <option value="strength_conditioning">Strength & Conditioning</option>
-                </select>
-              </div>
+            {/* Category */}
+            <div className="col-span-3">
+              <label className="block text-xs text-neutral-400 mb-1">Category</label>
+              <select
+                value={workout.category || 'strength_conditioning'}
+                onChange={(e) => setWorkout({ ...workout, category: e.target.value as 'hitting' | 'throwing' | 'strength_conditioning' })}
+                onBlur={handleSave}
+                className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
+              >
+                <option value="hitting">Hitting</option>
+                <option value="throwing">Throwing</option>
+                <option value="strength_conditioning">Strength & Conditioning</option>
+              </select>
+            </div>
 
-              {/* Notes */}
-              <div className="sm:col-span-2 lg:col-span-4">
-                <label className="block text-xs text-neutral-400 mb-1">Notes</label>
-                <input
-                  type="text"
-                  value={workout.notes || ''}
-                  onChange={(e) => setWorkout({ ...workout, notes: e.target.value })}
-                  onBlur={handleSave}
-                  className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
-                  placeholder="Add notes..."
-                />
-              </div>
+            {/* Notes */}
+            <div className="col-span-4">
+              <label className="block text-xs text-neutral-400 mb-1">Notes</label>
+              <input
+                type="text"
+                value={workout.notes || ''}
+                onChange={(e) => setWorkout({ ...workout, notes: e.target.value })}
+                onBlur={handleSave}
+                className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
+                placeholder="Add notes..."
+              />
+            </div>
 
-              {/* Tags */}
-              <div className="sm:col-span-2 lg:col-span-3">
-                <label className="block text-xs text-neutral-400 mb-1">Tags</label>
-                <WorkoutTagsEditor
-                  tags={workout.tags || []}
-                  onUpdate={handleUpdateTags}
-                />
-              </div>
+            {/* Tags */}
+            <div className="col-span-3">
+              <label className="block text-xs text-neutral-400 mb-1">Tags</label>
+              <WorkoutTagsEditor
+                tags={workout.tags || []}
+                onUpdate={handleUpdateTags}
+              />
             </div>
           </div>
         </div>
-
       </div>
+
+      {/* Main Content */}
 
       {/* Two Column Layout */}
       <div className="flex-1 flex overflow-hidden relative">
