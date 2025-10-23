@@ -498,8 +498,10 @@ export default function WorkoutBuilderPage() {
   }
 
   async function handleCreateBlock() {
+    if (!workout) return;
+
     // Create an empty block at the bottom
-    const maxOrderIndex = Math.max(...(workout?.routines.map(r => r.order_index) || [0]));
+    const maxOrderIndex = Math.max(...(workout.routines.map(r => r.order_index) || [0]));
 
     const { data: newRoutine, error: routineError } = await supabase
       .from('routines')
