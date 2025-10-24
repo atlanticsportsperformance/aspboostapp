@@ -312,13 +312,16 @@ export default function AthleteDetailPage() {
             athleteId={athleteId}
             onClose={() => setShowManageTagsModal(false)}
             onSuccess={() => {
-              // Refresh athlete data if needed
+              // Force refresh by re-mounting the component
               setShowManageTagsModal(false);
+              // Trigger a re-render by updating state
+              setMounted(false);
+              setTimeout(() => setMounted(true), 0);
             }}
           />
         )}
 
-        {activeTab === 'overview' && <OverviewTab athleteData={athleteData} />}
+        {activeTab === 'overview' && mounted && <OverviewTab athleteData={athleteData} />}
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
         {activeTab === 'performance' && <PerformanceTab athleteId={athleteId} />}
       </div>

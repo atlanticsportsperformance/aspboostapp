@@ -15,12 +15,10 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
 
   const [planTags, setPlanTags] = useState<string[]>([]);
   const [workoutTags, setWorkoutTags] = useState<string[]>([]);
-  const [routineTags, setRoutineTags] = useState<string[]>([]);
   const [exerciseTags, setExerciseTags] = useState<string[]>([]);
 
   const [selectedPlanTags, setSelectedPlanTags] = useState<Set<string>>(new Set());
   const [selectedWorkoutTags, setSelectedWorkoutTags] = useState<Set<string>>(new Set());
-  const [selectedRoutineTags, setSelectedRoutineTags] = useState<Set<string>>(new Set());
   const [selectedExerciseTags, setSelectedExerciseTags] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -44,22 +42,20 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
         .select('name')
         .order('name');
 
-      // Fetch all routine tags
-      const { data: routineTagsData } = await supabase
-        .from('routine_tags')
-        .select('name')
-        .order('name');
+      // Fetch all exercises to get unique tags from them
+      const { data: exercisesData } = await supabase
+        .from('exercises')
+        .select('tags');
 
-      // Fetch all exercise tags
-      const { data: exerciseTagsData } = await supabase
-        .from('exercise_tags')
-        .select('name')
-        .order('name');
+      // Extract unique tags from all exercises
+      const uniqueExerciseTags = new Set<string>();
+      exercisesData?.forEach(exercise => {
+        exercise.tags?.forEach((tag: string) => uniqueExerciseTags.add(tag));
+      });
 
       setPlanTags((planTagsData || []).map(t => t.name));
       setWorkoutTags((workoutTagsData || []).map(t => t.name));
-      setRoutineTags((routineTagsData || []).map(t => t.name));
-      setExerciseTags((exerciseTagsData || []).map(t => t.name));
+      setExerciseTags(Array.from(uniqueExerciseTags).sort());
 
       // Fetch current athlete tags
       const { data: athleteTagsData } = await supabase
@@ -70,19 +66,16 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
       // Organize by type
       const athletePlanTags = new Set<string>();
       const athleteWorkoutTags = new Set<string>();
-      const athleteRoutineTags = new Set<string>();
       const athleteExerciseTags = new Set<string>();
 
       (athleteTagsData || []).forEach(at => {
         if (at.tag_type === 'plan') athletePlanTags.add(at.tag_name);
         if (at.tag_type === 'workout') athleteWorkoutTags.add(at.tag_name);
-        if (at.tag_type === 'routine') athleteRoutineTags.add(at.tag_name);
         if (at.tag_type === 'exercise') athleteExerciseTags.add(at.tag_name);
       });
 
       setSelectedPlanTags(athletePlanTags);
       setSelectedWorkoutTags(athleteWorkoutTags);
-      setSelectedRoutineTags(athleteRoutineTags);
       setSelectedExerciseTags(athleteExerciseTags);
 
     } catch (error) {
@@ -98,10 +91,16 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
 
     try {
       // Delete all existing athlete tags
-      await supabase
+      const { error: deleteError } = await supabase
         .from('athlete_tags')
         .delete()
         .eq('athlete_id', athleteId);
+
+      // Only log real errors (not empty objects)
+      if (deleteError && Object.keys(deleteError).length > 0) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
+      }
 
       // Build new tags array
       const newTags = [];
@@ -122,14 +121,6 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
         });
       });
 
-      selectedRoutineTags.forEach(tag => {
-        newTags.push({
-          athlete_id: athleteId,
-          tag_name: tag,
-          tag_type: 'routine'
-        });
-      });
-
       selectedExerciseTags.forEach(tag => {
         newTags.push({
           athlete_id: athleteId,
@@ -140,24 +131,28 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
 
       // Insert new tags
       if (newTags.length > 0) {
-        const { error } = await supabase
+        const { error: insertError } = await supabase
           .from('athlete_tags')
           .insert(newTags);
 
-        if (error) throw error;
+        // Only log real errors (not empty objects)
+        if (insertError && Object.keys(insertError).length > 0) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
       }
 
       onSuccess();
       onClose();
     } catch (error) {
       console.error('Error saving tags:', error);
-      alert('Failed to save tags');
+      alert('Failed to save tags. Make sure the athlete_tags table exists in your database.');
     } finally {
       setSaving(false);
     }
   }
 
-  const toggleTag = (tag: string, type: 'plan' | 'workout' | 'routine' | 'exercise') => {
+  const toggleTag = (tag: string, type: 'plan' | 'workout' | 'exercise') => {
     if (type === 'plan') {
       const newSet = new Set(selectedPlanTags);
       if (newSet.has(tag)) {
@@ -174,14 +169,6 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
         newSet.add(tag);
       }
       setSelectedWorkoutTags(newSet);
-    } else if (type === 'routine') {
-      const newSet = new Set(selectedRoutineTags);
-      if (newSet.has(tag)) {
-        newSet.delete(tag);
-      } else {
-        newSet.add(tag);
-      }
-      setSelectedRoutineTags(newSet);
     } else if (type === 'exercise') {
       const newSet = new Set(selectedExerciseTags);
       if (newSet.has(tag)) {
@@ -276,33 +263,6 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
                 )}
               </div>
 
-              {/* Routine Tags Section */}
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-[#C9A857]">ROUTINES</h3>
-                  <span className="text-xs text-gray-500">({selectedRoutineTags.size})</span>
-                </div>
-                {routineTags.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {routineTags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag, 'routine')}
-                        className={`px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
-                          selectedRoutineTags.has(tag)
-                            ? 'bg-[#C9A857] text-black'
-                            : 'bg-white/5 text-gray-300 hover:bg-white/10'
-                        }`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 text-xs">No routine tags available</p>
-                )}
-              </div>
-
               {/* Exercise Tags Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -329,6 +289,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
                   <p className="text-gray-500 text-xs">No exercise tags available</p>
                 )}
               </div>
+
             </div>
           )}
         </div>
@@ -336,7 +297,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
         {/* Footer */}
         <div className="p-4 border-t border-white/10 flex items-center justify-between bg-white/5">
           <div className="text-xs text-gray-400">
-            {selectedPlanTags.size + selectedWorkoutTags.size + selectedRoutineTags.size + selectedExerciseTags.size} total selected
+            {selectedPlanTags.size + selectedWorkoutTags.size + selectedExerciseTags.size} total selected
           </div>
           <div className="flex gap-2">
             <button
@@ -350,7 +311,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
               disabled={saving}
               className="px-3 py-1.5 text-sm bg-[#C9A857] hover:bg-[#B89647] text-black font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving...' : 'Save Tags'}
             </button>
           </div>
         </div>

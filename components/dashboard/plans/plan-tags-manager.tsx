@@ -34,7 +34,8 @@ export function PlanTagsManager({ onClose, onUpdate }: PlanTagsManagerProps) {
       .select('name')
       .order('name');
 
-    if (tagsError) {
+    // Only log real errors (not empty objects)
+    if (tagsError && Object.keys(tagsError).length > 0) {
       console.error('Error fetching plan tags:', tagsError);
       setLoading(false);
       return;
@@ -45,7 +46,8 @@ export function PlanTagsManager({ onClose, onUpdate }: PlanTagsManagerProps) {
       .from('training_plans')
       .select('tags');
 
-    if (plansError) {
+    // Only log real errors (not empty objects)
+    if (plansError && Object.keys(plansError).length > 0) {
       console.error('Error fetching plans:', plansError);
       setLoading(false);
       return;
@@ -88,7 +90,8 @@ export function PlanTagsManager({ onClose, onUpdate }: PlanTagsManagerProps) {
         .from('training_plans')
         .select('id, tags');
 
-      if (fetchError) {
+      // Only log real errors (not empty objects)
+      if (fetchError && Object.keys(fetchError).length > 0) {
         console.error('Error fetching plans:', fetchError);
         alert('Failed to delete tag');
         return;
@@ -167,7 +170,8 @@ export function PlanTagsManager({ onClose, onUpdate }: PlanTagsManagerProps) {
       .from('training_plans')
       .select('id, tags');
 
-    if (fetchError) {
+    // Only log real errors (not empty objects)
+    if (fetchError && Object.keys(fetchError).length > 0) {
       console.error('Error fetching plans:', fetchError);
       alert('Failed to update tag in plans');
       return;

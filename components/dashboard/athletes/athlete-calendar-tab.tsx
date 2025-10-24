@@ -19,6 +19,7 @@ import { WorkoutBuilderModal } from '@/components/dashboard/plans/workout-builde
 import { CreateWorkoutForAthleteModal } from './create-workout-for-athlete-modal';
 import { AddWorkoutToAthleteModal } from './add-workout-to-athlete-modal';
 import { AddRoutineToAthleteModal } from './add-routine-to-athlete-modal';
+import { FullscreenCalendarModal } from './fullscreen-calendar-modal';
 
 interface CalendarTabProps {
   athleteId: string;
@@ -65,6 +66,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [selectedInstance, setSelectedInstance] = useState<WorkoutInstance | null>(null);
   const [showImportPlan, setShowImportPlan] = useState(false);
   const [showWorkoutDetails, setShowWorkoutDetails] = useState(true); // Toggle for month overview
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const supabase = createClient();
 
@@ -308,6 +310,11 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
     days.push(i);
   }
 
+  // Render fullscreen modal if active
+  if (isFullscreen) {
+    return <FullscreenCalendarModal athleteId={athleteId} onClose={() => setIsFullscreen(false)} />;
+  }
+
   return (
     <DndContext
       sensors={sensors}
@@ -376,6 +383,16 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
                 </svg>
                 <span className="hidden sm:inline">Import Plan</span>
                 <span className="sm:hidden">Import</span>
+              </button>
+              <button
+                onClick={() => setIsFullscreen(true)}
+                className="px-4 py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-sm rounded-lg transition-all font-medium flex items-center gap-2"
+                title="Expand Calendar"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <span className="hidden sm:inline">Expand</span>
               </button>
               <div className="text-sm text-neutral-400">
                 {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
