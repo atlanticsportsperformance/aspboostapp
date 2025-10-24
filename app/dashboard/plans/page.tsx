@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { PlanTagsManager } from '@/components/dashboard/plans/plan-tags-manager';
 
 interface TrainingPlan {
   id: string;
@@ -22,6 +23,7 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newPlanName, setNewPlanName] = useState('');
+  const [managerOpen, setManagerOpen] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -124,12 +126,24 @@ export default function PlansPage() {
               <h1 className="text-3xl font-bold text-white mb-2">Training Plans</h1>
               <p className="text-neutral-400">Create and manage your training programs</p>
             </div>
-            <button
-              onClick={() => setShowCreateDialog(true)}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
-            >
-              + New Plan
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setManagerOpen(true)}
+                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                title="Manage Tags"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Manage Tags
+              </button>
+              <button
+                onClick={() => setShowCreateDialog(true)}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
+              >
+                + New Plan
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -255,6 +269,14 @@ export default function PlansPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tags Manager */}
+      {managerOpen && (
+        <PlanTagsManager
+          onClose={() => setManagerOpen(false)}
+          onUpdate={() => fetchPlans()}
+        />
       )}
     </div>
   );

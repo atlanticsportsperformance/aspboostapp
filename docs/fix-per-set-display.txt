@@ -1,0 +1,13 @@
+Fix applied to exercise-detail-panel.tsx:
+
+When hamburger menu (☰) is collapsed and set_configurations exists,
+show a read-only summary of the per-set data instead of the simple mode inputs.
+
+This ensures the values shown are always consistent whether the per-set editor is expanded or collapsed.
+
+Summary view will show:
+- Set 1: 3 reps, 135 lbs @ 75%
+- Set 2: 5 reps, 135 lbs @ 75%
+- Set 3: 5 reps AMRAP, 135 lbs @ 75%
+
+With a blue info box saying "Per-Set Configuration Active - Click ☰ to edit details"

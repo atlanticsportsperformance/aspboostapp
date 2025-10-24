@@ -18,14 +18,97 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
     lastActivity: null as string | null
   });
 
-  const [upcomingWorkouts, setUpcomingWorkouts] = useState<any[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
-  const [tags, setTags] = useState<any[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [taggedItems, setTaggedItems] = useState({
+    plans: [] as any[],
+    workouts: [] as any[],
+    routines: [] as any[]
+  });
 
   useEffect(() => {
     fetchOverviewData();
   }, [athlete.id]);
+
+  async function handleDeleteAllContent() {
+    if (!confirm('⚠️ WARNING: This will permanently delete ALL workouts, routines, workout instances, and plan assignments for this athlete. This cannot be undone.\n\nAre you absolutely sure?')) {
+      return;
+    }
+
+    const supabase = createClient();
+
+    try {
+      console.log('Starting delete all content for athlete:', athlete.id);
+
+      // 1. Get all workouts for this athlete
+      const { data: athleteWorkouts } = await supabase
+        .from('workouts')
+        .select('id')
+        .eq('athlete_id', athlete.id);
+
+      if (athleteWorkouts && athleteWorkouts.length > 0) {
+        const workoutIds = athleteWorkouts.map(w => w.id);
+
+        // 2. Get all routines for these workouts
+        const { data: routines } = await supabase
+          .from('routines')
+          .select('id')
+          .in('workout_id', workoutIds);
+
+        if (routines && routines.length > 0) {
+          const routineIds = routines.map(r => r.id);
+
+          // 3. Delete routine exercises
+          await supabase
+            .from('routine_exercises')
+            .delete()
+            .in('routine_id', routineIds);
+
+          console.log('Deleted routine exercises');
+        }
+
+        // 4. Delete routines
+        await supabase
+          .from('routines')
+          .delete()
+          .in('workout_id', workoutIds);
+
+        console.log('Deleted routines');
+
+        // 5. Delete workouts
+        await supabase
+          .from('workouts')
+          .delete()
+          .eq('athlete_id', athlete.id);
+
+        console.log('Deleted workouts');
+      }
+
+      // 6. Delete all workout instances for this athlete
+      await supabase
+        .from('workout_instances')
+        .delete()
+        .eq('athlete_id', athlete.id);
+
+      console.log('Deleted workout instances');
+
+      // 7. Delete all plan assignments for this athlete
+      await supabase
+        .from('plan_assignments')
+        .delete()
+        .eq('athlete_id', athlete.id);
+
+      console.log('Deleted plan assignments');
+
+      // 8. Refresh the data
+      await fetchOverviewData();
+
+      alert('✅ All content has been deleted successfully');
+    } catch (error) {
+      console.error('Error deleting all content:', error);
+      alert('Failed to delete all content. Check console for details.');
+    }
+  }
 
   async function fetchOverviewData() {
     const supabase = createClient();
@@ -87,32 +170,38 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
         lastActivity: lastCompleted?.completed_at || null
       });
 
-      // Get upcoming 7 days workouts
+      // Get workout instances to find workouts with scheduled dates
       const today2 = new Date().toISOString().split('T')[0];
-      const sevenDaysLater = new Date();
-      sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
-      const sevenDaysLaterStr = sevenDaysLater.toISOString().split('T')[0];
 
-      const { data: upcoming } = await supabase
+      const { data: workoutInstances } = await supabase
         .from('workout_instances')
-        .select('*, workouts(name)')
+        .select('workout_id, scheduled_date')
         .eq('athlete_id', athlete.id)
-        .gte('scheduled_date', today2)
-        .lte('scheduled_date', sevenDaysLaterStr)
-        .order('scheduled_date', { ascending: true })
-        .limit(5);
+        .gte('scheduled_date', today2);
 
-      console.log('Upcoming workouts:', upcoming);
-      setUpcomingWorkouts(upcoming || []);
+      const futureWorkoutIds = new Set((workoutInstances || []).map(wi => wi.workout_id));
 
-      // Get tags
-      const { data: athleteTags } = await supabase
-        .from('athlete_tags')
-        .select('*, tags(id, name, color)')
-        .eq('athlete_id', athlete.id);
+      // Get all workouts for this athlete with category for color coding
+      // Only show workouts that have future scheduled dates
+      const { data: taggedWorkouts } = await supabase
+        .from('workouts')
+        .select('id, name, category, estimated_duration_minutes, created_at')
+        .eq('athlete_id', athlete.id)
+        .eq('is_template', false)
+        .order('created_at', { ascending: false });
 
-      console.log('Tags:', athleteTags);
-      setTags((athleteTags || []).map((at: any) => at.tags).filter(Boolean));
+      // Filter to only show workouts with future dates
+      const futureWorkouts = (taggedWorkouts || []).filter(workout =>
+        futureWorkoutIds.has(workout.id)
+      );
+
+      console.log('Future athlete workouts:', futureWorkouts);
+
+      setTaggedItems({
+        plans: [],
+        workouts: futureWorkouts,
+        routines: []
+      });
 
       // Get contacts (parent contacts)
       if (profile?.id) {
@@ -201,6 +290,16 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
     return styles[status as keyof typeof styles] || styles.not_started;
   };
 
+  const getCategoryColor = (category: string | null) => {
+    if (!category) return 'bg-gray-500/20 border-gray-500/50';
+    if (category === 'hitting') return 'bg-red-500/20 border-red-500/50';
+    if (category === 'throwing') return 'bg-blue-500/20 border-blue-500/50';
+    if (category === 'fielding') return 'bg-green-500/20 border-green-500/50';
+    if (category === 'strength') return 'bg-purple-500/20 border-purple-500/50';
+    if (category === 'conditioning') return 'bg-orange-500/20 border-orange-500/50';
+    return 'bg-gray-500/20 border-gray-500/50';
+  };
+
   const fullName = profile
     ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
     : `Athlete #${athlete.id.slice(0, 8)}`;
@@ -208,9 +307,39 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
   const age = formatAge(athlete.date_of_birth);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-      {/* Left Column - 40% */}
-      <div className="lg:col-span-2 space-y-6">
+    <div className="space-y-6">
+      {/* Top Row - Stats and Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Total Workouts */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+          <p className="text-gray-400 text-sm mb-2">Total Workouts</p>
+          <p className="text-3xl font-bold text-white">{stats.totalWorkouts}</p>
+        </div>
+
+        {/* Completion Rate */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
+          <p className="text-gray-400 text-sm mb-2">Completion Rate</p>
+          <p className="text-3xl font-bold text-white">{stats.completionRate}%</p>
+        </div>
+
+        {/* Personal Records Button */}
+        <Link
+          href={`/dashboard/athletes/${athlete.id}/records`}
+          className="bg-gradient-to-br from-[#C9A857]/10 to-transparent border border-[#C9A857]/20 rounded-xl p-5 hover:border-[#C9A857]/40 transition-all group flex items-center justify-between"
+        >
+          <div>
+            <p className="text-gray-400 text-sm mb-1">View</p>
+            <p className="text-white font-bold group-hover:text-[#C9A857] transition-colors">Personal Records</p>
+          </div>
+          <div className="h-10 w-10 rounded-lg bg-[#C9A857]/10 flex items-center justify-center">
+            <span className="text-xl">🏆</span>
+          </div>
+        </Link>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         {/* Profile Card */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
           <div className="flex items-start justify-between mb-6">
@@ -354,9 +483,9 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           </div>
         </div>
 
-        {/* Team Assignments */}
+        {/* Group Assignments */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Team Assignments</h3>
+          <h3 className="text-lg font-bold text-white mb-4">Group Assignments</h3>
           {teams.length > 0 ? (
             <div className="space-y-3">
               {teams.map((team: any) => (
@@ -374,163 +503,61 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No team assignments</p>
+            <p className="text-gray-400 text-sm">No group assignments</p>
           )}
         </div>
 
-        {/* Active Tags */}
+        {/* Workouts - Color Coded by Category */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Active Tags</h3>
-            <button
-              onClick={() => alert('Add tag - Coming soon')}
-              className="text-[#C9A857] hover:text-[#B89647] text-sm font-medium"
-            >
-              + Add
-            </button>
-          </div>
-          {tags.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag: any) => (
-                <span
-                  key={tag.id}
-                  className="px-3 py-1 rounded-full text-sm font-medium"
-                  style={{
-                    backgroundColor: `${tag.color}20`,
-                    color: tag.color
-                  }}
-                >
-                  {tag.name}
-                </span>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-400 text-sm">No tags assigned</p>
-          )}
-        </div>
-      </div>
-
-      {/* Right Column - 60% */}
-      <div className="lg:col-span-3 space-y-6">
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-2">Total Workouts</p>
-            <p className="text-3xl font-bold text-white">{stats.totalWorkouts}</p>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-2">Completion Rate</p>
-            <p className="text-3xl font-bold text-white">{stats.completionRate}%</p>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-2">Current Streak</p>
-            <p className="text-3xl font-bold text-white">{stats.currentStreak}</p>
-          </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-            <p className="text-gray-400 text-sm mb-2">Last Activity</p>
-            <p className="text-lg font-bold text-white">{formatRelativeTime(stats.lastActivity)}</p>
-          </div>
-        </div>
-
-        {/* Current Plan Card */}
-        <div className="bg-gradient-to-br from-[#C9A857]/10 to-transparent border border-[#C9A857]/20 rounded-xl p-6">
-          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-[#C9A857] font-medium mb-1">CURRENT PLAN</p>
-              {currentPlan ? (
-                <>
-                  <h3 className="text-2xl font-bold text-white mb-2">{currentPlan.name}</h3>
-                  {currentPlan.description && (
-                    <p className="text-gray-400 text-sm">{currentPlan.description}</p>
-                  )}
-                </>
-              ) : (
-                <p className="text-white">No active plan assigned</p>
-              )}
+              <h3 className="text-lg font-bold text-white">Workouts</h3>
+              <p className="text-xs text-gray-400 mt-1">{taggedItems.workouts.length} custom workouts</p>
             </div>
+            <button
+              onClick={handleDeleteAllContent}
+              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-medium rounded-lg transition-colors border border-red-500/20"
+            >
+              Delete All
+            </button>
           </div>
 
-          {currentPlan && planAssignment && (
-            <>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Start Date</p>
-                  <p className="text-white font-medium">
-                    {new Date(planAssignment.start_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Total Weeks</p>
-                  <p className="text-white font-medium">{currentPlan.total_weeks} weeks</p>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Link
-                  href={`/dashboard/athletes/${athlete.id}?tab=program`}
-                  className="flex-1 px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all text-center"
+          {taggedItems.workouts.length > 0 ? (
+            <div className="space-y-2">
+              {taggedItems.workouts.map((workout: any) => (
+                <div
+                  key={workout.id}
+                  className={`p-3 rounded-lg border-l-4 ${getCategoryColor(workout.category)}`}
                 >
-                  View Full Plan
-                </Link>
-                <button
-                  onClick={() => alert('Change plan - Coming soon')}
-                  className="px-4 py-2 bg-white/10 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
-                >
-                  Change Plan
-                </button>
-              </div>
-            </>
-          )}
-
-          {!currentPlan && (
-            <button
-              onClick={() => alert('Assign plan - Coming soon')}
-              className="w-full px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all"
-            >
-              Assign Plan
-            </button>
-          )}
-        </div>
-
-        {/* Upcoming Schedule */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Upcoming Schedule (Next 7 Days)</h3>
-          {upcomingWorkouts.length > 0 ? (
-            <div className="space-y-3">
-              {upcomingWorkouts.map((workout) => (
-                <div key={workout.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-colors">
-                  <div className="flex-1">
-                    <p className="text-white font-medium">{workout.workouts?.name || 'Workout'}</p>
-                    <p className="text-sm text-gray-400">
-                      {new Date(workout.scheduled_date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        month: 'short',
-                        day: 'numeric'
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusBadge(workout.status)}`}>
-                      {workout.status.replace('_', ' ')}
-                    </span>
-                    <button
-                      onClick={() => alert('Quick actions - Coming soon')}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                      </svg>
-                    </button>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-white font-medium text-sm">{workout.name}</p>
+                        {workout.category && (
+                          <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300 capitalize">
+                            {workout.category}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        {workout.estimated_duration_minutes && (
+                          <span>{workout.estimated_duration_minutes} min</span>
+                        )}
+                        <span>•</span>
+                        <span>
+                          Created {new Date(workout.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No upcoming workouts scheduled</p>
+            <div className="text-center py-8">
+              <p className="text-gray-400 text-sm">No custom workouts yet</p>
+              <p className="text-gray-500 text-xs mt-1">Create workouts in the Calendar tab</p>
+            </div>
           )}
         </div>
 

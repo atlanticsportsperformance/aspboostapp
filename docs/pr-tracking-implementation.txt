@@ -1,0 +1,128 @@
+PR TRACKING AUTO-SAVE IMPLEMENTATION
+=====================================
+
+WHAT WAS IMPLEMENTED:
+--------------------
+
+1. VISUAL INDICATORS FOR PR-TRACKED EXERCISES
+   - Gold border around exercise cards when exercise.tracked_max_metrics exists
+   - Gold shadow effect for extra prominence
+   - "🏆 PR" badge next to exercise name
+   - Color: #C9A857 (gold)
+
+2. AUTO-SAVE MAX FUNCTIONALITY
+   When user clicks "Next" on a PR-tracked exercise:
+
+   a) Finds highest weight logged across all sets
+   b) Checks current max from athlete_maxes table
+   c) Shows warning if new max is LOWER than previous max
+      - Displays both values in confirmation dialog
+      - User can still proceed if they want
+   d) Saves to athlete_maxes table:
+      - athlete_id
+      - exercise_id
+      - metric_id: 'weight'
+      - max_value: highest weight logged
+      - reps_at_max: 1
+      - achieved_on: today's date
+      - source: 'logged'
+   e) Refetches workout data to update all % calculations
+
+3. LIVE % RECALCULATION
+   After saving a new max, calls onUpdate() which:
+   - Refetches all workout data
+   - Recalculates target weights for ALL exercises in same workout
+   - Updates intensity targets based on new max
+   - Athletes see updated targets immediately for remaining exercises
+
+HOW IT WORKS:
+-------------
+
+Location: app/dashboard/athletes/[id]/workouts/[instance-id]/execute/page.tsx
+
+Function: saveAndMoveNext() (lines 478-569)
+
+Flow:
+1. Save all exercise_logs for all sets
+2. Check if isTrackingPR && tracked_max_metrics includes 'weight'
+3. Calculate maxWeight = highest weight from all sets
+4. Query athlete_maxes for current max
+5. If new max < old max, show confirmation dialog
+6. Upsert to athlete_maxes (uses onConflict to update existing)
+7. Call onUpdate() to refetch data and recalculate percentages
+8. Call onMoveNext() to advance to next exercise
+
+CONJUGATE TRAINING SUPPORT:
+---------------------------
+
+This implementation supports the full conjugate training flow:
+
+MAX EFFORT DAY:
+- Coach marks exercise as "Track as PR"
+- Athlete works up to max lift
+- When clicking "Next", highest weight auto-saves as 1RM
+- System shows gold border so athlete knows it's a PR attempt
+
+SUPPLEMENTAL DAY (SAME WORKOUT):
+- Coach programs "@ 75% of 1RM" for same exercise
+- When max is saved on first exercise, system immediately recalculates
+- Target weight updates to show "Target: 225 lbs @ 75%"
+- Athlete sees updated target without refreshing
+
+FUTURE WORKOUTS:
+- Saved max persists in athlete_maxes table
+- All future workouts with % will auto-calculate from latest max
+- Max tracking over time enables charts and progress visualization
+
+TECHNICAL DETAILS:
+------------------
+
+Database Table: athlete_maxes
+- Primary key: (athlete_id, exercise_id, metric_id, reps_at_max)
+- Upsert strategy prevents duplicates
+- achieved_on tracks date for historical analysis
+- source = 'logged' indicates it came from workout logging
+
+Calculation Formula:
+Math.round((athleteMax * percent / 100) / 5) * 5
+- Rounds to nearest 5 lbs for practical weight loading
+- Applied in initializeSets() when setting up each set
+
+Warning Dialog:
+- Only shows if maxWeight < currentMax
+- Allows athlete to save lower max (deload, injury recovery, etc.)
+- Important for tracking strength variations over time
+
+EDGE CASES HANDLED:
+-------------------
+
+1. No previous max exists: Saves without warning
+2. First set of an exercise: Creates new athlete_maxes record
+3. Multiple exercises with same movement: Updates all using onUpdate()
+4. User cancels warning: Returns early, doesn't save or move next
+5. Zero weight logged: Skips max save logic (if maxWeight > 0 check)
+6. Exercise not marked as PR: Skips entire auto-save block
+
+WHAT'S VISIBLE TO USER:
+-----------------------
+
+BEFORE LOGGING:
+- Gold border around PR-tracked exercises
+- "🏆 PR" badge in header
+- Normal set inputs
+
+DURING LOGGING:
+- Green bars show which sets are completed
+- Target weight shows "Target: 225 lbs @ 75%" if % configured
+- "@ 75% (No max set)" if % configured but no max exists
+
+AFTER CLICKING NEXT:
+- If new PR: Auto-saves to database
+- If lower: Shows warning dialog
+- Next exercises: See updated target weights if using %
+- Progress bar increments
+
+COMPLETION:
+- All PRs saved to athlete_maxes
+- Data ready for charts and historical tracking
+- Future workouts will use new maxes for % calculations

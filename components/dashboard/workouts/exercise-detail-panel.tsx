@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import SetBySetEditor from './set-by-set-editor';
+import { SwapExerciseDialog } from './swap-exercise-dialog';
 
 interface Measurement {
   id: string;
@@ -47,6 +48,7 @@ interface RoutineExercise {
   intensity_targets?: IntensityTarget[] | null;
   set_configurations?: any[] | null;
   enabled_measurements?: string[] | null;
+  tracked_max_metrics?: string[] | null;
   is_amrap?: boolean;
   exercises: Exercise | null;
 }
@@ -63,16 +65,23 @@ interface ExerciseDetailPanelProps {
   exercise: RoutineExercise | null;
   onUpdate: (updates: Partial<RoutineExercise>) => void;
   onDelete: () => void;
+  onSwap: (exerciseId: string, exercise: Exercise, replaceMode: 'single' | 'future' | 'all') => void;
+  planId?: string; // Optional - only passed when in plan context
+  workoutId?: string; // Optional - only passed when in plan context (needed for week/day calculation)
 }
 
 export default function ExerciseDetailPanel({
   routine,
   exercise,
   onUpdate,
-  onDelete
+  onDelete,
+  onSwap,
+  planId,
+  workoutId
 }: ExerciseDetailPanelProps) {
   const [enablePerSet, setEnablePerSet] = useState(false);
   const [showMeasurementsDropdown, setShowMeasurementsDropdown] = useState(false);
+  const [showSwapDialog, setShowSwapDialog] = useState(false);
 
   if (!exercise || !routine) {
     return (
@@ -85,6 +94,31 @@ export default function ExerciseDetailPanel({
       </div>
     );
   }
+
+  // Generate initial sets from simple mode values (metric_targets) when opening per-set editor
+  const getInitialSetsFromSimpleMode = () => {
+    if (exercise.set_configurations && exercise.set_configurations.length > 0) {
+      // Already has per-set config, use it
+      return exercise.set_configurations;
+    }
+
+    // Create initial sets from simple mode values
+    const totalSets = exercise.sets || 3;
+    const initialSets = [];
+
+    for (let i = 0; i < totalSets; i++) {
+      initialSets.push({
+        set_number: i + 1,
+        metric_values: { ...exercise.metric_targets } || {},
+        intensity_type: exercise.intensity_targets?.[0]?.metric || undefined,
+        intensity_percent: exercise.intensity_targets?.[0]?.percent || undefined,
+        rest_seconds: exercise.rest_seconds || 60,
+        is_amrap: exercise.is_amrap || false
+      });
+    }
+
+    return initialSets;
+  };
 
   const getMetricValue = (metricId: string) => {
     return exercise.metric_targets?.[metricId] ?? null;
@@ -176,11 +210,26 @@ export default function ExerciseDetailPanel({
     const current = exercise.enabled_measurements || [];
 
     if (current.includes(measurementId)) {
-      // Remove
+      // Remove measurement from enabled list
       const updated = current.filter(id => id !== measurementId);
-      onUpdate({ enabled_measurements: updated.length > 0 ? updated : null });
+
+      // ALSO remove the value from metric_targets
+      const updatedTargets = { ...exercise.metric_targets };
+      delete updatedTargets[measurementId];
+
+      // Remove from intensity targets if this was the intensity metric
+      let updatedIntensityTargets = exercise.intensity_targets;
+      if (exercise.intensity_targets?.[0]?.metric === measurementId) {
+        updatedIntensityTargets = null;
+      }
+
+      onUpdate({
+        enabled_measurements: updated.length > 0 ? updated : null,
+        metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null,
+        intensity_targets: updatedIntensityTargets
+      });
     } else {
-      // Add
+      // Add measurement to enabled list
       onUpdate({ enabled_measurements: [...current, measurementId] });
     }
   };
@@ -194,6 +243,24 @@ export default function ExerciseDetailPanel({
       });
     } else {
       onUpdate({ is_amrap: false });
+    }
+  };
+
+  // Check if a metric is tracked as max
+  const isMetricTrackedAsMax = (metricId: string): boolean => {
+    return exercise.tracked_max_metrics?.includes(metricId) || false;
+  };
+
+  // Toggle tracking a metric as max
+  const toggleTrackAsMax = (metricId: string) => {
+    const current = exercise.tracked_max_metrics || [];
+    if (current.includes(metricId)) {
+      // Remove from tracked
+      const updated = current.filter(id => id !== metricId);
+      onUpdate({ tracked_max_metrics: updated.length > 0 ? updated : null });
+    } else {
+      // Add to tracked
+      onUpdate({ tracked_max_metrics: [...current, metricId] });
     }
   };
 
@@ -216,6 +283,7 @@ export default function ExerciseDetailPanel({
           </div>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowSwapDialog(true)}
               className="p-2 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
               title="Replace Exercise"
             >
@@ -253,13 +321,11 @@ export default function ExerciseDetailPanel({
             </div>
           </div>
 
-          {!enablePerSet ? (
-            /* Simple Mode - Compact Grid */
-            <>
+          {/* Measurements Selector - Always visible */}
               {/* Measurements Selector & AMRAP */}
               <div className="flex items-center gap-4 mb-4 pb-4 border-b border-white/10">
                 {/* AMRAP Checkbox - First, only show if Reps is enabled */}
-                {isMeasurementEnabled('reps') && (
+                {!enablePerSet && isMeasurementEnabled('reps') && !exercise.set_configurations && (
                   <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
                     <input
                       type="checkbox"
@@ -287,25 +353,84 @@ export default function ExerciseDetailPanel({
 
                   {showMeasurementsDropdown && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
-                      {getAllAvailableMeasurements().map((measurement) => (
-                        <label
-                          key={measurement.id}
-                          className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isMeasurementEnabled(measurement.id)}
-                            onChange={() => toggleMeasurement(measurement.id)}
-                            className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                          />
-                          <span className="text-white flex-1">{measurement.name}</span>
-                          <span className="text-gray-400 text-xs">{measurement.unit}</span>
-                        </label>
-                      ))}
+                      {getAllAvailableMeasurements().map((measurement) => {
+                        // Show trophy for metrics commonly tracked as maxes
+                        const isMaxTracked = ['weight', 'distance', 'peak_velo', 'exit_velo', 'time'].includes(measurement.id) ||
+                                           measurement.name.toLowerCase().includes('velo') ||
+                                           measurement.name.toLowerCase().includes('max') ||
+                                           measurement.name.toLowerCase().includes('time');
+
+                        const isEnabled = isMeasurementEnabled(measurement.id);
+
+                        return (
+                          <label
+                            key={measurement.id}
+                            className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 cursor-pointer transition-colors"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleMeasurement(measurement.id);
+                              }}
+                              className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                            />
+                            <span className="text-white flex-1 flex items-center gap-1.5">
+                              {measurement.name}
+                              {isMaxTracked && (
+                                <span
+                                  className="text-xs opacity-60"
+                                  title="This metric can be tracked as a personal record"
+                                >
+                                  🏆
+                                </span>
+                              )}
+                            </span>
+                            <span className="text-gray-400 text-xs">{measurement.unit}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               </div>
+
+          {!enablePerSet ? (
+            exercise.set_configurations && exercise.set_configurations.length > 0 ? (
+              /* Per-Set Summary - Read Only */
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm text-blue-300 font-medium">Per-Set Configuration Active</p>
+                  <span className="text-xs text-gray-400">Click ☰ to edit details</span>
+                </div>
+                <div className="space-y-2">
+                  {exercise.set_configurations.map((setConfig: any, idx: number) => (
+                    <div key={idx} className="flex items-center gap-4 text-sm p-2 bg-white/5 rounded">
+                      <span className="text-gray-400 w-16">Set {idx + 1}:</span>
+                      <div className="flex gap-3 flex-wrap">
+                        {setConfig.metric_values && Object.entries(setConfig.metric_values).map(([key, value]: [string, any]) => {
+                          const measurement = getAllAvailableMeasurements().find(m => m.id === key);
+                          if (!value) return null;
+                          return (
+                            <span key={key} className="text-white">
+                              {value} {measurement?.name || key}
+                            </span>
+                          );
+                        })}
+                        {setConfig.intensity_percent && (
+                          <span className="text-blue-300">@ {setConfig.intensity_percent}%</span>
+                        )}
+                        {setConfig.is_amrap && (
+                          <span className="text-blue-400 text-xs px-1.5 py-0.5 bg-blue-500/20 rounded">AMRAP</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            <>
 
               <div className="flex flex-wrap gap-4">
                 {/* Sets */}
@@ -417,16 +542,55 @@ export default function ExerciseDetailPanel({
                 </div>
               </div>
             </>
+            )
           ) : (
             /* Per-Set Mode */
             <SetBySetEditor
               totalSets={exercise.sets || 3}
-              initialSets={exercise.set_configurations || []}
+              initialSets={getInitialSetsFromSimpleMode()}
               enabledMeasurements={getDisplayMeasurements()}
               onUpdateSets={(sets) => onUpdate({ set_configurations: sets })}
             />
           )}
         </div>
+
+        {/* Track as Max Section */}
+        {getDisplayMeasurements().length > 0 && (
+          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">🏆</span>
+              <h3 className="text-sm font-semibold text-yellow-200">Track as Personal Records</h3>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              When athletes log this exercise, automatically save their best performance for these metrics as personal records
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {getDisplayMeasurements().map((measurement) => {
+                const isTracked = isMetricTrackedAsMax(measurement.id);
+                return (
+                  <button
+                    key={measurement.id}
+                    onClick={() => toggleTrackAsMax(measurement.id)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      isTracked
+                        ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
+                        : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
+                    }`}
+                  >
+                    {isTracked && <span className="mr-1">✓</span>}
+                    {measurement.name}
+                    {measurement.unit && ` (${measurement.unit})`}
+                  </button>
+                );
+              })}
+            </div>
+            {exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0 && (
+              <div className="mt-3 text-xs text-yellow-300/80">
+                <span className="font-medium">{exercise.tracked_max_metrics.length}</span> metric{exercise.tracked_max_metrics.length > 1 ? 's' : ''} will auto-save as max
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Exercise Notes */}
         <div className="space-y-4">
@@ -465,6 +629,26 @@ export default function ExerciseDetailPanel({
           </div>
         </div>
       </div>
+
+      {/* Swap Exercise Dialog */}
+      {showSwapDialog && (
+        <SwapExerciseDialog
+          currentExercise={{
+            id: exercise.id,
+            exercise_id: exercise.exercise_id,
+            is_placeholder: exercise.is_placeholder,
+            placeholder_id: exercise.placeholder_id,
+            exercises: exercise.exercises
+          }}
+          planId={planId}
+          workoutId={workoutId}
+          onSwap={(exerciseId, newExercise, replaceMode) => {
+            onSwap(exerciseId, newExercise, replaceMode);
+            setShowSwapDialog(false);
+          }}
+          onClose={() => setShowSwapDialog(false)}
+        />
+      )}
     </div>
   );
 }

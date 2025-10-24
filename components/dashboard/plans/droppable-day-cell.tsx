@@ -11,6 +11,7 @@ interface DroppableDayCellProps {
   onCreateWorkout?: () => void;
   onCopyWorkout?: () => void;
   onAddRoutine?: () => void;
+  date?: string; // Optional date string for athlete calendar
 }
 
 export function DroppableDayCell({
@@ -20,11 +21,13 @@ export function DroppableDayCell({
   children,
   onCreateWorkout,
   onCopyWorkout,
-  onAddRoutine
+  onAddRoutine,
+  date
 }: DroppableDayCellProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const { isOver, setNodeRef } = useDroppable({
-    id: `day-${weekNumber}-${dayNumber}`,
+    id: date ? `day-${date}` : `day-${weekNumber}-${dayNumber}`,
+    data: date ? { date } : undefined,
   });
 
   return (

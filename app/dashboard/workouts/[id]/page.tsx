@@ -588,6 +588,34 @@ export default function WorkoutBuilderPage() {
       .eq('id', selectedExerciseId);
   }
 
+  async function handleSwapExercise(newExerciseId: string, newExercise: any, replaceMode: 'single' | 'future' | 'all') {
+    if (!selectedExerciseId) return;
+
+    // replaceMode is not supported in standalone workout builder (no plan context)
+    // Update ONLY the exercise reference
+    // Keep enabled_measurements, metric_targets, intensity_targets, etc. EXACTLY as they are
+    const { error } = await supabase
+      .from('routine_exercises')
+      .update({
+        exercise_id: newExerciseId,
+        is_placeholder: false,
+        placeholder_id: null,
+        placeholder_name: null
+        // DO NOT update enabled_measurements - keep them as-is!
+        // All other fields (sets, metric_targets, intensity_targets, etc.) stay the same!
+      })
+      .eq('id', selectedExerciseId);
+
+    if (error) {
+      console.error('Error swapping exercise:', error);
+      alert('Failed to replace exercise');
+      return;
+    }
+
+    // Refresh workout to show new exercise
+    await fetchWorkout();
+  }
+
   async function handleDeleteExerciseFromPanel() {
     if (!selectedExerciseId) return;
     handleDeleteExercise(selectedExerciseId);
@@ -719,9 +747,9 @@ export default function WorkoutBuilderPage() {
           <div className="flex gap-3">
             <button
               onClick={() => setShowAssignDialog(true)}
-              className="px-4 py-2 rounded-lg bg-neutral-800 text-white font-medium hover:bg-neutral-700 transition-colors"
+              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
             >
-              Assign
+              📋 Assign to Athletes
             </button>
             <button
               onClick={handleSave}
@@ -892,6 +920,7 @@ export default function WorkoutBuilderPage() {
             exercise={selectedExercise || null}
             onUpdate={handleUpdateExercise}
             onDelete={handleDeleteExerciseFromPanel}
+            onSwap={handleSwapExercise}
           />
         )}
       </div>

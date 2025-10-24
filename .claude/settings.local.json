@@ -20,7 +20,12 @@
       "Bash(npx supabase:*)",
       "Bash(dir:*)",
       "Bash(find:*)",
-      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\app\\dashboard\\workouts\\[id]\\page-broken.tsx\")"
+      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\app\\dashboard\\workouts\\[id]\\page-broken.tsx\")",
+      "Bash(npx tsx:*)",
+      "Bash(node scripts/fix-per-set-display.js:*)",
+      "Bash(node scripts/fix-syntax-error.js:*)",
+      "Bash(node scripts/move-measurements-dropdown.js:*)",
+      "Bash(node scripts/add-auto-populate-sets.js:*)"
     ],
     "deny": [],
     "ask": []

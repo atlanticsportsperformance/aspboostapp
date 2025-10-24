@@ -8,6 +8,7 @@ import { AddExerciseDialog } from '@/components/dashboard/workouts/add-exercise-
 import ExerciseDetailPanel from '@/components/dashboard/workouts/exercise-detail-panel';
 import RoutineSidebar from '@/components/dashboard/routines/routine-sidebar';
 import WorkoutTagsEditor from '@/components/dashboard/workouts/workout-tags-editor';
+import { AssignRoutineDialog } from '@/components/dashboard/routines/assign-routine-dialog';
 
 interface Measurement {
   id: string;
@@ -94,6 +95,7 @@ export default function RoutineBuilderPage() {
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   // Determine ownership context
   function getRoutineContext() {
@@ -382,6 +384,34 @@ export default function RoutineBuilderPage() {
     });
   }
 
+  async function handleSwapExercise(newExerciseId: string, newExercise: any, replaceMode: 'single' | 'future' | 'all') {
+    if (!selectedExerciseId || !routine) return;
+
+    // replaceMode is not supported in standalone routine builder (no plan context)
+    // Update ONLY the exercise reference
+    // Keep enabled_measurements, metric_targets, intensity_targets, etc. EXACTLY as they are
+    const { error } = await supabase
+      .from('routine_exercises')
+      .update({
+        exercise_id: newExerciseId,
+        is_placeholder: false,
+        placeholder_id: null,
+        placeholder_name: null
+        // DO NOT update enabled_measurements - keep them as-is!
+        // All other fields (sets, metric_targets, intensity_targets, etc.) stay the same!
+      })
+      .eq('id', selectedExerciseId);
+
+    if (error) {
+      console.error('Error swapping exercise:', error);
+      alert('Failed to replace exercise');
+      return;
+    }
+
+    // Refresh routine to show new exercise
+    await fetchRoutine();
+  }
+
   async function handleDeleteExercise(exerciseId: string) {
     if (!routine) return;
     if (!confirm('Remove this exercise?')) return;
@@ -458,13 +488,23 @@ export default function RoutineBuilderPage() {
             Close
           </Link>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : '💾 Save'}
-          </button>
+          <div className="flex items-center gap-3">
+            {routine.is_standalone && !routine.athlete_id && !routine.plan_id && (
+              <button
+                onClick={() => setShowAssignDialog(true)}
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+              >
+                📋 Assign to Athletes
+              </button>
+            )}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 py-2 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : '💾 Save'}
+            </button>
+          </div>
         </div>
 
         {/* Routine Header */}
@@ -489,57 +529,56 @@ export default function RoutineBuilderPage() {
             {/* Scheme */}
             <div className="col-span-2">
               <label className="block text-xs text-neutral-400 mb-1">Scheme</label>
-                <select
-                  value={routine.scheme}
-                  onChange={(e) => setRoutine({ ...routine, scheme: e.target.value })}
-                  onBlur={handleSave}
-                  className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
-                >
-                  <option value="straight">Straight</option>
-                  <option value="superset">Superset</option>
-                  <option value="circuit">Circuit</option>
-                  <option value="emom">EMOM</option>
-                  <option value="amrap">AMRAP</option>
-                  <option value="giant_set">Giant</option>
-                </select>
-              </div>
+              <select
+                value={routine.scheme}
+                onChange={(e) => setRoutine({ ...routine, scheme: e.target.value })}
+                onBlur={handleSave}
+                className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
+              >
+                <option value="straight">Straight</option>
+                <option value="superset">Superset</option>
+                <option value="circuit">Circuit</option>
+                <option value="emom">EMOM</option>
+                <option value="amrap">AMRAP</option>
+                <option value="giant_set">Giant</option>
+              </select>
+            </div>
 
-              {/* Category */}
-              <div className="col-span-3">
-                <label className="block text-xs text-neutral-400 mb-1">Category</label>
-                <select
-                  value={routine.category || 'strength_conditioning'}
-                  onChange={(e) => setRoutine({ ...routine, category: e.target.value as 'hitting' | 'throwing' | 'strength_conditioning' })}
-                  onBlur={handleSave}
-                  className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
-                >
-                  <option value="hitting">Hitting</option>
-                  <option value="throwing">Throwing</option>
-                  <option value="strength_conditioning">Strength & Conditioning</option>
-                </select>
-              </div>
+            {/* Category */}
+            <div className="col-span-3">
+              <label className="block text-xs text-neutral-400 mb-1">Category</label>
+              <select
+                value={routine.category || 'strength_conditioning'}
+                onChange={(e) => setRoutine({ ...routine, category: e.target.value as 'hitting' | 'throwing' | 'strength_conditioning' })}
+                onBlur={handleSave}
+                className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors [&>option]:bg-neutral-900 [&>option]:text-white"
+              >
+                <option value="hitting">Hitting</option>
+                <option value="throwing">Throwing</option>
+                <option value="strength_conditioning">Strength & Conditioning</option>
+              </select>
+            </div>
 
-              {/* Description */}
-              <div className="col-span-4">
-                <label className="block text-xs text-neutral-400 mb-1">Description</label>
-                <input
-                  type="text"
-                  value={routine.description || ''}
-                  onChange={(e) => setRoutine({ ...routine, description: e.target.value })}
-                  onBlur={handleSave}
-                  className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
-                  placeholder="Add description..."
-                />
-              </div>
+            {/* Description */}
+            <div className="col-span-4">
+              <label className="block text-xs text-neutral-400 mb-1">Description</label>
+              <input
+                type="text"
+                value={routine.description || ''}
+                onChange={(e) => setRoutine({ ...routine, description: e.target.value })}
+                onBlur={handleSave}
+                className="w-full px-2 py-1.5 bg-neutral-950/50 border border-neutral-700 rounded text-white text-sm focus:outline-none focus:border-neutral-500 transition-colors"
+                placeholder="Add description..."
+              />
+            </div>
 
-              {/* Tags */}
-              <div className="col-span-3">
-                <label className="block text-xs text-neutral-400 mb-1">Tags</label>
-                <WorkoutTagsEditor
-                  tags={routine.tags || []}
-                  onUpdate={handleUpdateTags}
-                />
-              </div>
+            {/* Tags */}
+            <div className="col-span-3">
+              <label className="block text-xs text-neutral-400 mb-1">Tags</label>
+              <WorkoutTagsEditor
+                tags={routine.tags || []}
+                onUpdate={handleUpdateTags}
+              />
             </div>
           </div>
         </div>
@@ -608,6 +647,7 @@ export default function RoutineBuilderPage() {
           exercise={selectedExercise || null}
           onUpdate={(updates) => selectedExercise && handleUpdateExercise(selectedExercise.id, updates)}
           onDelete={() => selectedExercise && handleDeleteExercise(selectedExercise.id)}
+          onSwap={handleSwapExercise}
         />
       </div>
 
@@ -655,6 +695,18 @@ export default function RoutineBuilderPage() {
           onAddMultiple={handleAddMultipleExercises}
           onAddMultiplePlaceholders={handleAddMultiplePlaceholders}
           onClose={() => setShowAddExercise(false)}
+        />
+      )}
+
+      {/* Assign Routine Dialog */}
+      {showAssignDialog && routine && (
+        <AssignRoutineDialog
+          routine={{
+            id: routine.id,
+            name: routine.name,
+            is_standalone: routine.is_standalone
+          }}
+          onClose={() => setShowAssignDialog(false)}
         />
       )}
     </div>

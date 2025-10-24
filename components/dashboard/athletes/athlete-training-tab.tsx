@@ -2,81 +2,143 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface TrainingTabProps {
   athleteId: string;
 }
 
+type TimeFilter = '1M' | '3M' | '6M' | '1Y' | 'ALL';
+
 export default function TrainingTab({ athleteId }: TrainingTabProps) {
+  const router = useRouter();
   const [workouts, setWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'calendar' | 'history'>('history');
-  const [expandedWorkout, setExpandedWorkout] = useState<string | null>(null);
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('3M');
 
   useEffect(() => {
     async function fetchWorkoutHistory() {
       const supabase = createClient();
 
-      console.log('=== TRAINING TAB LOADING ===');
+      console.log('🔍 [Training History] Loading...');
 
-      // Get last 90 days of workouts
-      const ninetyDaysAgo = new Date();
-      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-      const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
+      try {
+        // Calculate date range based on time filter
+        const now = new Date();
+        let startDate = new Date();
 
-      const { data: workoutsData, error: workoutsError } = await supabase
-        .from('workout_instances')
-        .select(`
-          *,
-          workouts(id, name, description),
-          set_logs(
-            id,
-            routine_exercise_id,
-            set_number,
-            actual_reps,
-            actual_load,
-            actual_velocity,
-            actual_rpe,
-            logged_at
-          )
-        `)
-        .eq('athlete_id', athleteId)
-        .gte('scheduled_date', ninetyDaysAgoStr)
-        .order('scheduled_date', { ascending: false })
-        .limit(50);
+        switch (timeFilter) {
+          case '1M':
+            startDate.setMonth(now.getMonth() - 1);
+            break;
+          case '3M':
+            startDate.setMonth(now.getMonth() - 3);
+            break;
+          case '6M':
+            startDate.setMonth(now.getMonth() - 6);
+            break;
+          case '1Y':
+            startDate.setFullYear(now.getFullYear() - 1);
+            break;
+          case 'ALL':
+            startDate = new Date(0); // Beginning of time
+            break;
+        }
 
-      console.log('Workouts with sets:', workoutsData, workoutsError);
+        const startDateStr = startDate.toISOString().split('T')[0];
 
-      setWorkouts(workoutsData || []);
-      setLoading(false);
+        // Step 1: Get workout instances (no nested selects)
+        const { data: instances, error: instancesError } = await supabase
+          .from('workout_instances')
+          .select('*')
+          .eq('athlete_id', athleteId)
+          .gte('scheduled_date', startDateStr)
+          .order('scheduled_date', { ascending: false });
+
+        console.log('🔍 [Training History] Instances:', { instances, instancesError, count: instances?.length });
+
+        if (instancesError) {
+          console.error('Error fetching instances:', instancesError);
+          setWorkouts([]);
+          setLoading(false);
+          return;
+        }
+
+        if (!instances || instances.length === 0) {
+          console.log('🔍 [Training History] No instances found');
+          setWorkouts([]);
+          setLoading(false);
+          return;
+        }
+
+        const instanceIds = instances.map(i => i.id);
+        const workoutIds = Array.from(new Set(instances.map(i => i.workout_id).filter(Boolean)));
+
+        // Step 2: Get workout details
+        const { data: workoutDetails, error: workoutsError } = await supabase
+          .from('workouts')
+          .select('id, name, description')
+          .in('id', workoutIds);
+
+        console.log('🔍 [Training History] Workouts:', {
+          workoutDetails,
+          count: workoutDetails?.length
+        });
+
+        // Step 3: Get exercise logs for these instances
+        const { data: exerciseLogs, error: logsError } = await supabase
+          .from('exercise_logs')
+          .select('id, workout_instance_id, routine_exercise_id, set_number, actual_reps, actual_weight')
+          .in('workout_instance_id', instanceIds);
+
+        console.log('🔍 [Training History] Exercise logs:', {
+          exerciseLogs,
+          count: exerciseLogs?.length
+        });
+
+        // Step 4: Create lookup maps
+        const workoutMap = new Map((workoutDetails || []).map(w => [w.id, w]));
+
+        // Step 5: Combine the data
+        const workoutsWithLogs = instances.map(instance => ({
+          ...instance,
+          workouts: workoutMap.get(instance.workout_id) || null,
+          exercise_logs: exerciseLogs?.filter(log => log.workout_instance_id === instance.id) || []
+        }));
+
+        console.log('✅ [Training History] Final workouts:', workoutsWithLogs.length);
+        setWorkouts(workoutsWithLogs);
+      } catch (error) {
+        console.error('❌ [Training History] Error:', error);
+        setWorkouts([]);
+      } finally {
+        setLoading(false);
+      }
     }
 
     fetchWorkoutHistory();
-  }, [athleteId]);
+  }, [athleteId, timeFilter]);
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      completed: 'bg-emerald-500/10 text-emerald-400',
-      in_progress: 'bg-blue-500/10 text-blue-400',
-      not_started: 'bg-gray-500/10 text-gray-400',
-      skipped: 'bg-red-500/10 text-red-400'
+      completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      in_progress: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      not_started: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+      skipped: 'bg-red-500/10 text-red-400 border-red-500/20'
     };
     return styles[status as keyof typeof styles] || styles.not_started;
   };
 
-  const calculateVolume = (sets: any[]) => {
-    if (!sets || sets.length === 0) return 0;
-    return sets.reduce((total, set) => {
-      const reps = set.actual_reps || 0;
-      const load = set.actual_load || 0;
-      return total + (reps * load);
-    }, 0);
+  const getStatusIcon = (status: string) => {
+    if (status === 'completed') return '✓';
+    if (status === 'in_progress') return '◐';
+    if (status === 'skipped') return '✕';
+    return '○';
   };
 
-  const formatDuration = (completedAt: string | null, scheduledDate: string) => {
-    if (!completedAt) return '-';
-    // This is simplified - in real app you'd track start time
-    return '45 min';
+  const calculateSetCount = (exerciseLogs: any[]) => {
+    return exerciseLogs?.length || 0;
   };
 
   if (loading) {
@@ -92,266 +154,118 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
 
   return (
     <div className="space-y-6">
-      {/* View Mode Toggle */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Training History</h2>
-        <div className="flex gap-2">
+      {/* Time Filter Buttons */}
+      <div className="flex gap-2 bg-black/40 rounded-lg p-1 w-fit">
+        {(['1M', '3M', '6M', '1Y', 'ALL'] as TimeFilter[]).map((filter) => (
           <button
-            onClick={() => setViewMode('history')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              viewMode === 'history'
+            key={filter}
+            onClick={() => setTimeFilter(filter)}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
+              timeFilter === filter
                 ? 'bg-[#C9A857] text-black'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
-            History
+            {filter}
           </button>
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
-              viewMode === 'calendar'
-                ? 'bg-[#C9A857] text-black'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            Calendar
-          </button>
-        </div>
+        ))}
       </div>
 
-      {viewMode === 'history' ? (
-        <div className="space-y-6">
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-sm mb-2">Total Workouts</p>
-              <p className="text-3xl font-bold text-white">{workouts.length}</p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-sm mb-2">Completed</p>
-              <p className="text-3xl font-bold text-emerald-400">
-                {workouts.filter(w => w.status === 'completed').length}
-              </p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-sm mb-2">In Progress</p>
-              <p className="text-3xl font-bold text-blue-400">
-                {workouts.filter(w => w.status === 'in_progress').length}
-              </p>
-            </div>
-            <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-              <p className="text-gray-400 text-sm mb-2">Total Volume</p>
-              <p className="text-3xl font-bold text-purple-400">
-                {workouts.reduce((total, w) => total + calculateVolume(w.set_logs || []), 0).toLocaleString()} lbs
-              </p>
-            </div>
+      {/* Workout List */}
+      <div className="space-y-3">
+        {workouts.length === 0 ? (
+          <div className="bg-white/5 border border-white/10 rounded-xl p-12 text-center">
+            <p className="text-gray-400">No workout history found</p>
+            <p className="text-gray-500 text-sm mt-2">Completed workouts will appear here</p>
           </div>
+        ) : (
+          workouts.map((workout) => {
+            const setCount = calculateSetCount(workout.exercise_logs);
+            const statusIcon = getStatusIcon(workout.status);
 
-          {/* Workout History Table/List */}
-          <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-            {/* Desktop Table */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Date</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Workout</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Duration</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Status</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Volume</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Sets</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workouts.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="text-center py-12">
-                        <p className="text-gray-400">No workout history found</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    workouts.map((workout) => {
-                      const isExpanded = expandedWorkout === workout.id;
-                      const volume = calculateVolume(workout.set_logs || []);
+            // Calculate total volume (reps × weight)
+            const totalVolume = workout.exercise_logs?.reduce((sum: number, log: any) => {
+              const reps = log.actual_reps || 0;
+              const weight = log.actual_weight || 0;
+              return sum + (reps * weight);
+            }, 0) || 0;
 
-                      return (
-                        <React.Fragment key={workout.id}>
-                          <tr
-                            onClick={() => setExpandedWorkout(isExpanded ? null : workout.id)}
-                            className="border-b border-white/10 hover:bg-white/5 cursor-pointer transition-colors"
-                          >
-                            <td className="px-6 py-4">
-                              <p className="text-white font-medium">
-                                {new Date(workout.scheduled_date).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  year: 'numeric'
-                                })}
-                              </p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <p className="text-white font-medium">{workout.workouts?.name || 'Workout'}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <p className="text-gray-400">{formatDuration(workout.completed_at, workout.scheduled_date)}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className={`px-3 py-1 rounded-md text-xs font-medium ${getStatusBadge(workout.status)}`}>
-                                {workout.status.replace('_', ' ')}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <p className="text-white font-medium">{volume.toLocaleString()} lbs</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <p className="text-gray-400">{workout.set_logs?.length || 0} sets</p>
-                            </td>
-                            <td className="px-6 py-4">
-                              <svg
-                                className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                              >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </td>
-                          </tr>
+            // Count unique exercises
+            const uniqueExercises = new Set(
+              workout.exercise_logs?.map((log: any) => log.routine_exercise_id).filter(Boolean)
+            ).size;
 
-                          {/* Expanded Row - Set Details */}
-                          {isExpanded && (
-                            <tr>
-                              <td colSpan={7} className="px-6 py-4 bg-white/5">
-                                <div className="space-y-3">
-                                  {workout.notes && (
-                                    <div className="mb-4">
-                                      <p className="text-xs text-gray-400 mb-1">Notes</p>
-                                      <p className="text-white">{workout.notes}</p>
-                                    </div>
-                                  )}
-
-                                  {workout.set_logs && workout.set_logs.length > 0 ? (
-                                    <div>
-                                      <p className="text-xs text-gray-400 mb-3">Set Details</p>
-                                      <div className="grid gap-2">
-                                        {workout.set_logs.map((set: any, idx: number) => (
-                                          <div key={set.id} className="flex items-center gap-4 p-3 bg-white/5 rounded-lg">
-                                            <span className="text-gray-400 font-mono text-sm">Set {set.set_number}</span>
-                                            <div className="flex gap-4 flex-1">
-                                              {set.actual_reps && (
-                                                <span className="text-white">
-                                                  <span className="text-gray-400 text-xs">Reps:</span> {set.actual_reps}
-                                                </span>
-                                              )}
-                                              {set.actual_load && (
-                                                <span className="text-white">
-                                                  <span className="text-gray-400 text-xs">Load:</span> {set.actual_load} lbs
-                                                </span>
-                                              )}
-                                              {set.actual_velocity && (
-                                                <span className="text-white">
-                                                  <span className="text-gray-400 text-xs">Velocity:</span> {set.actual_velocity} m/s
-                                                </span>
-                                              )}
-                                              {set.actual_rpe && (
-                                                <span className="text-white">
-                                                  <span className="text-gray-400 text-xs">RPE:</span> {set.actual_rpe}/10
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <p className="text-gray-400 text-sm">No set details logged</p>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </React.Fragment>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="lg:hidden p-4 space-y-4">
-              {workouts.length === 0 ? (
-                <p className="text-center text-gray-400 py-8">No workout history found</p>
-              ) : (
-                workouts.map((workout) => {
-                  const volume = calculateVolume(workout.set_logs || []);
-
-                  return (
-                    <div key={workout.id} className="bg-white/5 rounded-lg p-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-white font-medium">{workout.workouts?.name || 'Workout'}</p>
-                          <p className="text-sm text-gray-400">
-                            {new Date(workout.scheduled_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </p>
-                        </div>
-                        <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusBadge(workout.status)}`}>
-                          {workout.status.replace('_', ' ')}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-400 text-xs mb-1">Duration</p>
-                          <p className="text-white">{formatDuration(workout.completed_at, workout.scheduled_date)}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs mb-1">Volume</p>
-                          <p className="text-white">{volume.toLocaleString()} lbs</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400 text-xs mb-1">Sets</p>
-                          <p className="text-white">{workout.set_logs?.length || 0}</p>
-                        </div>
+            return (
+              <button
+                key={workout.id}
+                onClick={() => {
+                  if (workout.status === 'completed' || workout.status === 'in_progress') {
+                    router.push(`/dashboard/athletes/${athleteId}/workouts/${workout.id}/execute`);
+                  }
+                }}
+                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl p-4 lg:p-5 transition-all text-left group"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  {/* Left Side: Date and Workout Name */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="text-gray-400 text-sm font-medium">
+                        {new Date(workout.scheduled_date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
+                    <h3 className="text-white font-semibold text-lg group-hover:text-[#C9A857] transition-colors">
+                      {workout.workouts?.name || 'Unnamed Workout'}
+                    </h3>
+                    {workout.workouts?.description && (
+                      <p className="text-gray-400 text-sm mt-1 line-clamp-1">
+                        {workout.workouts.description}
+                      </p>
+                    )}
 
-          {/* Load More */}
-          {workouts.length >= 50 && (
-            <div className="text-center">
-              <button
-                onClick={() => alert('Load more - Coming soon')}
-                className="px-6 py-3 bg-white/5 text-white font-medium rounded-lg hover:bg-white/10 transition-colors"
-              >
-                Load More Workouts
+                    {/* Workout Metrics Row */}
+                    {setCount > 0 && (
+                      <div className="flex flex-wrap items-center gap-4 mt-3">
+                        {uniqueExercises > 0 && (
+                          <span className="text-sm text-gray-300">
+                            <span className="text-gray-500">Exercises:</span> <span className="font-semibold">{uniqueExercises}</span>
+                          </span>
+                        )}
+                        <span className="text-sm text-gray-300">
+                          <span className="text-gray-500">Sets:</span> <span className="font-semibold">{setCount}</span>
+                        </span>
+                        {totalVolume > 0 && (
+                          <span className="text-sm text-gray-300">
+                            <span className="text-gray-500">Volume:</span> <span className="font-semibold">{(totalVolume / 1000).toFixed(1)}k lbs</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right Side: Status */}
+                  <div className="flex flex-col items-end gap-2">
+                    <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${getStatusBadge(workout.status)}`}>
+                      {statusIcon} {workout.status.replace('_', ' ').toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Workout Notes */}
+                {workout.notes && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <p className="text-gray-400 text-sm line-clamp-2">{workout.notes}</p>
+                  </div>
+                )}
               </button>
-            </div>
-          )}
-        </div>
-      ) : (
-        // Calendar View
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-gray-400 text-lg mb-2">Calendar View Coming Soon</p>
-            <p className="text-gray-500 text-sm">Interactive calendar with workout dots will be added in the next update</p>
-          </div>
-        </div>
-      )}
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
-
-// Add React import for Fragment
-import React from 'react';

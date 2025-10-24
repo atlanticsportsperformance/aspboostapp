@@ -61,7 +61,6 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
   const [name, setName] = useState('');
   const [category, setCategory] = useState('strength_conditioning');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [customTag, setCustomTag] = useState('');
   const [description, setDescription] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [cues, setCues] = useState('');
@@ -159,14 +158,6 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
       setSelectedTags(selectedTags.filter(t => t !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
-    }
-  }
-
-  function addCustomTag() {
-    const newTag = customTag.trim().toLowerCase();
-    if (newTag && !selectedTags.includes(newTag)) {
-      setSelectedTags([...selectedTags, newTag]);
-      setCustomTag('');
     }
   }
 
@@ -355,47 +346,23 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
               ) : (
                 <div className="mb-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
                   <p className="text-yellow-300 text-sm text-center">
-                    No tags available yet. Create tags in <strong>Library Manager (⚙️)</strong> or add a custom tag below.
+                    No tags available yet. Create tags in <strong>Manage Tags</strong> section.
                   </p>
                 </div>
               )}
-
-              {/* Custom tag input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customTag}
-                  onChange={(e) => setCustomTag(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      addCustomTag();
-                    }
-                  }}
-                  placeholder="Or add a custom tag..."
-                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
-                />
-                <button
-                  type="button"
-                  onClick={addCustomTag}
-                  className="px-4 py-2 bg-[#C9A857]/20 text-[#C9A857] rounded-lg hover:bg-[#C9A857]/30 transition-all text-sm font-medium"
-                >
-                  Add
-                </button>
-              </div>
             </div>
 
-            {/* Description */}
+            {/* Exercise Notes */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Description
+                Exercise Notes
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857] resize-none"
                 rows={3}
-                placeholder="Brief description of the exercise..."
+                placeholder="Notes about how to perform the exercise..."
               />
             </div>
 

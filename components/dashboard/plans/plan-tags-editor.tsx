@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
-interface WorkoutTagsEditorProps {
+interface PlanTagsEditorProps {
   tags: string[];
   onUpdate: (tags: string[]) => void;
 }
 
-export default function WorkoutTagsEditor({ tags, onUpdate }: WorkoutTagsEditorProps) {
+export default function PlanTagsEditor({ tags, onUpdate }: PlanTagsEditorProps) {
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   useEffect(() => {
@@ -18,9 +18,9 @@ export default function WorkoutTagsEditor({ tags, onUpdate }: WorkoutTagsEditorP
   async function fetchAvailableTags() {
     const supabase = createClient();
 
-    // Fetch all tags from workout_tags table
-    const { data: workoutTags, error } = await supabase
-      .from('workout_tags')
+    // Fetch all tags from plan_tags table
+    const { data: planTags, error } = await supabase
+      .from('plan_tags')
       .select('name')
       .order('name');
 
@@ -29,7 +29,7 @@ export default function WorkoutTagsEditor({ tags, onUpdate }: WorkoutTagsEditorP
       return;
     }
 
-    setAvailableTags(workoutTags?.map(t => t.name) || []);
+    setAvailableTags(planTags?.map(t => t.name) || []);
   }
 
   const addTag = (tag: string) => {

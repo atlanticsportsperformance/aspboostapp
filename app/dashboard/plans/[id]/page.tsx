@@ -9,6 +9,8 @@ import AddRoutineToPlanDialog from '@/components/dashboard/plans/add-routine-to-
 import WorkoutDetailSlideover from '@/components/dashboard/plans/workout-detail-slideover';
 import { CreateWorkoutInPlanModal } from '@/components/dashboard/plans/create-workout-in-plan-modal';
 import { WorkoutBuilderModal } from '@/components/dashboard/plans/workout-builder-modal';
+import PlanTagsEditor from '@/components/dashboard/plans/plan-tags-editor';
+import { AssignPlanDialog } from '@/components/dashboard/plans/assign-plan-dialog';
 import { DraggableWorkoutCard } from '@/components/dashboard/plans/draggable-workout-card';
 import { DroppableDayCell } from '@/components/dashboard/plans/droppable-day-cell';
 import {
@@ -64,6 +66,7 @@ export default function PlanCalendarPage() {
   const [showCreateWorkout, setShowCreateWorkout] = useState<{ week: number; day: number } | null>(null);
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [activeWorkout, setActiveWorkout] = useState<ProgramDay | null>(null);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
 
   const dayNames = ['Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Day 7'];
 
@@ -154,6 +157,61 @@ export default function PlanCalendarPage() {
 
     if (initError) {
       console.error('Error initializing new week:', initError);
+    }
+
+    // Refresh data
+    await fetchPlan();
+    await fetchProgramDays();
+  }
+
+  async function handleDeleteWeek(weekNumber: number) {
+    if (!plan) return;
+
+    // Check if week has any workouts
+    const weekWorkouts = programDays.filter(pd => pd.week_number === weekNumber && pd.workout_id !== null);
+
+    if (weekWorkouts.length > 0) {
+      if (!confirm(`Week ${weekNumber} contains ${weekWorkouts.length} workout(s). Delete this week and all its workouts? This cannot be undone.`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`Delete Week ${weekNumber}? This cannot be undone.`)) {
+        return;
+      }
+    }
+
+    // Step 1: Delete all program_days for this week
+    const { error: deleteError } = await supabase
+      .from('program_days')
+      .delete()
+      .eq('plan_id', planId)
+      .eq('week_number', weekNumber);
+
+    if (deleteError) {
+      console.error('Error deleting week:', deleteError);
+      alert('Failed to delete week');
+      return;
+    }
+
+    // Step 2: Shift all subsequent weeks down by 1
+    const subsequentWeeks = programDays.filter(pd => pd.week_number > weekNumber);
+
+    for (const day of subsequentWeeks) {
+      await supabase
+        .from('program_days')
+        .update({ week_number: day.week_number - 1 })
+        .eq('id', day.id);
+    }
+
+    // Step 3: Update plan length
+    const newWeekCount = plan.program_length_weeks - 1;
+    const { error: planError } = await supabase
+      .from('training_plans')
+      .update({ program_length_weeks: newWeekCount })
+      .eq('id', planId);
+
+    if (planError) {
+      console.error('Error updating plan length:', planError);
     }
 
     // Refresh data
@@ -379,6 +437,13 @@ export default function PlanCalendarPage() {
             </Link>
             <div className="flex items-center gap-2 lg:gap-3">
               <button
+                onClick={() => setShowAssignDialog(true)}
+                className="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs lg:text-sm font-semibold transition-all"
+              >
+                <span className="hidden sm:inline">📋 Assign to Athletes</span>
+                <span className="sm:hidden">📋</span>
+              </button>
+              <button
                 onClick={() => setShowWorkoutLibrary({ week: 1, day: 1 })}
                 className="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs lg:text-sm font-medium transition-all"
               >
@@ -388,11 +453,45 @@ export default function PlanCalendarPage() {
             </div>
           </div>
 
-          {/* Plan Name */}
-          <h1 className="text-xl lg:text-2xl font-bold text-white mb-2">{plan.name}</h1>
-          {plan.description && (
-            <p className="text-neutral-400 text-xs lg:text-sm">{plan.description}</p>
-          )}
+          {/* Plan Name & Description */}
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={plan.name}
+              onChange={(e) => setPlan({ ...plan, name: e.target.value })}
+              onBlur={async () => {
+                await supabase
+                  .from('training_plans')
+                  .update({ name: plan.name })
+                  .eq('id', planId);
+              }}
+              className="text-xl lg:text-2xl font-bold text-white mb-2 bg-transparent border-b border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 outline-none transition-colors pb-1 w-full"
+              placeholder="Plan name..."
+            />
+            <textarea
+              value={plan.description || ''}
+              onChange={(e) => setPlan({ ...plan, description: e.target.value })}
+              onBlur={async () => {
+                await supabase
+                  .from('training_plans')
+                  .update({ description: plan.description })
+                  .eq('id', planId);
+              }}
+              className="text-neutral-400 text-xs lg:text-sm bg-transparent border border-neutral-700 hover:border-neutral-500 focus:border-neutral-400 outline-none transition-colors p-2 rounded w-full resize-none"
+              placeholder="Add plan description..."
+              rows={2}
+            />
+            <PlanTagsEditor
+              tags={plan.tags || []}
+              onUpdate={async (newTags) => {
+                setPlan({ ...plan, tags: newTags });
+                await supabase
+                  .from('training_plans')
+                  .update({ tags: newTags })
+                  .eq('id', planId);
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -417,13 +516,22 @@ export default function PlanCalendarPage() {
             return (
               <div key={weekNumber} className="space-y-1.5">
                 {/* Week Header */}
-                <div className="flex items-center gap-2 lg:gap-3 px-1 lg:px-2 py-1">
-                  <h2 className="text-xs lg:text-sm font-bold text-white">
-                    Week {weekNumber}
-                  </h2>
-                  <span className="text-[10px] lg:text-xs text-neutral-500">
-                    {weekWorkoutCount} {weekWorkoutCount === 1 ? 'workout' : 'workouts'}
-                  </span>
+                <div className="flex items-center justify-between gap-2 lg:gap-3 px-1 lg:px-2 py-1">
+                  <div className="flex items-center gap-2 lg:gap-3">
+                    <h2 className="text-xs lg:text-sm font-bold text-white">
+                      Week {weekNumber}
+                    </h2>
+                    <span className="text-[10px] lg:text-xs text-neutral-500">
+                      {weekWorkoutCount} {weekWorkoutCount === 1 ? 'workout' : 'workouts'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteWeek(weekNumber)}
+                    className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+                    title="Delete Week"
+                  >
+                    Delete Week
+                  </button>
                 </div>
 
                 {/* Week Grid - Horizontal scroll on mobile, full grid on desktop */}
@@ -570,6 +678,18 @@ export default function PlanCalendarPage() {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Assign Plan Dialog */}
+      {showAssignDialog && plan && (
+        <AssignPlanDialog
+          plan={{
+            id: plan.id,
+            name: plan.name,
+            program_length_weeks: plan.program_length_weeks
+          }}
+          onClose={() => setShowAssignDialog(false)}
+        />
+      )}
     </div>
     </DndContext>
   );
