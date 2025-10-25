@@ -502,14 +502,61 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
   }
 
   function initializeSets() {
-    // If we already have persisted inputs for this exercise, use them
-    if (persistedInputs && persistedInputs.length > 0) {
-      setSetInputs(persistedInputs);
-      return;
+    const initialSets = [];
+    const allMeasurements = exercise.exercises?.metric_schema?.measurements || [];
+
+    // Get measurements to work with based on enabled_measurements
+    let measurements = [];
+    let enabledMeasurementIds = new Set<string>();
+
+    if (exercise.enabled_measurements && exercise.enabled_measurements.length > 0) {
+      // If enabled_measurements is specified, use those IDs
+      enabledMeasurementIds = new Set(exercise.enabled_measurements);
+
+      // Create measurement objects for each enabled ID (matching rendering logic)
+      measurements = exercise.enabled_measurements.map((measurementId: string) => {
+        const existing = allMeasurements.find((m: any) => m.id === measurementId);
+        if (existing) {
+          return existing;
+        }
+        // Create basic measurement object if not in schema
+        return {
+          id: measurementId,
+          name: measurementId.charAt(0).toUpperCase() + measurementId.slice(1).replace(/_/g, ' '),
+          type: 'number',
+          unit: measurementId === 'weight' ? 'lbs' : (measurementId === 'reps' ? 'reps' : '')
+        };
+      });
+    } else {
+      // If no enabled_measurements, use all from schema
+      measurements = allMeasurements;
+      enabledMeasurementIds = new Set(allMeasurements.map((m: any) => m.id));
     }
 
-    const initialSets = [];
-    const measurements = exercise.exercises?.metric_schema?.measurements || [];
+    // If we have persisted inputs, clean them to remove disabled measurements
+    if (persistedInputs && persistedInputs.length > 0) {
+      const cleanedInputs = persistedInputs.map((setData: any) => {
+        const cleaned: any = {
+          notes: setData.notes || '',
+          isAMRAP: setData.isAMRAP || false,
+          intensityPercent: setData.intensityPercent || null,
+          intensityMetric: setData.intensityMetric || null,
+          setNotes: setData.setNotes || ''
+        };
+
+        // Only keep values for enabled measurements
+        Object.keys(setData).forEach((key) => {
+          if (enabledMeasurementIds.has(key) || key.startsWith('target')) {
+            cleaned[key] = setData[key];
+          }
+        });
+
+        return cleaned;
+      });
+
+      setSetInputs(cleanedInputs);
+      return;
+    }
 
     for (let i = 0; i < targetSets; i++) {
       const setNumber = i + 1;
@@ -525,7 +572,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
       };
 
       if (existingLog) {
-        // Load from existing log - populate all measurements dynamically
+        // Load from existing log - populate ONLY ENABLED measurements dynamically
         measurements.forEach((measurement: any) => {
           const metricId = measurement.id;
           // Map from exercise_logs columns to metric IDs
@@ -545,7 +592,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
         // Per-set configuration mode
         const setConfig = exercise.set_configurations[i];
 
-        // Populate all measurements from set_configurations
+        // Populate ONLY ENABLED measurements from set_configurations
         measurements.forEach((measurement: any) => {
           const metricId = measurement.id;
           const baseValue = setConfig?.metric_values?.[metricId] || 0;
@@ -578,7 +625,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
         const intensityPercent = exercise.intensity_targets?.[0]?.percent;
         const intensityMetric = exercise.intensity_targets?.[0]?.metric;
 
-        // Populate all measurements from metric_targets
+        // Populate ONLY ENABLED measurements from metric_targets
         measurements.forEach((measurement: any) => {
           const metricId = measurement.id;
           const baseValue = exercise.metric_targets?.[metricId] || 0;
@@ -953,40 +1000,69 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                     })()}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    {/* Dynamically render inputs based on exercise measurements */}
-                    {exercise.exercises?.metric_schema?.measurements?.map((measurement: any) => {
-                      const metricId = measurement.id;
-                      const metricName = measurement.name;
-                      const metricUnit = measurement.unit || '';
-                      const metricType = measurement.type || 'number';
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-2">
+                    {/* Dynamically render inputs based on ENABLED measurements only */}
+                    {(() => {
+                      const allMeasurements = exercise.exercises?.metric_schema?.measurements || [];
 
-                      // Special handling for reps (could be AMRAP)
-                      const label = (metricId === 'reps' && isAMRAP) ? 'Reps (AMRAP)' : metricName;
-                      const targetKey = `target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`;
-                      const targetValue = setData[targetKey];
+                      // Get measurements to display based on enabled_measurements
+                      let displayMeasurements = [];
 
-                      return (
-                        <div key={metricId}>
-                          <label className="block text-[10px] text-gray-400 mb-1 uppercase">
-                            {label} {metricUnit && `(${metricUnit})`}
-                          </label>
-                          <input
-                            type="number"
-                            value={setData[metricId] || ''}
-                            onChange={(e) => {
-                              const value = metricType === 'integer' || metricId === 'reps'
-                                ? parseInt(e.target.value) || 0
-                                : parseFloat(e.target.value) || 0;
-                              updateSetInput(setNumber, metricId, value);
-                            }}
-                            className="w-full text-center text-2xl font-bold bg-black/40 border border-white/20 rounded py-2 focus:outline-none focus:border-blue-500"
-                            step={metricType === 'integer' || metricId === 'reps' ? '1' : '0.1'}
-                            placeholder={targetValue?.toString() || '0'}
-                          />
-                        </div>
-                      );
-                    })}
+                      if (exercise.enabled_measurements && exercise.enabled_measurements.length > 0) {
+                        // If enabled_measurements is specified, use ONLY those
+                        // Create measurement objects for each enabled ID (even if not in schema)
+                        displayMeasurements = exercise.enabled_measurements.map((measurementId: string) => {
+                          // Try to find in schema first
+                          const existing = allMeasurements.find((m: any) => m.id === measurementId);
+                          if (existing) {
+                            return existing;
+                          }
+                          // If not in schema, create a basic measurement object
+                          return {
+                            id: measurementId,
+                            name: measurementId.charAt(0).toUpperCase() + measurementId.slice(1).replace(/_/g, ' '),
+                            type: 'number',
+                            unit: measurementId === 'weight' ? 'lbs' : (measurementId === 'reps' ? 'reps' : '')
+                          };
+                        });
+                      } else {
+                        // If no enabled_measurements specified, show all from schema
+                        displayMeasurements = allMeasurements;
+                      }
+
+                      return displayMeasurements.map((measurement: any) => {
+                        const metricId = measurement.id;
+                        const metricName = measurement.name;
+                        const metricUnit = measurement.unit || '';
+                        const metricType = measurement.type || 'number';
+
+                        // Special handling for reps (could be AMRAP)
+                        const label = (metricId === 'reps' && isAMRAP) ? 'Reps (AMRAP)' : metricName;
+                        const targetKey = `target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`;
+                        const targetValue = setData[targetKey];
+
+                        return (
+                          <div key={metricId}>
+                            <label className="block text-[10px] text-gray-400 mb-1 uppercase truncate" title={`${label} ${metricUnit ? `(${metricUnit})` : ''}`}>
+                              {label} {metricUnit && `(${metricUnit})`}
+                            </label>
+                            <input
+                              type="number"
+                              value={setData[metricId] || ''}
+                              onChange={(e) => {
+                                const value = metricType === 'integer' || metricId === 'reps'
+                                  ? parseInt(e.target.value) || 0
+                                  : parseFloat(e.target.value) || 0;
+                                updateSetInput(setNumber, metricId, value);
+                              }}
+                              className="w-full text-center text-2xl font-bold bg-black/40 border border-white/20 rounded py-2 focus:outline-none focus:border-blue-500"
+                              step={metricType === 'integer' || metricId === 'reps' ? '1' : '0.1'}
+                              placeholder={targetValue?.toString() || '0'}
+                            />
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
 
                   {/* Coach Set Notes - Read Only */}
