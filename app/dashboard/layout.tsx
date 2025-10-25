@@ -9,7 +9,7 @@ const navLinks = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
   { href: '/dashboard/staff', label: 'Staff', icon: '👥' },
-  { href: '/dashboard/teams', label: 'Groups', icon: '⚾' },
+  { href: '/dashboard/groups', label: 'Groups', icon: '👥' },
 ];
 
 const programmingLinks = [

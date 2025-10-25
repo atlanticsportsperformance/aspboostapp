@@ -118,6 +118,7 @@ export default function WorkoutBuilderPage() {
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
   const [showAddExercise, setShowAddExercise] = useState(false);
+  const [targetBlockForAdd, setTargetBlockForAdd] = useState<string | null>(null); // Track which block to add to
   const [showImportRoutine, setShowImportRoutine] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -263,6 +264,9 @@ export default function WorkoutBuilderPage() {
   ) {
     if (!workout) return;
 
+    console.log('🔵 handleAddExercise called');
+    console.log('🔵 targetBlockForAdd:', targetBlockForAdd);
+
     // If adding a new placeholder, add it to placeholder_definitions first
     if (isPlaceholder && placeholderName) {
       const newPlaceholderId = placeholderId || `ph_${Date.now()}`;
@@ -294,31 +298,50 @@ export default function WorkoutBuilderPage() {
       placeholderId = newPlaceholderId;
     }
 
-    const newRoutineOrder = workout.routines.length;
+    // If targetBlockForAdd is set, add to that block instead of creating a new routine
+    let routineToUse: any;
+    if (targetBlockForAdd) {
+      console.log('✅ targetBlockForAdd is set, looking for block:', targetBlockForAdd);
+      console.log('✅ Available routines:', workout.routines.map(r => ({ id: r.id, name: r.name })));
+      routineToUse = workout.routines.find(r => r.id === targetBlockForAdd);
+      if (!routineToUse) {
+        console.error('❌ Failed to find target block with id:', targetBlockForAdd);
+        alert('Failed to find target block');
+        return;
+      }
+      console.log('✅ Adding to existing block:', routineToUse.name, 'with id:', routineToUse.id);
+    } else {
+      console.log('⚠️ targetBlockForAdd is NOT set, creating new routine');
+      // Create a new 'straight' routine for standalone exercise
+      const newRoutineOrder = workout.routines.length;
+      const { data: newRoutine, error: routineError} = await supabase
+        .from('routines')
+        .insert({
+          workout_id: workoutId,
+          name: 'Exercise',
+          scheme: 'straight',
+          order_index: newRoutineOrder,
+          is_standalone: false,
+          plan_id: workout.plan_id || null,      // ✅ Inherit from workout
+          athlete_id: workout.athlete_id || null // ✅ Inherit from workout
+        })
+        .select()
+        .single();
 
-    const { data: newRoutine, error: routineError} = await supabase
-      .from('routines')
-      .insert({
-        workout_id: workoutId,
-        name: 'Exercise',
-        scheme: 'straight',
-        order_index: newRoutineOrder,
-        is_standalone: false,
-        plan_id: workout.plan_id || null,      // ✅ Inherit from workout
-        athlete_id: workout.athlete_id || null // ✅ Inherit from workout
-      })
-      .select()
-      .single();
+      if (routineError || !newRoutine) {
+        console.error('❌ Error creating routine:', routineError);
+        alert(`Failed: ${routineError?.message || 'Unknown error'}`);
+        return;
+      }
 
-    if (routineError || !newRoutine) {
-      console.error('❌ Error creating routine:', routineError);
-      alert(`Failed: ${routineError?.message || 'Unknown error'}`);
-      return;
+      routineToUse = newRoutine;
+      console.log('✅ Routine created');
+      console.log('✅ Inherited plan_id:', newRoutine.plan_id);
+      console.log('✅ Inherited athlete_id:', newRoutine.athlete_id);
     }
 
-    console.log('✅ Routine created');
-    console.log('✅ Inherited plan_id:', newRoutine.plan_id);
-    console.log('✅ Inherited athlete_id:', newRoutine.athlete_id);
+    // Determine order_index for the new exercise
+    const nextOrderIndex = routineToUse.routine_exercises?.length || 0;
 
     const exerciseData: {
       routine_id: string;
@@ -333,12 +356,12 @@ export default function WorkoutBuilderPage() {
       rest_seconds?: number;
       notes?: string;
     } = {
-      routine_id: newRoutine.id,
+      routine_id: routineToUse.id,
       exercise_id: isPlaceholder ? null : exerciseId,
       is_placeholder: isPlaceholder,
       placeholder_id: placeholderId || null,
       placeholder_name: isPlaceholder ? (placeholderName || null) : null,
-      order_index: 0
+      order_index: nextOrderIndex
     };
 
     // Add sets/reps/intensity if provided (for placeholders)
@@ -370,11 +393,12 @@ export default function WorkoutBuilderPage() {
     }
 
     setShowAddExercise(false);
+    setTargetBlockForAdd(null); // Clear target block after adding
     await fetchWorkout();
 
     // Auto-select the newly added exercise
     if (newExercise) {
-      setSelectedRoutineId(newRoutine.id);
+      setSelectedRoutineId(routineToUse.id);
       setSelectedExerciseId(newExercise.id);
     }
   }
@@ -382,7 +406,54 @@ export default function WorkoutBuilderPage() {
   async function handleAddMultipleExercises(exerciseIds: string[]) {
     if (!workout || exerciseIds.length === 0) return;
 
-    // Create routines and exercises for each selected exercise
+    console.log('🔵 handleAddMultipleExercises called with', exerciseIds.length, 'exercises');
+    console.log('🔵 targetBlockForAdd:', targetBlockForAdd);
+
+    // If targetBlockForAdd is set, add all exercises to that block
+    if (targetBlockForAdd) {
+      const targetRoutine = workout.routines.find(r => r.id === targetBlockForAdd);
+      if (!targetRoutine) {
+        alert('Failed to find target block');
+        return;
+      }
+
+      console.log('✅ Adding', exerciseIds.length, 'exercises to existing block:', targetRoutine.name);
+
+      const baseOrderIndex = targetRoutine.routine_exercises?.length || 0;
+      const exercisesToInsert = exerciseIds.map((exerciseId, index) => ({
+        routine_id: targetBlockForAdd,
+        exercise_id: exerciseId,
+        is_placeholder: false,
+        placeholder_id: null,
+        placeholder_name: null,
+        order_index: baseOrderIndex + index
+      }));
+
+      const { data: newExercises, error: exerciseError } = await supabase
+        .from('routine_exercises')
+        .insert(exercisesToInsert)
+        .select();
+
+      if (exerciseError) {
+        console.error('Error adding exercises:', exerciseError);
+        alert('Failed to add exercises');
+        return;
+      }
+
+      setShowAddExercise(false);
+      setTargetBlockForAdd(null);
+      await fetchWorkout();
+
+      // Auto-select the first newly added exercise
+      if (newExercises && newExercises.length > 0) {
+        setSelectedRoutineId(targetBlockForAdd);
+        setSelectedExerciseId(newExercises[0].id);
+      }
+      return;
+    }
+
+    // Otherwise, create a new routine for each exercise
+    console.log('⚠️ Creating new routines for each exercise');
     const routinesToCreate = exerciseIds.map((_, index) => ({
       workout_id: workoutId,
       name: 'Exercise',
@@ -437,12 +508,58 @@ export default function WorkoutBuilderPage() {
 
   async function handleAddMultiplePlaceholders(placeholderIds: string[]) {
     console.log('🔵 handleAddMultiplePlaceholders called with:', placeholderIds);
+    console.log('🔵 targetBlockForAdd:', targetBlockForAdd);
     if (!workout || placeholderIds.length === 0) {
       console.log('❌ No workout or empty placeholderIds');
       return;
     }
 
-    // Create routines for each selected placeholder
+    // If targetBlockForAdd is set, add all placeholders to that block
+    if (targetBlockForAdd) {
+      const targetRoutine = workout.routines.find(r => r.id === targetBlockForAdd);
+      if (!targetRoutine) {
+        alert('Failed to find target block');
+        return;
+      }
+
+      console.log('✅ Adding', placeholderIds.length, 'placeholders to existing block:', targetRoutine.name);
+
+      const baseOrderIndex = targetRoutine.routine_exercises?.length || 0;
+      const exercisesToInsert = placeholderIds.map((placeholderId, index) => ({
+        routine_id: targetBlockForAdd,
+        exercise_id: placeholderId,  // Placeholder exercises are real exercises
+        is_placeholder: false,        // Not using old placeholder system
+        placeholder_id: null,
+        placeholder_name: null,
+        order_index: baseOrderIndex + index,
+        sets: 3                       // Default 3 sets
+      }));
+
+      const { data: newExercises, error: exerciseError } = await supabase
+        .from('routine_exercises')
+        .insert(exercisesToInsert)
+        .select(`*, exercises (id, name, category, tags, description, metric_schema)`);
+
+      if (exerciseError) {
+        console.error('Error adding placeholders:', exerciseError);
+        alert('Failed to add placeholders');
+        return;
+      }
+
+      setShowAddExercise(false);
+      setTargetBlockForAdd(null);
+      await fetchWorkout();
+
+      // Auto-select the first newly added placeholder
+      if (newExercises && newExercises.length > 0) {
+        setSelectedRoutineId(targetBlockForAdd);
+        setSelectedExerciseId(newExercises[0].id);
+      }
+      return;
+    }
+
+    // Otherwise, create a new routine for each placeholder
+    console.log('⚠️ Creating new routines for each placeholder');
     const routinesToCreate = placeholderIds.map((_, index) => ({
       workout_id: workoutId,
       name: 'Exercise',
@@ -495,6 +612,13 @@ export default function WorkoutBuilderPage() {
       setSelectedRoutineId(newRoutines[0].id);
       setSelectedExerciseId(newExercises[0].id);
     }
+  }
+
+  function handleAddExerciseToBlock(routineId: string) {
+    console.log('🟢 handleAddExerciseToBlock called with routineId:', routineId);
+    setTargetBlockForAdd(routineId);
+    setShowAddExercise(true);
+    console.log('🟢 targetBlockForAdd set to:', routineId);
   }
 
   async function handleCreateBlock() {
@@ -563,6 +687,59 @@ export default function WorkoutBuilderPage() {
         .delete()
         .eq('id', currentRoutine.id);
     }
+
+    fetchWorkout();
+  }
+
+  async function handleMoveRoutine(routineId: string, direction: 'up' | 'down') {
+    if (!workout) return;
+
+    const sortedRoutines = [...workout.routines].sort((a, b) => a.order_index - b.order_index);
+    const currentIndex = sortedRoutines.findIndex(r => r.id === routineId);
+
+    if (currentIndex === -1) return;
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === sortedRoutines.length - 1) return;
+
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const currentRoutine = sortedRoutines[currentIndex];
+    const swapRoutine = sortedRoutines[swapIndex];
+
+    // Swap order_index values
+    await Promise.all([
+      supabase.from('routines').update({ order_index: swapRoutine.order_index }).eq('id', currentRoutine.id),
+      supabase.from('routines').update({ order_index: currentRoutine.order_index }).eq('id', swapRoutine.id)
+    ]);
+
+    fetchWorkout();
+  }
+
+  async function handleMoveExercise(exerciseId: string, direction: 'up' | 'down') {
+    if (!workout) return;
+
+    // Find the routine containing this exercise
+    const routine = workout.routines.find(r =>
+      r.routine_exercises.some(e => e.id === exerciseId)
+    );
+
+    if (!routine) return;
+
+    const sortedExercises = [...routine.routine_exercises].sort((a, b) => a.order_index - b.order_index);
+    const currentIndex = sortedExercises.findIndex(e => e.id === exerciseId);
+
+    if (currentIndex === -1) return;
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === sortedExercises.length - 1) return;
+
+    const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const currentExercise = sortedExercises[currentIndex];
+    const swapExercise = sortedExercises[swapIndex];
+
+    // Swap order_index values
+    await Promise.all([
+      supabase.from('routine_exercises').update({ order_index: swapExercise.order_index }).eq('id', currentExercise.id),
+      supabase.from('routine_exercises').update({ order_index: currentExercise.order_index }).eq('id', swapExercise.id)
+    ]);
 
     fetchWorkout();
   }
@@ -848,9 +1025,12 @@ export default function WorkoutBuilderPage() {
             onDeleteExercise={handleDeleteExercise}
             onDeleteRoutine={handleDeleteRoutineFromSidebar}
             onAddExercise={() => setShowAddExercise(true)}
+            onAddExerciseToBlock={handleAddExerciseToBlock}
             onImportRoutine={() => setShowImportRoutine(true)}
             onCreateBlock={handleCreateBlock}
             onLinkExerciseToBlock={handleLinkExerciseToBlock}
+            onMoveExercise={handleMoveExercise}
+            onMoveRoutine={handleMoveRoutine}
           />
         </div>
 
@@ -894,12 +1074,18 @@ export default function WorkoutBuilderPage() {
                     setShowAddExercise(true);
                     setShowMobileSidebar(false);
                   }}
+                  onAddExerciseToBlock={(routineId) => {
+                    handleAddExerciseToBlock(routineId);
+                    setShowMobileSidebar(false);
+                  }}
                   onImportRoutine={() => {
                     setShowImportRoutine(true);
                     setShowMobileSidebar(false);
                   }}
                   onCreateBlock={handleCreateBlock}
                   onLinkExerciseToBlock={handleLinkExerciseToBlock}
+                  onMoveExercise={handleMoveExercise}
+                  onMoveRoutine={handleMoveRoutine}
                 />
               </div>
             </div>
@@ -975,7 +1161,10 @@ export default function WorkoutBuilderPage() {
           onAdd={handleAddExercise}
           onAddMultiple={handleAddMultipleExercises}
           onAddMultiplePlaceholders={handleAddMultiplePlaceholders}
-          onClose={() => setShowAddExercise(false)}
+          onClose={() => {
+            setShowAddExercise(false);
+            setTargetBlockForAdd(null);
+          }}
         />
       )}
 

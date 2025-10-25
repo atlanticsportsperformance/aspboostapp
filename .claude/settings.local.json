@@ -27,7 +27,12 @@
       "Bash(node scripts/move-measurements-dropdown.js:*)",
       "Bash(node scripts/add-auto-populate-sets.js:*)",
       "Read(//c/Users/Owner/Downloads/**)",
-      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\add_tags_to_plans.sql\")"
+      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\add_tags_to_plans.sql\")",
+      "Bash(node -e:*)",
+      "Bash(node scripts/run-exercise-tags-migration.js:*)",
+      "Bash(node scripts/check-exercise-measurements.js:*)",
+      "Bash(node scripts/fix-placeholder-measurements.js:*)",
+      "Bash(node scripts/check-groups-tables.js:*)"
     ],
     "deny": [],
     "ask": []

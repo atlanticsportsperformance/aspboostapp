@@ -546,6 +546,8 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
   async function handleUpdateExercise(updates: Partial<RoutineExercise>) {
     if (!selectedExerciseId || !workout) return;
 
+    console.log('💾 [Plan Workout Builder] Updating exercise:', selectedExerciseId, updates);
+
     // Optimistically update local state first for immediate UI feedback
     setWorkout({
       ...workout,
@@ -558,10 +560,16 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
     });
 
     // Then update database in background
-    await supabase
+    const { error } = await supabase
       .from('routine_exercises')
       .update(updates)
       .eq('id', selectedExerciseId);
+
+    if (error) {
+      console.error('❌ [Plan Workout Builder] Error updating exercise:', error);
+    } else {
+      console.log('✅ [Plan Workout Builder] Exercise updated successfully');
+    }
   }
 
   async function handleSwapExercise(newExerciseId: string, newExercise: any, replaceMode: 'single' | 'future' | 'all') {
@@ -780,6 +788,12 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
     const tempId = selectedExerciseId;
     setSelectedExerciseId(null);
     setTimeout(() => setSelectedExerciseId(tempId), 0);
+
+    // Notify parent component to refresh (e.g., athlete calendar)
+    if (onSaved) {
+      console.log('=== CALLING onSaved() TO REFRESH PARENT ===');
+      onSaved();
+    }
   }
 
   async function handleDeleteExercise(exerciseId: string) {

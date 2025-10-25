@@ -41,7 +41,14 @@ interface WorkoutInstance {
   scheduled_date: string;
   status: string;
   completed_at: string | null;
+  source_type: string | null;
+  source_id: string | null;
   workouts: Workout | null;
+  group?: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
 }
 
 // Helper function to format category names
@@ -144,10 +151,40 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
 
     if (error) {
       console.error('Error fetching workout instances:', error);
-    } else {
-      setWorkoutInstances(data || []);
+      setLoading(false);
+      return;
     }
 
+    // Enrich with group data for group-sourced workouts
+    const enrichedData = await Promise.all(
+      (data || []).map(async (instance) => {
+        if (instance.source_type === 'group' && instance.source_id) {
+          // Fetch group info from group_workout_schedules
+          const { data: scheduleData } = await supabase
+            .from('group_workout_schedules')
+            .select(`
+              group_id,
+              groups:group_id (
+                id,
+                name,
+                color
+              )
+            `)
+            .eq('id', instance.source_id)
+            .single();
+
+          if (scheduleData?.groups) {
+            return {
+              ...instance,
+              group: scheduleData.groups
+            };
+          }
+        }
+        return instance;
+      })
+    );
+
+    setWorkoutInstances(enrichedData);
     setLoading(false);
   }
 
@@ -521,149 +558,163 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
         )}
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
+        <div className="mb-4 md:mb-6">
+          {/* Month Navigation - Mobile Optimized */}
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={goToPreviousMonth}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 md:p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
                 title="Previous month"
               >
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 md:w-5 md:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
 
-              <h2 className="text-2xl lg:text-3xl font-bold text-white">
-                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-white">
+                <span className="md:hidden">{currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                <span className="hidden md:inline">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
               </h2>
 
               <button
                 onClick={goToNextMonth}
-                className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                className="p-2 md:p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
                 title="Next month"
               >
-                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-5 h-5 md:w-5 md:h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
 
               <button
                 onClick={goToToday}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-all font-medium"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium touch-manipulation"
               >
                 Today
               </button>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Mobile: Workout count */}
+            <div className="md:hidden text-xs text-neutral-400">
+              {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''}
+            </div>
+          </div>
+
+          {/* Action Buttons - Mobile Optimized */}
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <button
+              onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
+              className={`px-3 py-1.5 md:px-4 md:py-2 border text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation ${
+                showWorkoutDetails
+                  ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
+              }`}
+              title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
+            >
+              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <span className="hidden sm:inline">{showWorkoutDetails ? 'Hide' : 'Show'}</span>
+              <span className="sm:hidden">{showWorkoutDetails ? '−' : '+'}</span>
+            </button>
+            <button
+              onClick={() => setShowImportPlan(true)}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
+            >
+              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Import Plan</span>
+              <span className="sm:hidden">Import</span>
+            </button>
+            {!isFullscreenView && (
               <button
-                onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
-                className={`px-4 py-2 border text-sm rounded-lg transition-all font-medium flex items-center gap-2 ${
-                  showWorkoutDetails
-                    ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-                    : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
-                }`}
-                title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
+                onClick={() => setIsFullscreen(true)}
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
+                title="Expand Calendar"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
-                <span className="hidden sm:inline">{showWorkoutDetails ? 'Hide' : 'Show'} Details</span>
+                <span className="hidden md:inline">Expand</span>
               </button>
-              <button
-                onClick={() => setShowImportPlan(true)}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-sm rounded-lg transition-all font-medium flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="hidden sm:inline">Import Plan</span>
-                <span className="sm:hidden">Import</span>
-              </button>
-              {!isFullscreenView && (
-                <button
-                  onClick={() => setIsFullscreen(true)}
-                  className="px-4 py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-sm rounded-lg transition-all font-medium flex items-center gap-2"
-                  title="Expand Calendar"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                  <span className="hidden sm:inline">Expand</span>
-                </button>
-              )}
-              <div className="text-sm text-neutral-400">
-                {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
-              </div>
+            )}
+            {/* Desktop: Workout count */}
+            <div className="hidden md:block text-sm text-neutral-400 ml-auto">
+              {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
             </div>
           </div>
         </div>
 
         {/* Calendar Grid */}
         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl overflow-hidden">
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 border-b border-neutral-800 bg-neutral-900">
-            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
-              <div key={day} className="text-center py-3 text-sm font-semibold text-neutral-400 border-r border-neutral-800 last:border-r-0">
-                <span className="hidden lg:inline">{day}</span>
-                <span className="lg:hidden">{day.slice(0, 3)}</span>
+          {/* Mobile: Horizontal Scroll Wrapper */}
+          <div className="md:overflow-visible overflow-x-auto -mx-3 md:mx-0 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+            <div className="min-w-[640px] md:min-w-0">
+              {/* Day Headers */}
+              <div className="grid grid-cols-7 border-b border-neutral-800 bg-neutral-900">
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                  <div key={day} className="text-center py-2 md:py-3 text-xs md:text-sm font-semibold text-neutral-400 border-r border-neutral-800 last:border-r-0">
+                    {day.slice(0, 3)}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Calendar Days */}
-          <div className="grid grid-cols-7">
-            {days.map((day, idx) => {
-              if (day === null) {
-                return (
-                  <div
-                    key={`empty-${idx}`}
-                    className="min-h-[120px] bg-neutral-900/30 border-r border-b border-neutral-800"
-                  />
-                );
-              }
+              {/* Calendar Days */}
+              <div className="grid grid-cols-7">
+                {days.map((day, idx) => {
+                  if (day === null) {
+                    return (
+                      <div
+                        key={`empty-${idx}`}
+                        className="min-h-[100px] md:min-h-[120px] bg-neutral-900/30 border-r border-b border-neutral-800"
+                      />
+                    );
+                  }
 
-              const dateStr = new Date(year, month, day).toISOString().split('T')[0];
-              const dayWorkouts = getWorkoutsForDate(dateStr);
-              const isToday = dateStr === new Date().toISOString().split('T')[0];
+                  const dateStr = new Date(year, month, day).toISOString().split('T')[0];
+                  const dayWorkouts = getWorkoutsForDate(dateStr);
+                  const isToday = dateStr === new Date().toISOString().split('T')[0];
 
-              return (
-                <CalendarDayCell
-                  key={dateStr}
-                  date={dateStr}
-                  day={day}
-                  workouts={dayWorkouts}
-                  isToday={isToday}
-                  showDetails={showWorkoutDetails}
-                  onWorkoutClick={(instance) => setSelectedInstance(instance)}
-                  onWorkoutDelete={(id) => handleDeleteWorkout(id)}
-                  onWorkoutCopy={(id, name) => handleCopyWorkout(id, name)}
-                  onWorkoutPaste={() => handlePasteWorkout(dateStr)}
-                  hasCopiedWorkout={copiedWorkout !== null}
-                  onCreateWorkout={() => setShowCreateWorkout({ date: dateStr })}
-                  onAddWorkout={() => setShowWorkoutLibrary({ date: dateStr })}
-                  onAddRoutine={() => setShowRoutineLibrary({ date: dateStr })}
-                />
-              );
-            })}
+                  return (
+                    <CalendarDayCell
+                      key={dateStr}
+                      date={dateStr}
+                      day={day}
+                      workouts={dayWorkouts}
+                      isToday={isToday}
+                      showDetails={showWorkoutDetails}
+                      onWorkoutClick={(instance) => setSelectedInstance(instance)}
+                      onWorkoutDelete={(id) => handleDeleteWorkout(id)}
+                      onWorkoutCopy={(id, name) => handleCopyWorkout(id, name)}
+                      onWorkoutPaste={() => handlePasteWorkout(dateStr)}
+                      hasCopiedWorkout={copiedWorkout !== null}
+                      onCreateWorkout={() => setShowCreateWorkout({ date: dateStr })}
+                      onAddWorkout={() => setShowWorkoutLibrary({ date: dateStr })}
+                      onAddRoutine={() => setShowRoutineLibrary({ date: dateStr })}
+                    />
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Legend */}
-        <div className="mt-6 flex flex-wrap items-center gap-4 text-sm">
-          <span className="text-neutral-400">Workout Categories:</span>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded"></div>
+        <div className="mt-4 md:mt-6 flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm">
+          <span className="text-neutral-400 hidden md:inline">Workout Categories:</span>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-red-500 rounded"></div>
             <span className="text-neutral-300">Hitting</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-blue-500 rounded"></div>
             <span className="text-neutral-300">Throwing</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded"></div>
-            <span className="text-neutral-300">Strength & Conditioning</span>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded"></div>
+            <span className="text-neutral-300">S&C</span>
           </div>
         </div>
 
@@ -849,15 +900,15 @@ function CalendarDayCell({
     <div
       ref={setNodeRef}
       className={`
-        min-h-[120px] border-r border-b border-neutral-800 p-2 relative transition-all
+        min-h-[100px] md:min-h-[120px] border-r border-b border-neutral-800 p-1.5 md:p-2 relative transition-all
         ${isOver ? 'bg-blue-500/20 ring-2 ring-blue-500 ring-inset' : 'bg-neutral-900/30 hover:bg-neutral-800/30'}
         ${isToday ? 'ring-2 ring-blue-400 ring-inset' : ''}
       `}
     >
       {/* Day Number and Add Button */}
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start justify-between mb-1.5 md:mb-2">
         <div className={`
-          text-sm font-semibold w-7 h-7 flex items-center justify-center rounded-full
+          text-xs md:text-sm font-semibold w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full
           ${isToday ? 'bg-blue-500 text-white' : 'text-neutral-400'}
         `}>
           {day}
@@ -867,10 +918,10 @@ function CalendarDayCell({
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="p-1 hover:bg-white/10 rounded text-neutral-500 hover:text-white transition-colors"
+            className="p-1 md:p-1 hover:bg-white/10 rounded text-neutral-500 hover:text-white transition-colors touch-manipulation"
             title="Add workout or routine"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -936,8 +987,8 @@ function CalendarDayCell({
       </div>
 
       {/* Workouts */}
-      <div className="space-y-1">
-        {workouts.slice(0, 3).map((wi) => (
+      <div className="space-y-1 md:space-y-1">
+        {workouts.slice(0, showDetails ? 3 : 3).map((wi) => (
           wi.workouts && (
             <DraggableWorkoutChip
               key={wi.id}
@@ -950,7 +1001,7 @@ function CalendarDayCell({
           )
         ))}
         {workouts.length > 3 && (
-          <div className="text-xs text-neutral-500 text-center py-1">
+          <div className="text-[10px] md:text-xs text-neutral-500 text-center py-0.5 md:py-1">
             +{workouts.length - 3} more
           </div>
         )}
@@ -1002,7 +1053,7 @@ function DraggableWorkoutChip({
       {...listeners}
       {...attributes}
       className={`
-        group relative px-2 py-1.5 rounded border cursor-move transition-all text-xs
+        group relative px-1.5 md:px-2 py-1 md:py-1.5 rounded border cursor-move transition-all text-xs touch-manipulation
         ${getCategoryColor(workoutInstance.workouts?.category || null)}
         ${isDragging ? 'opacity-50 scale-95' : 'hover:scale-102 hover:shadow-lg'}
       `}
@@ -1018,7 +1069,7 @@ function DraggableWorkoutChip({
           {/* Workout Name and Status */}
           <div className="font-medium flex items-start gap-1">
             {getStatusIndicator(workoutInstance.status) && (
-              <span className={`flex-shrink-0 leading-tight
+              <span className={`flex-shrink-0 leading-tight text-xs
                 ${workoutInstance.status === 'completed' ? 'text-green-400' : ''}
                 ${workoutInstance.status === 'in_progress' ? 'text-yellow-400' : ''}
                 ${workoutInstance.status === 'skipped' ? 'text-red-400' : ''}
@@ -1026,10 +1077,24 @@ function DraggableWorkoutChip({
                 {getStatusIndicator(workoutInstance.status)}
               </span>
             )}
-            <span className="break-words leading-tight flex-1 min-w-0">
+            <span className="break-words leading-tight flex-1 min-w-0 line-clamp-2">
               {workoutInstance.workouts?.name || 'Workout'}
             </span>
           </div>
+
+          {/* Group Indicator */}
+          {workoutInstance.group && (
+            <div
+              className="mt-1 text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 font-medium"
+              style={{ backgroundColor: workoutInstance.group.color + '30', color: workoutInstance.group.color }}
+              title={`From group: ${workoutInstance.group.name}`}
+            >
+              <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+              </svg>
+              {workoutInstance.group.name}
+            </div>
+          )}
 
           {/* Duration (always shown) */}
           {workoutInstance.workouts?.estimated_duration_minutes && (

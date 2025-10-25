@@ -122,12 +122,12 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                 const isRepsWithAMRAP = measurement.id === 'reps' && set.is_amrap;
 
                 return (
-                  <div key={measurement.id} className="flex flex-col">
-                    <label className="block text-xs text-gray-400 mb-1">
-                      {measurement.name} {measurement.unit && `(${measurement.unit})`}
+                  <div key={measurement.id} className="flex items-center gap-1.5">
+                    <label className="text-xs text-gray-300 whitespace-nowrap">
+                      {measurement.name}
                     </label>
                     {isRepsWithAMRAP ? (
-                      <div className="w-20 px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                      <div className="w-14 px-2 py-1 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-xs font-semibold flex items-center justify-center">
                         AMRAP
                       </div>
                     ) : (
@@ -141,7 +141,7 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                                        e.target.value || null;
                           updateMetricValue(index, measurement.id, value);
                         }}
-                        className="w-20 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
                         placeholder="0"
                       />
                     )}
@@ -154,7 +154,7 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                 <div className="flex items-center gap-1.5">
                   <input
                     type="checkbox"
-                    checked={set.intensity_targets && set.intensity_targets.length > 0}
+                    checked={!!(set.intensity_targets && set.intensity_targets.length > 0)}
                     onChange={(e) => {
                       if (e.target.checked) {
                         // Enable intensity for all performance measurements

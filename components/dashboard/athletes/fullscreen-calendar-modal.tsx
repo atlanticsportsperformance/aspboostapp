@@ -107,14 +107,17 @@ export function FullscreenCalendarModal({ athleteId, onClose, calendarComponent 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col">
       {/* Header */}
-      <div className="bg-[#0A0A0A] border-b border-white/10 p-4 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Calendar & Recommendations</h2>
+      <div className="bg-[#0A0A0A] border-b border-white/10 p-3 md:p-4 flex items-center justify-between">
+        <h2 className="text-lg md:text-2xl font-bold text-white">
+          <span className="hidden md:inline">Calendar & Recommendations</span>
+          <span className="md:hidden">Calendar</span>
+        </h2>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+          className="p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
           title="Exit fullscreen"
         >
-          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -122,9 +125,9 @@ export function FullscreenCalendarModal({ athleteId, onClose, calendarComponent 
 
       {/* Main Content: Sidebar + Calendar */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Recommendations */}
-        <div className="w-80 bg-[#0A0A0A] border-r border-white/10 overflow-y-auto p-4">
-          <h3 className="text-lg font-bold text-white mb-4">Recommended Content</h3>
+        {/* Left Sidebar - Recommendations - Hidden on mobile */}
+        <div className="hidden md:block md:w-72 lg:w-80 bg-[#0A0A0A] border-r border-white/10 overflow-y-auto p-4">
+          <h3 className="text-base lg:text-lg font-bold text-white mb-4">Recommended Content</h3>
 
           {loading ? (
             <div className="text-center py-12">

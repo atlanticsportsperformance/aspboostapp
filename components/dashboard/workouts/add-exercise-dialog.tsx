@@ -137,6 +137,10 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
   }
 
   async function handleAddDirect() {
+    console.log('🟣 handleAddDirect called');
+    console.log('🟣 selectedExercises:', selectedExercises);
+    console.log('🟣 selectedExercise:', selectedExercise);
+
     if (selectedExercises.length === 0 && !selectedExercise) {
       alert('Please select at least one exercise');
       return;
@@ -144,20 +148,24 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
 
     // Multi-select mode
     if (selectedExercises.length > 0) {
+      console.log('🟣 Using multi-select mode');
       if (onAddMultiple) {
+        console.log('🟣 Calling onAddMultiple with', selectedExercises.length, 'exercises');
         onAddMultiple(selectedExercises);
       } else {
+        console.log('🟣 Calling onAdd for each exercise');
         // Fallback: add exercises one by one
         selectedExercises.forEach(id => onAdd(id, false));
       }
-      onClose();
+      // Don't call onClose() - let the parent handler close the dialog after adding completes
       return;
     }
 
     // Single select mode (backwards compatibility)
     if (selectedExercise) {
+      console.log('🟣 Using single-select mode, calling onAdd');
       onAdd(selectedExercise, false);
-      onClose();
+      // Don't call onClose() - let the parent handler close the dialog after adding completes
     }
   }
 
@@ -175,14 +183,14 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
         // Fallback: add placeholders one by one
         selectedPlaceholders.forEach(id => onAdd(id, true));
       }
-      onClose();
+      // Don't call onClose() - let the parent handler close the dialog after adding completes
       return;
     }
 
     // Single select mode (backwards compatibility with dropdown)
     if (selectedPlaceholder) {
       onAdd(selectedPlaceholder, true);
-      onClose();
+      // Don't call onClose() - let the parent handler close the dialog after adding completes
     }
   }
 

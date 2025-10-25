@@ -37,6 +37,7 @@ interface Athlete {
   currentPlan?: Plan | null;
   lastWorkoutDate?: string | null;
   completionRate?: number;
+  upcomingWorkoutsCount?: number;
 }
 
 export default function AthletesPage() {
@@ -127,6 +128,23 @@ export default function AthletesPage() {
 
       console.log('5. Workouts (last 30 days) query:', { count: workoutsData?.length, data: workoutsData, error: workoutsError });
 
+      // Step 5b: Get next 7 days workout instances for upcoming workouts count
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayStr = today.toISOString().split('T')[0];
+      const sevenDaysLater = new Date(today);
+      sevenDaysLater.setDate(today.getDate() + 7);
+      const sevenDaysLaterStr = sevenDaysLater.toISOString().split('T')[0];
+
+      const { data: upcomingWorkoutsData } = await supabase
+        .from('workout_instances')
+        .select('athlete_id, scheduled_date')
+        .in('athlete_id', athleteIds)
+        .gte('scheduled_date', todayStr)
+        .lte('scheduled_date', sevenDaysLaterStr);
+
+      console.log('5b. Upcoming workouts (next 7 days):', { count: upcomingWorkoutsData?.length, data: upcomingWorkoutsData });
+
       // Step 6: Get this week's workouts for "active this week" stat
       const now = new Date();
       const startOfWeek = new Date(now);
@@ -169,13 +187,17 @@ export default function AthletesPage() {
           .reverse();
         const lastWorkoutDate = completedDates[0] || null;
 
+        // Count upcoming workouts (next 7 days)
+        const upcomingWorkoutsCount = (upcomingWorkoutsData || []).filter((w: any) => w.athlete_id === athlete.id).length;
+
         return {
           ...athlete,
           profile,
           teams: athleteTeams,
           currentPlan,
           completionRate,
-          lastWorkoutDate
+          lastWorkoutDate,
+          upcomingWorkoutsCount
         };
       });
 
@@ -321,53 +343,53 @@ export default function AthletesPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-400 text-sm font-medium">Total Athletes</p>
-            <div className="h-10 w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
+          <div className="flex items-center justify-between mb-1 lg:mb-2">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium">Total Athletes</p>
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.total}</p>
+          <p className="text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-400 text-sm font-medium">Active This Week</p>
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
+          <div className="flex items-center justify-between mb-1 lg:mb-2">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium">Active This Week</p>
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.activeThisWeek}</p>
+          <p className="text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-400 text-sm font-medium">Avg Completion</p>
-            <div className="h-10 w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <svg className="h-5 w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
+          <div className="flex items-center justify-between mb-1 lg:mb-2">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium">Avg Completion</p>
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.avgCompletionRate}%</p>
+          <p className="text-xl lg:text-3xl font-bold text-white">{stats.avgCompletionRate}%</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-gray-400 text-sm font-medium">Athletes At Risk</p>
-            <div className="h-10 w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <svg className="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
+          <div className="flex items-center justify-between mb-1 lg:mb-2">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium">Athletes At Risk</p>
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.atRisk}</p>
+          <p className="text-xl lg:text-3xl font-bold text-white">{stats.atRisk}</p>
         </div>
       </div>
 
@@ -480,7 +502,7 @@ export default function AthletesPage() {
       </div>
 
       {/* Athletes Cards (Mobile) */}
-      <div className="lg:hidden space-y-4">
+      <div className="lg:hidden space-y-3">
         {filteredAthletes.length === 0 ? (
           <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
             <p className="text-gray-400">No athletes found matching your filters</p>
@@ -490,61 +512,49 @@ export default function AthletesPage() {
             <div
               key={athlete.id}
               onClick={() => router.push(`/dashboard/athletes/${athlete.id}`)}
-              className="bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 transition-colors cursor-pointer"
+              className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
             >
-              <div className="flex items-start gap-4 mb-4">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold flex-shrink-0">
+              <div className="flex items-start gap-3 mb-2">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
                   {athlete.profile?.first_name?.[0] || 'A'}
                   {athlete.profile?.last_name?.[0] || ''}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-semibold text-lg">
-                    {athlete.profile
-                      ? `${athlete.profile.first_name || ''} ${athlete.profile.last_name || ''}`.trim()
-                      : `Athlete #${athlete.id.slice(0, 8)}`
-                    }
-                  </h3>
-                  {athlete.grad_year && (
-                    <p className="text-sm text-gray-400">Class of {athlete.grad_year}</p>
-                  )}
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-white font-semibold text-base">
+                      {athlete.profile
+                        ? `${athlete.profile.first_name || ''} ${athlete.profile.last_name || ''}`.trim()
+                        : `Athlete #${athlete.id.slice(0, 8)}`
+                      }
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(athlete.completionRate)}`}>
+                      {athlete.completionRate}%
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    {athlete.grad_year && (
+                      <p className="text-xs text-gray-400">Class of {athlete.grad_year}</p>
+                    )}
+                    {athlete.teams && athlete.teams.length > 0 && (
+                      <>
+                        {athlete.grad_year && <span className="text-gray-600">•</span>}
+                        <span className="text-xs text-gray-400">{athlete.teams[0].name}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${getStatusColor(athlete.completionRate)}`}>
-                  {athlete.completionRate}%
-                </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
-                  <p className="text-gray-400 mb-1">Position</p>
-                  {athlete.primary_position ? (
-                    <span className="px-2 py-1 bg-blue-500/10 text-blue-400 rounded text-xs font-medium">
-                      {athlete.primary_position}
-                    </span>
-                  ) : (
-                    <span className="text-gray-500">-</span>
-                  )}
+                  <p className="text-gray-400 mb-0.5">Next 7 Days</p>
+                  <span className="text-white font-medium">
+                    {athlete.upcomingWorkoutsCount || 0} workout{athlete.upcomingWorkoutsCount !== 1 ? 's' : ''}
+                  </span>
                 </div>
 
                 <div>
-                  <p className="text-gray-400 mb-1">Team</p>
-                  {athlete.teams && athlete.teams.length > 0 ? (
-                    <span className="text-white">{athlete.teams[0].name}</span>
-                  ) : (
-                    <span className="text-gray-500">No team</span>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-gray-400 mb-1">Plan</p>
-                  {athlete.currentPlan ? (
-                    <span className="text-white">{athlete.currentPlan.name}</span>
-                  ) : (
-                    <span className="text-gray-500">No active plan</span>
-                  )}
-                </div>
-
-                <div>
-                  <p className="text-gray-400 mb-1">Last Workout</p>
+                  <p className="text-gray-400 mb-0.5">Last Workout</p>
                   <p className="text-white">{formatDate(athlete.lastWorkoutDate)}</p>
                 </div>
               </div>

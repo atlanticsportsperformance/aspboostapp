@@ -42,9 +42,8 @@ const LOCKED_MEASUREMENTS = [
 ];
 
 export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasurementsManagerProps) {
-  const [activeTab, setActiveTab] = useState<'measurements' | 'tags' | 'placeholders'>('measurements');
+  const [activeTab, setActiveTab] = useState<'measurements' | 'placeholders'>('measurements');
   const [measurements, setMeasurements] = useState<CustomMeasurementUsage[]>([]);
-  const [tags, setTags] = useState<TagUsage[]>([]);
   const [placeholders, setPlaceholders] = useState<Placeholder[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -76,7 +75,6 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
   useEffect(() => {
     fetchCustomMeasurements();
-    fetchTags();
     fetchPlaceholders();
   }, []);
 
@@ -274,8 +272,27 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
     const supabase = createClient();
 
-    // Placeholders start with empty metric_schema
-    // Measurements are added per-instance via enabled_measurements
+    // Get ALL available measurements from existing exercises
+    const { data: allExercises } = await supabase
+      .from('exercises')
+      .select('metric_schema')
+      .eq('is_active', true);
+
+    // Extract unique measurements
+    const measurementsMap = new Map<string, any>();
+    allExercises?.forEach((ex) => {
+      const measurements = ex.metric_schema?.measurements || [];
+      measurements.forEach((m: any) => {
+        if (!measurementsMap.has(m.id)) {
+          measurementsMap.set(m.id, { ...m, enabled: true });
+        }
+      });
+    });
+
+    const allMeasurements = Array.from(measurementsMap.values());
+    console.log('Creating placeholder with', allMeasurements.length, 'measurements');
+
+    // Placeholders start with ALL available measurements
     const { data, error } = await supabase
       .from('exercises')
       .insert({
@@ -285,7 +302,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
         is_placeholder: true,
         is_active: true,
         tags: ['placeholder'],
-        metric_schema: { measurements: [] }
+        metric_schema: { measurements: allMeasurements }
       })
       .select()
       .single();
@@ -710,16 +727,6 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
             Custom Measurements
           </button>
           <button
-            onClick={() => setActiveTab('tags')}
-            className={`px-4 py-3 font-medium transition-all border-b-2 ${
-              activeTab === 'tags'
-                ? 'text-[#C9A857] border-[#C9A857]'
-                : 'text-gray-400 border-transparent hover:text-white'
-            }`}
-          >
-            Tags
-          </button>
-          <button
             onClick={() => setActiveTab('placeholders')}
             className={`px-4 py-3 font-medium transition-all border-b-2 ${
               activeTab === 'placeholders'
@@ -951,128 +958,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                 </div>
               )}
             </div>
-              ) : activeTab === 'tags' ? (
-            // Tags Tab
-            <div className="space-y-4">
-              {/* Create New Tag Button/Form */}
-              {showCreateTag ? (
-                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
-                  <h4 className="text-white font-semibold mb-3">Create New Custom Tag</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Tag Name *</label>
-                      <input
-                        type="text"
-                        value={createTagName}
-                        onChange={(e) => setCreateTagName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                        placeholder="e.g., plyometrics, agility, speed"
-                      />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        onClick={createCustomTag}
-                        className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-all text-sm font-medium"
-                      >
-                        Create
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowCreateTag(false);
-                          setCreateTagName('');
-                        }}
-                        className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-all text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
               ) : (
-                <button
-                  onClick={() => setShowCreateTag(true)}
-                  className="w-full px-4 py-3 bg-[#C9A857]/20 border border-[#C9A857]/50 text-[#C9A857] rounded-lg hover:bg-[#C9A857]/30 transition-all font-medium"
-                >
-                  + Create New Custom Tag
-                </button>
-              )}
-
-              {/* List of tags */}
-              <div className="space-y-3">
-              {tags.map((tag) => (
-                <div
-                  key={tag.name}
-                  className="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition-all"
-                >
-                  {editingTag === tag.name ? (
-                    // Edit Mode
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Tag Name</label>
-                        <input
-                          type="text"
-                          value={editTagName}
-                          onChange={(e) => setEditTagName(e.target.value)}
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                          placeholder="Enter tag name..."
-                        />
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        Used by {tag.count} exercise{tag.count !== 1 ? 's' : ''}
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        <button
-                          onClick={() => saveEditTag(tag.name)}
-                          className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-all text-sm font-medium"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingTag(null)}
-                          className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-all text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // View Mode
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-white font-semibold text-lg capitalize">{tag.name}</h3>
-                        </div>
-                        <div className="text-sm text-gray-400">
-                          {tag.count} exercise{tag.count !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => startEditTag(tag.name)}
-                          className="p-2 hover:bg-blue-500/20 rounded-lg transition-all group"
-                          title="Edit tag"
-                        >
-                          <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTag(tag.name)}
-                          className="p-2 hover:bg-red-500/20 rounded-lg transition-all group"
-                          title="Delete tag"
-                        >
-                          <svg className="w-5 h-5 text-red-400 group-hover:text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-              </div>
-            </div>
-              ) : activeTab === 'placeholders' ? (
             // Placeholders Tab
             <div className="space-y-4">
               {/* Create New Placeholder Button/Form */}
@@ -1259,7 +1145,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                 )}
               </div>
             </div>
-              ) : null}
+              )}
             </>
           )}
         </div>

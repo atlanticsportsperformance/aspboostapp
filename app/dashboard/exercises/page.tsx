@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { CreateExerciseDialog } from '@/components/dashboard/exercises/create-exercise-dialog';
 import { CustomMeasurementsManager } from '@/components/dashboard/exercises/custom-measurements-manager';
 import { BulkEditDialog } from '@/components/dashboard/exercises/bulk-edit-dialog';
+import { ExerciseTagsManager } from '@/components/dashboard/exercises/exercise-tags-manager';
 
 interface Exercise {
   id: string;
@@ -39,6 +40,7 @@ export default function ExercisesPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [managerOpen, setManagerOpen] = useState(false);
+  const [tagsManagerOpen, setTagsManagerOpen] = useState(false);
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
@@ -231,7 +233,13 @@ export default function ExercisesPage() {
                 onClick={() => setManagerOpen(true)}
                 className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 text-white text-sm font-semibold rounded-lg hover:bg-white/20 transition-all whitespace-nowrap"
               >
-                ⚙️ Manage
+                ⚙️ Measurements
+              </button>
+              <button
+                onClick={() => setTagsManagerOpen(true)}
+                className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 text-white text-sm font-semibold rounded-lg hover:bg-white/20 transition-all whitespace-nowrap"
+              >
+                🏷️ Tags
               </button>
               <button
                 onClick={handleCreateNew}
@@ -379,7 +387,6 @@ export default function ExercisesPage() {
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Name</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Category</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Tags</th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Measurements</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Created</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400"></th>
             </tr>
@@ -431,19 +438,6 @@ export default function ExercisesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {exercise.metric_schema?.measurements?.length > 0 ? (
-                        exercise.metric_schema.measurements.map((m: any) => (
-                          <span key={m.id} className="px-2 py-1 bg-white/5 text-gray-300 rounded text-xs border border-white/10">
-                            {m.name}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="text-sm text-gray-400">No metrics</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-400">
                       {new Date(exercise.created_at).toLocaleDateString('en-US', {
                         month: 'short',
@@ -477,7 +471,7 @@ export default function ExercisesPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center">
+                <td colSpan={6} className="px-6 py-12 text-center">
                   <div className="text-gray-400">
                     {searchQuery ? 'No exercises found matching your search' : 'No exercises yet. Create your first exercise!'}
                   </div>
@@ -523,6 +517,12 @@ export default function ExercisesPage() {
         <CustomMeasurementsManager
           onClose={() => setManagerOpen(false)}
           onUpdate={() => fetchExercises()}
+        />
+      )}
+
+      {tagsManagerOpen && (
+        <ExerciseTagsManager
+          onClose={() => setTagsManagerOpen(false)}
         />
       )}
     </div>

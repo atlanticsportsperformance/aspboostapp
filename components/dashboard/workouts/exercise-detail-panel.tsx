@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import SetBySetEditor from './set-by-set-editor';
 import { SwapExerciseDialog } from './swap-exercise-dialog';
 
@@ -84,18 +85,69 @@ export default function ExerciseDetailPanel({
   const [enablePerSet, setEnablePerSet] = useState(false);
   const [showMeasurementsDropdown, setShowMeasurementsDropdown] = useState(false);
   const [showSwapDialog, setShowSwapDialog] = useState(false);
+  const [allAvailableMeasurements, setAllAvailableMeasurements] = useState<Measurement[]>([]);
+
+  // Fetch ALL available measurements from the database on mount
+  useEffect(() => {
+    async function fetchAllMeasurements() {
+      const supabase = createClient();
+
+      const { data: exercises } = await supabase
+        .from('exercises')
+        .select('metric_schema')
+        .eq('is_active', true);
+
+      if (!exercises) return;
+
+      // Extract unique measurements
+      const measurementsMap = new Map<string, Measurement>();
+      exercises.forEach((ex) => {
+        const measurements = ex.metric_schema?.measurements || [];
+        measurements.forEach((m: any) => {
+          if (!measurementsMap.has(m.id)) {
+            measurementsMap.set(m.id, {
+              id: m.id,
+              name: m.name,
+              type: m.type || 'decimal',
+              unit: m.unit || '',
+              enabled: true
+            });
+          }
+        });
+      });
+
+      const allMeasurements = Array.from(measurementsMap.values());
+      console.log('[Exercise Detail Panel] Loaded', allMeasurements.length, 'available measurements');
+      setAllAvailableMeasurements(allMeasurements);
+    }
+
+    fetchAllMeasurements();
+  }, []);
 
   if (!exercise || !routine) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white/5 backdrop-blur-sm">
         <div className="text-center">
-          <div className="text-6xl mb-4">👈</div>
+          <div className="text-6xl mb-4 hidden md:block">👈</div>
           <h3 className="text-xl font-semibold text-white mb-2">Select an exercise</h3>
-          <p className="text-gray-400">Choose an exercise from the sidebar to configure it</p>
+          <p className="text-gray-400 md:hidden">Tap the button below to add an exercise</p>
+          <p className="text-gray-400 hidden md:block">Choose an exercise from the sidebar to configure it</p>
         </div>
       </div>
     );
   }
+
+  // Debug logging
+  console.log('📊 [Exercise Detail Panel] Exercise data:', {
+    name: exercise.exercises?.name,
+    isPlaceholder: exercise.exercises?.tags?.includes('placeholder'),
+    enabled_measurements: exercise.enabled_measurements,
+    enabled_measurements_length: exercise.enabled_measurements?.length,
+    metric_targets: exercise.metric_targets,
+    intensity_targets: exercise.intensity_targets,
+    set_configurations: exercise.set_configurations,
+    set_configurations_length: exercise.set_configurations?.length
+  });
 
   // Generate initial sets from simple mode values (metric_targets) when opening per-set editor
   const getInitialSetsFromSimpleMode = () => {
@@ -168,29 +220,11 @@ export default function ExerciseDetailPanel({
     return exercise.intensity_targets?.find(t => t.metric === metricId)?.percent || 75;
   };
 
-  // Get all available measurements (from exercise schema or standard set)
+  // Get all available measurements (from database - ALL measurements system-wide)
   const getAllAvailableMeasurements = () => {
-    const exerciseMeasurements = exercise.exercises?.metric_schema?.measurements || [];
-
-    // Standard measurements that can always be added
-    const standardMeasurements = [
-      { id: 'reps', name: 'Reps', type: 'integer', unit: '', enabled: true },
-      { id: 'weight', name: 'Weight', type: 'decimal', unit: 'lbs', enabled: true },
-      { id: 'time', name: 'Time', type: 'integer', unit: 'sec', enabled: true },
-      { id: 'distance', name: 'Distance', type: 'decimal', unit: 'ft', enabled: true },
-      { id: 'exit_velo', name: 'Exit Velo', type: 'decimal', unit: 'mph', enabled: true },
-      { id: 'peak_velo', name: 'Peak Velo', type: 'decimal', unit: 'mph', enabled: true }
-    ];
-
-    // Merge exercise measurements with standard ones (no duplicates)
-    const allMeasurements = [...exerciseMeasurements];
-    standardMeasurements.forEach(std => {
-      if (!allMeasurements.find(m => m.id === std.id)) {
-        allMeasurements.push(std);
-      }
-    });
-
-    return allMeasurements;
+    // Return ALL measurements from the database, not just exercise-specific ones
+    // This allows users to add any measurement to any exercise
+    return allAvailableMeasurements;
   };
 
   // Get measurements that should be displayed (based on enabled_measurements)
@@ -202,14 +236,28 @@ export default function ExerciseDetailPanel({
       return allMeasurements.filter(m => exercise.enabled_measurements!.includes(m.id));
     }
 
-    // If null/empty, show all from exercise schema (backwards compatible)
+    // If null/empty, check if placeholder
+    const isPlaceholder = exercise.exercises?.tags?.includes('placeholder') || false;
+    if (isPlaceholder) {
+      // Placeholders with no selections show NOTHING
+      return [];
+    }
+
+    // Regular exercises default to their schema measurements
     return exercise.exercises?.metric_schema?.measurements || [];
   };
 
   // Check if a measurement is enabled
   const isMeasurementEnabled = (measurementId: string) => {
-    if (!exercise.enabled_measurements) {
-      // If null, check if it's in the exercise's default schema
+    if (!exercise.enabled_measurements || exercise.enabled_measurements.length === 0) {
+      // If null or empty, check if it's in the exercise's default schema
+      // BUT only for regular exercises, NOT placeholders
+      const isPlaceholder = exercise.exercises?.tags?.includes('placeholder') || false;
+      if (isPlaceholder) {
+        // Placeholders start with NOTHING selected
+        return false;
+      }
+      // Regular exercises default to their schema measurements
       return exercise.exercises?.metric_schema?.measurements?.some(m => m.id === measurementId) || false;
     }
     return exercise.enabled_measurements.includes(measurementId);
@@ -217,7 +265,24 @@ export default function ExerciseDetailPanel({
 
   // Toggle a measurement on/off
   const toggleMeasurement = (measurementId: string) => {
-    const current = exercise.enabled_measurements || [];
+    console.log('🔘 [Exercise Detail Panel] toggleMeasurement called for:', measurementId);
+
+    // Initialize enabled_measurements based on exercise defaults if null
+    let current: string[];
+    if (!exercise.enabled_measurements) {
+      const isPlaceholder = exercise.exercises?.tags?.includes('placeholder') || false;
+      if (isPlaceholder) {
+        // Placeholders start with NOTHING selected
+        current = [];
+      } else {
+        // Regular exercises start with their schema measurements
+        current = exercise.exercises?.metric_schema?.measurements?.map(m => m.id) || [];
+      }
+    } else {
+      current = exercise.enabled_measurements;
+    }
+
+    console.log('🔘 Current enabled_measurements:', current);
 
     if (current.includes(measurementId)) {
       // Remove measurement from enabled list
@@ -233,14 +298,18 @@ export default function ExerciseDetailPanel({
         updatedIntensityTargets = null;
       }
 
-      onUpdate({
-        enabled_measurements: updated.length > 0 ? updated : null,
+      const updateObj = {
+        enabled_measurements: updated, // Keep as empty array, don't set to null
         metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null,
         intensity_targets: updatedIntensityTargets
-      });
+      };
+      console.log('🔘 REMOVING - Calling onUpdate with:', updateObj);
+      onUpdate(updateObj);
     } else {
       // Add measurement to enabled list
-      onUpdate({ enabled_measurements: [...current, measurementId] });
+      const updateObj = { enabled_measurements: [...current, measurementId] };
+      console.log('🔘 ADDING - Calling onUpdate with:', updateObj);
+      onUpdate(updateObj);
     }
   };
 
@@ -363,10 +432,14 @@ export default function ExerciseDetailPanel({
 
                   {showMeasurementsDropdown && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
-                      {getAllAvailableMeasurements().map((measurement) => {
+                      {(() => {
+                        const measurements = getAllAvailableMeasurements();
+                        console.log('📋 [Dropdown] Rendering', measurements.length, 'measurements in dropdown');
+                        return measurements;
+                      })().map((measurement) => {
                         // Show trophy for performance metrics only (not reps)
                         const isMaxTracked = measurement.type !== 'reps' && (
-                          ['weight', 'distance', 'peak_velo', 'exit_velo', 'time'].includes(measurement.id) ||
+                          ['weight', 'distance', 'time'].includes(measurement.id) ||
                           measurement.name.toLowerCase().includes('velo') ||
                           measurement.name.toLowerCase().includes('max') ||
                           measurement.name.toLowerCase().includes('time') ||
@@ -447,8 +520,8 @@ export default function ExerciseDetailPanel({
               </div>
             ) : (
             <>
-
-              <div className="flex flex-wrap gap-4">
+              {/* Sets and Common Measurements */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                 {/* Sets */}
                 <div className="flex flex-col">
                   <label className="block text-xs text-gray-400 mb-1">Sets</label>
@@ -456,23 +529,23 @@ export default function ExerciseDetailPanel({
                     type="number"
                     value={exercise.sets || ''}
                     onChange={(e) => onUpdate({ sets: e.target.value ? parseInt(e.target.value) : null })}
-                    className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="3"
                   />
                 </div>
 
-                {/* Dynamic Metrics */}
+                {/* Dynamic Metrics in a clean grid */}
                 {getDisplayMeasurements().map((measurement) => {
                   // Show AMRAP text for reps when is_amrap is true
                   const isRepsWithAMRAP = measurement.id === 'reps' && exercise.is_amrap;
 
                   return (
                     <div key={measurement.id} className="flex flex-col">
-                      <label className="block text-xs text-gray-400 mb-1">
-                        {measurement.name} {measurement.unit && `(${measurement.unit})`}
+                      <label className="block text-xs text-gray-400 mb-1 truncate" title={measurement.name}>
+                        {measurement.name}
                       </label>
                       {isRepsWithAMRAP ? (
-                        <div className="w-20 px-2 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-sm font-semibold flex items-center justify-center">
+                        <div className="w-full px-2 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-xs font-semibold flex items-center justify-center">
                           AMRAP
                         </div>
                       ) : (
@@ -489,59 +562,59 @@ export default function ExerciseDetailPanel({
                               updateMetricValue(measurement.id, e.target.value || null);
                             }
                           }}
-                          className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
+                          className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
+                          placeholder="0"
                         />
                       )}
                     </div>
                   );
                 })}
 
-              {/* Intensity % - Single checkbox for all performance measurements */}
-              {getDisplayMeasurements().some((m) => m.type !== 'reps') && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={exercise.intensity_targets && exercise.intensity_targets.length > 0}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        // Enable intensity for all performance measurements
-                        const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
-                        const targets = performanceMeasurements.map(m => ({
-                          id: Date.now().toString() + m.id,
-                          metric: m.id,
-                          metric_label: `Max ${m.name}`,
-                          percent: 75
-                        }));
-                        onUpdate({ intensity_targets: targets });
-                      } else {
-                        // Disable intensity
-                        onUpdate({ intensity_targets: null });
-                      }
-                    }}
-                    className="w-4 h-4 rounded"
-                  />
-                  <label className="text-xs text-gray-400 whitespace-nowrap">
-                    Intensity %
-                  </label>
-                  {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
-                    <input
-                      type="number"
-                      value={exercise.intensity_targets[0]?.percent || 75}
-                      onChange={(e) => {
-                        const newPercent = e.target.value ? parseInt(e.target.value) : 75;
-                        // Update all intensity targets to same percent
-                        const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
-                        onUpdate({ intensity_targets: updatedTargets });
-                      }}
-                      className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="75"
-                      min="0"
-                      max="200"
-                    />
-                  )}
-                </div>
-              )}
+                {/* Intensity % - Single checkbox for all performance measurements */}
+                {getDisplayMeasurements().some((m) => m.type !== 'reps') && (
+                  <div className="flex flex-col">
+                    <label className="block text-xs text-gray-400 mb-1">Intensity %</label>
+                    <div className="flex items-center gap-2 h-[38px]">
+                      <input
+                        type="checkbox"
+                        checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            // Enable intensity for all performance measurements
+                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
+                            const targets = performanceMeasurements.map(m => ({
+                              id: Date.now().toString() + m.id,
+                              metric: m.id,
+                              metric_label: `Max ${m.name}`,
+                              percent: 75
+                            }));
+                            onUpdate({ intensity_targets: targets });
+                          } else {
+                            // Disable intensity
+                            onUpdate({ intensity_targets: null });
+                          }
+                        }}
+                        className="w-4 h-4 rounded"
+                      />
+                      {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
+                        <input
+                          type="number"
+                          value={exercise.intensity_targets[0]?.percent || 75}
+                          onChange={(e) => {
+                            const newPercent = e.target.value ? parseInt(e.target.value) : 75;
+                            // Update all intensity targets to same percent
+                            const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
+                            onUpdate({ intensity_targets: updatedTargets });
+                          }}
+                          className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="75"
+                          min="0"
+                          max="200"
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Rest & Tempo - Second Row */}
@@ -645,12 +718,6 @@ export default function ExerciseDetailPanel({
             <textarea
               value={exercise.notes || ''}
               onChange={(e) => onUpdate({ notes: e.target.value })}
-              onBlur={() => {
-                // Force save on blur to ensure data is persisted
-                if (exercise.notes) {
-                  onUpdate({ notes: exercise.notes });
-                }
-              }}
               rows={4}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="Add workout-specific notes or instructions for this exercise..."

@@ -28,27 +28,8 @@ interface CreateExerciseDialogProps {
   onSuccess: () => void;
 }
 
-// Pre-defined measurement options
-const COMMON_MEASUREMENTS = [
-  { id: 'reps', name: 'Reps', type: 'integer' as const, unit: 'reps' },
-  { id: 'weight', name: 'Weight', type: 'decimal' as const, unit: 'lbs' },
-  { id: 'time', name: 'Time', type: 'integer' as const, unit: 'seconds' },
-  { id: 'distance', name: 'Distance', type: 'decimal' as const, unit: 'feet' },
-  { id: 'rpe', name: 'RPE', type: 'integer' as const, unit: '' },
-];
-
-const VELOCITY_MEASUREMENTS = [
-  { id: 'exit_velo', name: 'Exit Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-  { id: 'peak_velo', name: 'Peak Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-];
-
-const BALL_MEASUREMENTS = [
-  { id: 'gray_ball_velo', name: 'Gray Ball (100g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-  { id: 'yellow_ball_velo', name: 'Yellow Ball (150g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-  { id: 'red_ball_velo', name: 'Red Ball (225g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-  { id: 'blue_ball_velo', name: 'Blue Ball (450g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-  { id: 'green_ball_velo', name: 'Green Ball (1000g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
-];
+// NOTE: All measurements are now fetched from the database via the Library Manager
+// No hardcoded measurements - this ensures consistency across the app
 
 const CATEGORIES = [
   { value: 'strength_conditioning', label: 'Strength + Conditioning' },
@@ -80,7 +61,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
 
       const { data: exercises } = await supabase
         .from('exercises')
-        .select('metric_schema, tags')
+        .select('metric_schema')
         .eq('is_active', true);
 
       if (!exercises) return;
@@ -107,22 +88,36 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
       const allMeasurements = Array.from(measurementsMap.values());
       console.log('[Exercise Creator] Found measurements:', allMeasurements);
       setLibraryCustomMeasurements(allMeasurements);
-
-      // Extract ALL unique tags from the database
-      const tagsSet = new Set<string>();
-      exercises.forEach((ex) => {
-        ex.tags?.forEach((tag: string) => {
-          tagsSet.add(tag);
-        });
-      });
-
-      const allTags = Array.from(tagsSet).sort();
-      console.log('[Exercise Creator] Found tags:', allTags);
-      setAvailableTags(allTags);
     }
 
     fetchLibraryMeasurements();
   }, []);
+
+  // Fetch tags filtered by category (re-fetch when category changes)
+  useEffect(() => {
+    async function fetchCategoryTags() {
+      const supabase = createClient();
+
+      console.log(`[Exercise Creator] Fetching tags for category: ${category}`);
+
+      const { data: tags } = await supabase
+        .from('exercise_tags')
+        .select('name')
+        .eq('category', category)
+        .order('name');
+
+      if (tags) {
+        const tagNames = tags.map(t => t.name);
+        console.log(`[Exercise Creator] Found ${tagNames.length} tags:`, tagNames);
+        setAvailableTags(tagNames);
+      } else {
+        console.log('[Exercise Creator] No tags found');
+        setAvailableTags([]);
+      }
+    }
+
+    fetchCategoryTags();
+  }, [category]); // Re-fetch when category changes
 
   // Load exercise data if editing
   useEffect(() => {

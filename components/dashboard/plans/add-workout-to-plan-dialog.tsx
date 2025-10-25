@@ -199,7 +199,10 @@ export default function AddWorkoutToPlanDialog({
             notes: ex.notes,
             metric_targets: ex.metric_targets,
             intensity_targets: ex.intensity_targets,
-            set_configurations: ex.set_configurations
+            set_configurations: ex.set_configurations,
+            enabled_measurements: ex.enabled_measurements,
+            tracked_max_metrics: ex.tracked_max_metrics,
+            is_amrap: ex.is_amrap
           }));
 
           await supabase
