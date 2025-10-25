@@ -19,6 +19,7 @@ export default function WorkoutExecutionPage() {
   const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [timer, setTimer] = useState(0);
   const [timerActive, setTimerActive] = useState(false);
+  const [showFabMenu, setShowFabMenu] = useState(false); // For expanding FAB menu
   // Shared athlete maxes state for all exercises in this workout
   const [sharedAthleteMaxes, setSharedAthleteMaxes] = useState<Record<string, Record<string, number>>>({});
   // Persistent input state for all exercises (keyed by exercise ID)
@@ -206,105 +207,85 @@ export default function WorkoutExecutionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] text-white">
-      {/* Header */}
-      <div className="sticky top-0 bg-[#0A0A0A]/95 backdrop-blur-sm border-b border-white/10 p-3 z-10">
-        <div className="max-w-4xl mx-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-4">
-              <Link
-                href={`/dashboard/athletes/${athleteId}`}
-                className="text-gray-400 hover:text-white transition-colors flex items-center gap-1"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+    <div className="min-h-screen bg-[#0A0A0A] text-white pb-4">
+      {/* Immersive Header - Ultra Compact for Mobile */}
+      <div className="sticky top-0 bg-gradient-to-b from-[#0A0A0A] via-[#0A0A0A]/98 to-[#0A0A0A]/95 backdrop-blur-lg z-20">
+        <div className="px-3 py-2 md:px-4 md:py-3">
+          {/* Single compact row - Exit, Title, Timer */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <Link
+              href={`/dashboard/athletes/${athleteId}`}
+              className="flex-shrink-0 w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-all group"
+              title="Exit workout"
+            >
+              <svg className="w-3.5 h-3.5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </Link>
+
+            <div className="flex-1 min-w-0 text-center">
+              <h1 className="text-sm md:text-base font-bold leading-tight truncate">{workout.name}</h1>
+              <p className="text-[10px] text-gray-500">{instance.scheduled_date}</p>
+            </div>
+
+            {instance.status === 'in_progress' && (
+              <div className="flex-shrink-0 flex items-center gap-1.5 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded-full px-2.5 py-1">
+                <svg className="w-3 h-3 text-[#C9A857]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm">Back</span>
-              </Link>
-              <div>
-                <h1 className="text-lg font-bold">{workout.name}</h1>
-                <p className="text-xs text-gray-400">{instance.scheduled_date}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {instance.status === 'in_progress' && (
-                <div className="text-base font-mono text-[#C9A857]">
+                <span className="text-sm font-mono font-bold text-[#C9A857] tabular-nums">
                   {Math.floor(timer/60)}:{(timer%60).toString().padStart(2,'0')}
-                </div>
-              )}
-
-              {instance.status === 'not_started' && (
-                <button
-                  onClick={startWorkout}
-                  className="px-4 py-1.5 bg-green-500 text-black rounded-lg font-semibold text-sm hover:bg-green-400 transition-colors"
-                >
-                  Start Workout
-                </button>
-              )}
-
-              {instance.status === 'in_progress' && (
-                <>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to restart this workout? All logged sets and timer will be reset.')) {
-                        await supabase
-                          .from('exercise_logs')
-                          .delete()
-                          .eq('workout_instance_id', instanceId);
-
-                        // Reset timer by updating started_at to now
-                        await supabase
-                          .from('workout_instances')
-                          .update({ started_at: new Date().toISOString() })
-                          .eq('id', instanceId);
-
-                        setTimer(0);
-                        fetchData();
-                      }
-                    }}
-                    className="px-4 py-1.5 bg-red-500/80 text-white rounded-lg font-semibold text-sm hover:bg-red-500 transition-colors"
-                  >
-                    Restart
-                  </button>
-                  <button
-                    onClick={completeWorkout}
-                    className="px-4 py-1.5 bg-blue-500 text-white rounded-lg font-semibold text-sm hover:bg-blue-400 transition-colors"
-                  >
-                    Complete Workout
-                  </button>
-                </>
-              )}
-            </div>
+                </span>
+              </div>
+            )}
           </div>
 
+          {/* Ultra-thin Progress Bar */}
           {instance.status === 'in_progress' && allExercises.length > 0 && (
-            <div>
-              <div className="flex justify-between text-xs text-gray-400 mb-1">
-                <span>Progress: {completed} / {allExercises.length} exercises</span>
-              </div>
-              <div className="w-full bg-white/10 rounded-full h-1.5">
+            <div className="flex items-center gap-2">
+              <div className="flex-1 bg-white/5 rounded-full h-1 overflow-hidden">
                 <div
-                  className="bg-green-500 h-full rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-[#C9A857] to-green-500 h-full rounded-full transition-all duration-500 ease-out"
                   style={{width: `${allExercises.length > 0 ? (completed/allExercises.length)*100 : 0}%`}}
                 />
               </div>
+              <span className="text-[10px] font-semibold text-[#C9A857] tabular-nums whitespace-nowrap">
+                {completed}/{allExercises.length}
+              </span>
             </div>
           )}
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto p-3">
+      <div className="px-4 py-3">
         {instance.status === 'not_started' && (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-bold mb-4">Ready to start?</h2>
-            <button
-              onClick={startWorkout}
-              className="px-8 py-3 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-400 transition-colors"
-            >
-              Start Workout
-            </button>
+          <div className="text-center py-16 px-4">
+            <div className="max-w-md mx-auto">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-full flex items-center justify-center border border-green-500/30">
+                <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold mb-3">Ready to go?</h2>
+              <p className="text-gray-400 mb-8">Press start when you're ready to begin your workout session.</p>
+              {/* Preview exercise count */}
+              <div className="flex items-center justify-center gap-6 text-sm text-gray-400 mb-8">
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <span>{allExercises.length} exercises</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  </svg>
+                  <span>{routines.length} {routines.length === 1 ? 'block' : 'blocks'}</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -397,6 +378,95 @@ export default function WorkoutExecutionPage() {
           </div>
         )}
       </div>
+
+      {/* Floating Action Button (FAB) - Mobile optimized */}
+      {instance.status === 'in_progress' && (
+        <>
+          {/* Backdrop when menu is open */}
+          {showFabMenu && (
+            <div
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
+              onClick={() => setShowFabMenu(false)}
+            />
+          )}
+
+          {/* FAB Menu */}
+          <div className="fixed bottom-6 right-4 z-50 flex flex-col items-end gap-3">
+            {/* Expanded menu options */}
+            {showFabMenu && (
+              <div className="flex flex-col gap-2 items-end animate-in slide-in-from-bottom-2 fade-in duration-200">
+                <button
+                  onClick={async () => {
+                    setShowFabMenu(false);
+                    if (confirm('Are you sure you want to restart this workout? All logged sets and timer will be reset.')) {
+                      await supabase
+                        .from('exercise_logs')
+                        .delete()
+                        .eq('workout_instance_id', instanceId);
+
+                      await supabase
+                        .from('workout_instances')
+                        .update({ started_at: new Date().toISOString() })
+                        .eq('id', instanceId);
+
+                      setTimer(0);
+                      fetchData();
+                    }
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded-full font-medium text-sm transition-all shadow-lg backdrop-blur-xl"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Restart Workout
+                </button>
+                <button
+                  onClick={() => {
+                    setShowFabMenu(false);
+                    completeWorkout();
+                  }}
+                  className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-full font-bold text-sm transition-all shadow-lg shadow-blue-500/30"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Complete Workout
+                </button>
+              </div>
+            )}
+
+            {/* Main FAB button */}
+            <button
+              onClick={() => setShowFabMenu(!showFabMenu)}
+              className={`w-14 h-14 rounded-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 text-white font-bold shadow-2xl shadow-green-500/40 transition-all flex items-center justify-center ${
+                showFabMenu ? 'rotate-45' : ''
+              }`}
+            >
+              {showFabMenu ? (
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Start Button - Centered */}
+      {instance.status === 'not_started' && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/98 to-transparent backdrop-blur-lg p-4 pb-6 safe-area-inset-bottom z-30">
+          <button
+            onClick={startWorkout}
+            className="w-full max-w-md mx-auto block py-4 px-8 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 active:scale-95 text-black rounded-xl font-bold text-lg transition-all shadow-lg shadow-green-500/30"
+          >
+            Start Workout
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -415,11 +485,17 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
   const [setInputs, setSetInputs] = useState<Array<any>>([]);
   const [saving, setSaving] = useState(false);
 
-  // Get display info
+  // Get display info - only show metrics that are enabled
   const firstSet = hasPerSetConfig ? exercise.set_configurations[0] : null;
-  const displayReps = firstSet?.metric_values?.reps || exercise.metric_targets?.reps || 0;
-  const displayWeight = firstSet?.metric_values?.weight || exercise.metric_targets?.weight;
-  const displayIntensity = firstSet?.intensity_percent || exercise.intensity_targets?.[0]?.percent;
+  const enabledMeasurementIds = exercise.enabled_measurements || [];
+
+  // Only show reps if it's in enabled_measurements (or if enabled_measurements is empty/null - fallback to showing all)
+  const showReps = enabledMeasurementIds.length === 0 || enabledMeasurementIds.includes('reps');
+  const showWeight = enabledMeasurementIds.length === 0 || enabledMeasurementIds.includes('weight');
+
+  const displayReps = showReps ? (firstSet?.metric_values?.reps || exercise.metric_targets?.reps || 0) : null;
+  const displayWeight = showWeight ? (firstSet?.metric_values?.weight || exercise.metric_targets?.weight) : null;
+  const displayIntensity = firstSet?.intensity_targets?.[0]?.percent || exercise.intensity_targets?.[0]?.percent;
 
   useEffect(() => {
     if (isExpanded) {
@@ -442,8 +518,10 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
           // Check per-set config first
           if (hasPerSetConfig && exercise.set_configurations[idx]) {
             const setConfig = exercise.set_configurations[idx];
-            if (setConfig.intensity_type && setConfig.intensity_percent && athleteMaxes[setConfig.intensity_type]) {
-              newTargetWeight = Math.round((athleteMaxes[setConfig.intensity_type] * setConfig.intensity_percent / 100) / 5) * 5;
+            const intensityTargets = setConfig.intensity_targets || [];
+            const firstIntensity = intensityTargets[0];
+            if (firstIntensity && athleteMaxes[firstIntensity.metric]) {
+              newTargetWeight = Math.round((athleteMaxes[firstIntensity.metric] * firstIntensity.percent / 100) / 5) * 5;
             }
           } else {
             // Check simple mode intensity
@@ -592,26 +670,35 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
         // Per-set configuration mode
         const setConfig = exercise.set_configurations[i];
 
+        // Get intensity targets for this set (could be multiple metrics with intensity %)
+        const intensityTargets = setConfig?.intensity_targets || [];
+
+        // Store the first intensity % found (for display badge)
+        const firstIntensity = intensityTargets.length > 0 ? intensityTargets[0] : null;
+        if (firstIntensity) {
+          setData.intensityPercent = firstIntensity.percent;
+          setData.intensityMetric = firstIntensity.metric;
+        }
+
         // Populate ONLY ENABLED measurements from set_configurations
         measurements.forEach((measurement: any) => {
           const metricId = measurement.id;
           const baseValue = setConfig?.metric_values?.[metricId] || 0;
 
-          // Check if this metric uses intensity percentage
-          if (setConfig?.intensity_type === metricId && setConfig?.intensity_percent) {
+          // Check if this metric has intensity percentage applied
+          const intensityForMetric = intensityTargets.find((it: any) => it.metric === metricId);
+
+          if (intensityForMetric) {
             const athleteMax = athleteMaxes[metricId] || 0;
             if (athleteMax > 0) {
               // Calculate percentage-based value
-              const calculated = Math.round((athleteMax * setConfig.intensity_percent / 100) / 5) * 5;
+              const calculated = Math.round((athleteMax * intensityForMetric.percent / 100) / 5) * 5;
               setData[metricId] = calculated;
               setData[`target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`] = calculated;
             } else {
               setData[metricId] = baseValue;
               setData[`target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`] = baseValue;
             }
-
-            setData.intensityPercent = setConfig.intensity_percent;
-            setData.intensityMetric = metricId;
           } else {
             setData[metricId] = baseValue;
             setData[`target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`] = baseValue;
@@ -884,7 +971,8 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
             )}
           </div>
           <p className="text-xs text-gray-400">
-            {targetSets} sets × {displayReps} reps
+            {targetSets} sets
+            {displayReps !== null && ` × ${displayReps} reps`}
             {displayWeight && ` • ${displayWeight} lbs`}
             {displayIntensity && ` • ${displayIntensity}%`}
           </p>
@@ -926,34 +1014,43 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
       {/* Expanded Content */}
       {isExpanded && (
         <div className="border-t border-white/10 p-2.5">
-          {/* YouTube Video */}
-          {videoId && (
-            <div className="mb-2">
-              <div className="aspect-video w-full">
-                <iframe
-                  src={`https://www.youtube.com/embed/${videoId}`}
-                  className="w-full h-full rounded"
-                  allowFullScreen
-                />
-              </div>
-            </div>
-          )}
+          {/* Desktop: 2-column layout (video/notes | sets) */}
+          {/* Mobile: Stacked layout */}
+          <div className="lg:grid lg:grid-cols-[380px_1fr] lg:gap-4">
+            {/* Left Column: Video & Notes (Desktop) / Top (Mobile) */}
+            <div className="lg:sticky lg:top-4 lg:self-start">
+              {/* YouTube Video */}
+              {videoId && (
+                <div className="mb-2">
+                  <div className="aspect-video w-full">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      className="w-full h-full rounded"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
+              )}
 
-          {/* Exercise Notes from Exercise Library */}
-          {exercise.exercises?.description && (
-            <div className="mb-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
-              <p className="text-[9px] text-blue-400 font-semibold mb-0.5 uppercase">Exercise Notes</p>
-              <p className="text-xs text-gray-200 whitespace-pre-wrap leading-tight">{exercise.exercises.description}</p>
-            </div>
-          )}
+              {/* Exercise Notes from Exercise Library */}
+              {exercise.exercises?.description && (
+                <div className="mb-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
+                  <p className="text-[9px] text-blue-400 font-semibold mb-0.5 uppercase">Exercise Notes</p>
+                  <p className="text-xs text-gray-200 whitespace-pre-wrap leading-tight">{exercise.exercises.description}</p>
+                </div>
+              )}
 
-          {/* Coach Notes from Workout Builder */}
-          {exercise.notes && (
-            <div className="mb-2 p-2 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded">
-              <p className="text-[9px] text-[#C9A857] font-semibold mb-0.5 uppercase">Coach Notes</p>
-              <p className="text-xs text-gray-200 leading-tight">{exercise.notes}</p>
+              {/* Coach Notes from Workout Builder */}
+              {exercise.notes && (
+                <div className="mb-2 p-2 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded">
+                  <p className="text-[9px] text-[#C9A857] font-semibold mb-0.5 uppercase">Coach Notes</p>
+                  <p className="text-xs text-gray-200 leading-tight">{exercise.notes}</p>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Right Column: Sets (Desktop) / Below video (Mobile) */}
+            <div>
 
           {/* Sets - Always show */}
           <div className="space-y-1.5 mb-2">
@@ -970,34 +1067,20 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                     isLogged ? 'bg-green-500/5 border-green-500/40' : 'bg-[#1a1a1a] border-white/10'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
+                  {/* Set Header - responsive for many measurements */}
+                  <div className="mb-1.5">
+                    <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs font-bold">Set {setNumber}</span>
                       {isLogged && <span className="text-green-400 text-xs">✓</span>}
                       {isAMRAP && <span className="text-blue-400 text-[10px] px-1.5 py-0.5 bg-blue-500/20 rounded">AMRAP</span>}
                     </div>
-                    {setData.intensityPercent && setData.intensityMetric && (() => {
-                      // Get the measurement info for the intensity metric
-                      const measurement = exercise.exercises?.metric_schema?.measurements?.find((m: any) => m.id === setData.intensityMetric);
-                      const metricName = measurement?.name || setData.intensityMetric;
-                      const metricUnit = measurement?.unit || '';
-                      const targetKey = `target${setData.intensityMetric.charAt(0).toUpperCase() + setData.intensityMetric.slice(1)}`;
-                      const targetValue = setData[targetKey];
-
-                      if (targetValue && targetValue > 0) {
-                        return (
-                          <span className="text-sm font-bold text-[#C9A857]">
-                            Target: {targetValue} {metricUnit} @ {setData.intensityPercent}%
-                          </span>
-                        );
-                      } else {
-                        return (
-                          <span className="text-xs font-bold text-yellow-400">
-                            @ {setData.intensityPercent}% {metricName} (No max set)
-                          </span>
-                        );
-                      }
-                    })()}
+                    {setData.intensityPercent && (
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded">
+                        <span className="text-sm font-bold text-[#C9A857]">
+                          {setData.intensityPercent}% Intensity
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-2">
@@ -1036,15 +1119,34 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                         const metricUnit = measurement.unit || '';
                         const metricType = measurement.type || 'number';
 
+                        // Check if this metric is being tracked for PR
+                        const isTrackedForPR = exercise.tracked_max_metrics?.includes(metricId);
+
                         // Special handling for reps (could be AMRAP)
                         const label = (metricId === 'reps' && isAMRAP) ? 'Reps (AMRAP)' : metricName;
                         const targetKey = `target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`;
                         const targetValue = setData[targetKey];
 
+                        // Dynamic placeholder - show "AMRAP" for reps when AMRAP is enabled
+                        let placeholderText = targetValue?.toString() || '0';
+                        if (metricId === 'reps' && isAMRAP) {
+                          placeholderText = 'AMRAP';
+                        }
+
+                        // Only show unit if it's different from the metric name (avoid "Reps (reps)")
+                        const showUnit = metricUnit && metricUnit.toLowerCase() !== metricName.toLowerCase() && metricUnit.toLowerCase() !== metricId.toLowerCase();
+
                         return (
-                          <div key={metricId}>
-                            <label className="block text-[10px] text-gray-400 mb-1 uppercase truncate" title={`${label} ${metricUnit ? `(${metricUnit})` : ''}`}>
-                              {label} {metricUnit && `(${metricUnit})`}
+                          <div key={metricId} className="relative">
+                            <label className="block text-[10px] text-gray-400 mb-0.5 uppercase truncate flex items-center gap-1" title={`${label} ${showUnit ? `(${metricUnit})` : ''}`}>
+                              {label} {showUnit && `(${metricUnit})`}
+                              {isTrackedForPR && (
+                                <span className="text-[#C9A857]" title="Tracking PR for this metric">
+                                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                  </svg>
+                                </span>
+                              )}
                             </label>
                             <input
                               type="number"
@@ -1055,9 +1157,13 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                                   : parseFloat(e.target.value) || 0;
                                 updateSetInput(setNumber, metricId, value);
                               }}
-                              className="w-full text-center text-2xl font-bold bg-black/40 border border-white/20 rounded py-2 focus:outline-none focus:border-blue-500"
+                              className={`w-full text-center text-lg font-bold bg-black/40 rounded py-1 focus:outline-none ${
+                                isTrackedForPR
+                                  ? 'border-2 border-[#C9A857] shadow-lg shadow-[#C9A857]/20 focus:border-[#C9A857] focus:shadow-[#C9A857]/40'
+                                  : 'border border-white/20 focus:border-blue-500'
+                              }`}
                               step={metricType === 'integer' || metricId === 'reps' ? '1' : '0.1'}
-                              placeholder={targetValue?.toString() || '0'}
+                              placeholder={placeholderText}
                             />
                           </div>
                         );
@@ -1085,6 +1191,10 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
           >
             {saving ? 'Saving...' : 'Next'}
           </button>
+            </div>
+            {/* End Right Column */}
+          </div>
+          {/* End 2-column grid */}
         </div>
       )}
     </div>

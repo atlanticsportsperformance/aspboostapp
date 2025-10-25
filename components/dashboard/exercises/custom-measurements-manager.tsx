@@ -60,7 +60,6 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   const [showCreateMeasurement, setShowCreateMeasurement] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [createMeasurementName, setCreateMeasurementName] = useState('');
-  const [createMeasurementUnit, setCreateMeasurementUnit] = useState('');
   const [createMeasurementType, setCreateMeasurementType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
   const [createTagName, setCreateTagName] = useState('');
 
@@ -550,7 +549,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     const newMeasurement: CustomMeasurement = {
       id: `custom_${Date.now()}`,
       name: createMeasurementName.trim(),
-      unit: createMeasurementUnit.trim(),
+      unit: '', // No longer collecting unit from user
       type: createMeasurementType,
     };
 
@@ -579,7 +578,6 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     // Reset form
     setShowCreateMeasurement(false);
     setCreateMeasurementName('');
-    setCreateMeasurementUnit('');
     setCreateMeasurementType('decimal');
 
     // Refresh measurements
@@ -768,29 +766,17 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                         placeholder="e.g., Bar Speed, Jump Height, Ball Color"
                       />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Unit (optional)</label>
-                        <input
-                          type="text"
-                          value={createMeasurementUnit}
-                          onChange={(e) => setCreateMeasurementUnit(e.target.value)}
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                          placeholder="m/s, cm, mph, etc"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Type *</label>
-                        <select
-                          value={createMeasurementType}
-                          onChange={(e) => setCreateMeasurementType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                        >
-                          <option value="reps">Reps (counting only, no intensity %)</option>
-                          <option value="performance_decimal">Performance - Decimal (velocity, weight, distance)</option>
-                          <option value="performance_integer">Performance - Integer (time in seconds)</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                      <select
+                        value={createMeasurementType}
+                        onChange={(e) => setCreateMeasurementType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
+                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                      >
+                        <option value="reps">Reps (counting only, no intensity %)</option>
+                        <option value="performance_decimal">Performance - Decimal (velocity, weight, distance)</option>
+                        <option value="performance_integer">Performance - Integer (time in seconds)</option>
+                      </select>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2">
                       <p className="text-xs text-blue-300">

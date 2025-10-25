@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
@@ -75,6 +75,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [showWorkoutDetails, setShowWorkoutDetails] = useState(true); // Toggle for month overview
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedWorkout, setCopiedWorkout] = useState<{ instanceId: string; workoutName: string } | null>(null);
+  const [renderVersion, setRenderVersion] = useState(0); // Force re-render counter
 
   const supabase = createClient();
 
@@ -188,9 +189,31 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
     setLoading(false);
   }
 
+  // Memoize workout-by-date mapping to ensure re-renders when workoutInstances changes
+  const workoutsByDate = useMemo(() => {
+    const map = new Map<string, WorkoutInstance[]>();
+    workoutInstances.forEach(wi => {
+      const dateStr = wi.scheduled_date;
+      if (!map.has(dateStr)) {
+        map.set(dateStr, []);
+      }
+      map.get(dateStr)!.push(wi);
+    });
+    console.log('🔄 Rebuilding workoutsByDate map with', workoutInstances.length, 'workouts');
+    console.log('📋 Map contents:', Array.from(map.entries()).map(([date, workouts]) => `${date}: ${workouts.length}`).join(', '));
+    return map;
+  }, [workoutInstances]);
+
   function getWorkoutsForDate(dateStr: string): WorkoutInstance[] {
-    return workoutInstances.filter(wi => wi.scheduled_date === dateStr);
+    const workouts = workoutsByDate.get(dateStr) || [];
+    if (workouts.length > 0) {
+      console.log(`📅 getWorkoutsForDate(${dateStr}):`, workouts.length, 'workouts');
+    }
+    return workouts;
   }
+
+  // Force re-render trigger - create a stable key based on workout positions and render version
+  const calendarKey = `v${renderVersion}-${workoutInstances.map(w => `${w.id}:${w.scheduled_date}`).sort().join('|')}`;
 
   function handleDragStart(event: DragStartEvent) {
     const workoutInstance = event.active.data.current?.workoutInstance;
@@ -240,14 +263,25 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
       return;
     }
 
+    console.log('🔄 Moving workout from', workoutInstance.scheduled_date, 'to', targetDate);
+    console.log('📊 Before update - workoutInstances count:', workoutInstances.length);
+
     // Optimistically update state immediately (no flicker)
-    setWorkoutInstances(prevInstances =>
-      prevInstances.map(instance =>
-        instance.id === workoutInstance.id
-          ? { ...instance, scheduled_date: targetDate }
-          : instance
-      )
+    // Create a completely new array to ensure React detects the change
+    const updatedInstances = workoutInstances.map(instance =>
+      instance.id === workoutInstance.id
+        ? { ...instance, scheduled_date: targetDate }
+        : instance
     );
+
+    console.log('✅ After optimistic update - workoutInstances count:', updatedInstances.length);
+    const movedWorkout = updatedInstances.find(i => i.id === workoutInstance.id);
+    console.log('📍 Updated workout new date:', movedWorkout?.scheduled_date);
+
+    setWorkoutInstances(updatedInstances);
+
+    // Force re-render by incrementing version
+    setRenderVersion(v => v + 1);
 
     setActiveWorkout(null);
 
@@ -677,9 +711,12 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
                   const dayWorkouts = getWorkoutsForDate(dateStr);
                   const isToday = dateStr === new Date().toISOString().split('T')[0];
 
+                  // Create unique key based on date AND workout IDs on that date
+                  const cellKey = `${dateStr}-${dayWorkouts.map(w => w.id).join('-')}`;
+
                   return (
                     <CalendarDayCell
-                      key={dateStr}
+                      key={cellKey}
                       date={dateStr}
                       day={day}
                       workouts={dayWorkouts}
@@ -833,6 +870,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
         onDragEnd={handleDragEnd}
       >
         <FullscreenCalendarModal
+          key={`fullscreen-${renderVersion}-${workoutInstances.map(w => `${w.id}:${w.scheduled_date}`).join('|')}`}
           athleteId={athleteId}
           onClose={() => setIsFullscreen(false)}
           calendarComponent={renderCalendar(true)}
@@ -848,7 +886,9 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      {renderCalendar()}
+      <div key={`calendar-regular-${renderVersion}`}>
+        {renderCalendar()}
+      </div>
       <DragOverlay>
         {activeWorkout && (
           <div className="bg-blue-500/20 border border-blue-500 rounded-lg p-2 cursor-grabbing">

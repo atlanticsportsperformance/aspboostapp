@@ -36,6 +36,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [programmingOpen, setProgrammingOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [isImmersiveRoute, setIsImmersiveRoute] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,6 +44,11 @@ export default function DashboardLayout({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check if we're in an immersive route (workout execution) - client-side only
+  useEffect(() => {
+    setIsImmersiveRoute(pathname?.includes('/execute') || false);
+  }, [pathname]);
 
   useEffect(() => {
     async function loadUser() {
@@ -102,6 +108,11 @@ export default function DashboardLayout({
   const handleQuickAction = (action: string) => {
     alert(`Quick action: ${action}\n\nThis will open a modal in the full implementation.`);
   };
+
+  // If immersive route, skip the dashboard chrome entirely
+  if (isImmersiveRoute) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex flex-col lg:flex-row">
@@ -263,21 +274,6 @@ export default function DashboardLayout({
         {children}
       </main>
 
-      {/* Bottom Navigation - Mobile Quick Actions */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/[0.02] backdrop-blur-xl border-t border-white/10 z-20">
-        <div className="grid grid-cols-4 gap-1 p-2">
-          {quickActions.map((action) => (
-            <button
-              key={action.action}
-              onClick={() => handleQuickAction(action.action)}
-              className="flex flex-col items-center justify-center p-3 rounded-lg hover:bg-white/5 transition-all active:scale-95"
-            >
-              <span className="text-2xl mb-1">{action.icon}</span>
-              <span className="text-white text-xs font-medium">{action.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

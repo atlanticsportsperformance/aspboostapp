@@ -32,7 +32,8 @@
       "Bash(node scripts/run-exercise-tags-migration.js:*)",
       "Bash(node scripts/check-exercise-measurements.js:*)",
       "Bash(node scripts/fix-placeholder-measurements.js:*)",
-      "Bash(node scripts/check-groups-tables.js:*)"
+      "Bash(node scripts/check-groups-tables.js:*)",
+      "Bash(powershell -Command \"(Get-Content ''app\\dashboard\\athletes\\[id]\\workouts\\[instance-id]\\execute\\page.tsx'' -Tail 20)\")"
     ],
     "deny": [],
     "ask": []
