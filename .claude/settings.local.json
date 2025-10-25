@@ -25,7 +25,9 @@
       "Bash(node scripts/fix-per-set-display.js:*)",
       "Bash(node scripts/fix-syntax-error.js:*)",
       "Bash(node scripts/move-measurements-dropdown.js:*)",
-      "Bash(node scripts/add-auto-populate-sets.js:*)"
+      "Bash(node scripts/add-auto-populate-sets.js:*)",
+      "Read(//c/Users/Owner/Downloads/**)",
+      "Bash(del \"c:\\Users\\Owner\\Desktop\\completeapp\\add_tags_to_plans.sql\")"
     ],
     "deny": [],
     "ask": []

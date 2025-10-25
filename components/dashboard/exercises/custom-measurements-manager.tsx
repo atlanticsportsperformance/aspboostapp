@@ -7,7 +7,7 @@ interface CustomMeasurementUsage {
   id: string;
   name: string;
   unit: string;
-  type: string;
+  type: 'reps' | 'performance_decimal' | 'performance_integer';
   usedBy: string[]; // Array of exercise names
   isLocked?: boolean; // True for predefined measurements that can't be edited/deleted
 }
@@ -52,7 +52,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   const [editingMeasurement, setEditingMeasurement] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editUnit, setEditUnit] = useState('');
-  const [editType, setEditType] = useState<'integer' | 'decimal' | 'text'>('decimal');
+  const [editType, setEditType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
 
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editTagName, setEditTagName] = useState('');
@@ -62,7 +62,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [createMeasurementName, setCreateMeasurementName] = useState('');
   const [createMeasurementUnit, setCreateMeasurementUnit] = useState('');
-  const [createMeasurementType, setCreateMeasurementType] = useState<'integer' | 'decimal' | 'text'>('decimal');
+  const [createMeasurementType, setCreateMeasurementType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
   const [createTagName, setCreateTagName] = useState('');
 
   const [showCreatePlaceholder, setShowCreatePlaceholder] = useState(false);
@@ -402,7 +402,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     setEditingMeasurement(measurement.id);
     setEditName(measurement.name);
     setEditUnit(measurement.unit);
-    setEditType(measurement.type as 'integer' | 'decimal' | 'text');
+    setEditType(measurement.type);
   }
 
   async function saveEditMeasurement(oldId: string) {
@@ -528,6 +528,8 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
       return;
     }
 
+    const supabase = createClient();
+
     const newMeasurement: CustomMeasurement = {
       id: `custom_${Date.now()}`,
       name: createMeasurementName.trim(),
@@ -535,14 +537,37 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
       type: createMeasurementType,
     };
 
-    // Add to local state
-    setMeasurements([...measurements, { ...newMeasurement, usedBy: [] }]);
+    // Create a "system" exercise to hold this measurement definition
+    // This ensures the measurement persists in the database
+    const systemExerciseName = `_measurement_definition_${newMeasurement.id}`;
+
+    const { error } = await supabase
+      .from('exercises')
+      .insert({
+        name: systemExerciseName,
+        category: 'strength_conditioning',
+        is_active: true,
+        metric_schema: {
+          measurements: [{ ...newMeasurement, enabled: true }]
+        },
+        tags: ['_system'] // Special tag to exclude from main exercise list
+      });
+
+    if (error) {
+      console.error('Error creating custom measurement:', error);
+      alert('Failed to create custom measurement: ' + error.message);
+      return;
+    }
 
     // Reset form
     setShowCreateMeasurement(false);
     setCreateMeasurementName('');
     setCreateMeasurementUnit('');
     setCreateMeasurementType('decimal');
+
+    // Refresh measurements
+    await fetchCustomMeasurements();
+    onUpdate();
 
     alert(`Custom measurement "${newMeasurement.name}" created! Now you can use it in exercises.`);
   }
@@ -561,12 +586,35 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
       return;
     }
 
-    // Add to local state
-    setTags([...tags, { name: newTagName, count: 0 }]);
+    const supabase = createClient();
+
+    // Create a "system" exercise to hold this tag definition
+    // This ensures the tag persists in the database
+    const systemExerciseName = `_tag_definition_${newTagName}_${Date.now()}`;
+
+    const { error } = await supabase
+      .from('exercises')
+      .insert({
+        name: systemExerciseName,
+        category: 'strength_conditioning',
+        is_active: true,
+        metric_schema: { measurements: [] },
+        tags: ['_system', newTagName] // Include both _system and the new tag
+      });
+
+    if (error) {
+      console.error('Error creating custom tag:', error);
+      alert('Failed to create custom tag: ' + error.message);
+      return;
+    }
 
     // Reset form
     setShowCreateTag(false);
     setCreateTagName('');
+
+    // Refresh tags
+    await fetchTags();
+    onUpdate();
 
     alert(`Custom tag "${newTagName}" created! Now you can use it in exercises.`);
   }
@@ -594,10 +642,10 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
     const coreMeasurements = {
       measurements: [
-        { id: 'reps', name: 'Reps', type: 'integer', unit: 'reps', enabled: true },
-        { id: 'weight', name: 'Weight', type: 'decimal', unit: 'lbs', enabled: true },
-        { id: 'time', name: 'Time', type: 'text', unit: 'mm:ss', enabled: true },
-        { id: 'distance', name: 'Distance', type: 'decimal', unit: 'ft/yds', enabled: true },
+        { id: 'reps', name: 'Reps', type: 'reps', unit: 'reps', enabled: true },
+        { id: 'weight', name: 'Weight', type: 'performance_decimal', unit: 'lbs', enabled: true },
+        { id: 'time', name: 'Time', type: 'performance_integer', unit: 'seconds', enabled: true },
+        { id: 'distance', name: 'Distance', type: 'performance_decimal', unit: 'ft/yds', enabled: true },
       ],
     };
 
@@ -728,21 +776,21 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                         <label className="block text-xs text-gray-400 mb-1">Type *</label>
                         <select
                           value={createMeasurementType}
-                          onChange={(e) => setCreateMeasurementType(e.target.value as 'integer' | 'decimal' | 'text')}
+                          onChange={(e) => setCreateMeasurementType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
                           className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
                         >
-                          <option value="integer">Integer (whole numbers: 1, 5, 10)</option>
-                          <option value="decimal">Decimal (with decimals: 5.5, 10.25)</option>
-                          <option value="text">Text (words: Blue, Red, Fast)</option>
+                          <option value="reps">Reps (counting only, no intensity %)</option>
+                          <option value="performance_decimal">Performance - Decimal (velocity, weight, distance)</option>
+                          <option value="performance_integer">Performance - Integer (time in seconds)</option>
                         </select>
                       </div>
                     </div>
                     <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2">
                       <p className="text-xs text-blue-300">
                         <strong>Type Guide:</strong><br/>
-                        • <strong>Integer</strong>: Whole numbers only (Reps: 10, Sets: 3)<br/>
-                        • <strong>Decimal</strong>: Numbers with decimals (Weight: 185.5 lbs, Speed: 95.3 mph)<br/>
-                        • <strong>Text</strong>: Words or labels (Ball Color: Blue, Difficulty: Hard)
+                        • <strong>Reps</strong>: Counting only - no intensity % (Blue Ball Reps, Sets, Throws)<br/>
+                        • <strong>Performance - Decimal</strong>: Can track intensity % (Blue Ball MPH, Weight, Distance)<br/>
+                        • <strong>Performance - Integer</strong>: Can track intensity % (Time in seconds)
                       </p>
                     </div>
                     <div className="flex gap-2 pt-2">
@@ -817,12 +865,12 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                             <label className="block text-xs text-gray-400 mb-1">Type</label>
                             <select
                               value={editType}
-                              onChange={(e) => setEditType(e.target.value as 'integer' | 'decimal' | 'text')}
+                              onChange={(e) => setEditType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
                               className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
                             >
-                              <option value="integer">Integer</option>
-                              <option value="decimal">Decimal</option>
-                              <option value="text">Text</option>
+                              <option value="reps">Reps</option>
+                              <option value="performance_decimal">Performance - Decimal</option>
+                              <option value="performance_integer">Performance - Integer</option>
                             </select>
                           </div>
                         </div>

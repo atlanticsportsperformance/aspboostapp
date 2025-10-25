@@ -200,7 +200,10 @@ export function AssignPlanModal({ planId: initialPlanId, athleteId, onSuccess, o
             placeholder_name: ex.placeholder_name,
             metric_targets: ex.metric_targets,
             intensity_targets: ex.intensity_targets,
-            set_configurations: ex.set_configurations
+            set_configurations: ex.set_configurations,
+            enabled_measurements: ex.enabled_measurements,
+            tracked_max_metrics: ex.tracked_max_metrics,
+            is_amrap: ex.is_amrap
           }));
 
           if (exerciseCopies.length > 0) {

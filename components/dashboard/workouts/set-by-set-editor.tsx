@@ -13,8 +13,7 @@ interface Measurement {
 interface SetConfiguration {
   set_number: number;
   metric_values?: Record<string, any>; // Flexible storage for any metric
-  intensity_type?: string; // Which metric to base intensity on
-  intensity_percent?: number;
+  intensity_targets?: Array<{ metric: string; percent: number }>; // Multiple intensity targets
   rest_seconds?: number;
   notes?: string;
   is_amrap?: boolean; // Individual set AMRAP
@@ -35,8 +34,7 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
       defaultSets.push(initialSets[i] || {
         set_number: i + 1,
         metric_values: {},
-        intensity_type: undefined,
-        intensity_percent: undefined,
+        intensity_targets: [],
         rest_seconds: 60
       });
     }
@@ -60,13 +58,43 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
     onUpdateSets(newSets);
   }
 
+  function toggleIntensityMetric(setIndex: number, metricId: string) {
+    const currentTargets = sets[setIndex].intensity_targets || [];
+    const existingIndex = currentTargets.findIndex(t => t.metric === metricId);
+
+    if (existingIndex >= 0) {
+      // Remove this metric
+      const newTargets = currentTargets.filter((_, idx) => idx !== existingIndex);
+      updateSet(setIndex, { intensity_targets: newTargets });
+    } else {
+      // Add this metric
+      const newTargets = [...currentTargets, { metric: metricId, percent: 75 }];
+      updateSet(setIndex, { intensity_targets: newTargets });
+    }
+  }
+
+  function updateIntensityPercent(setIndex: number, metricId: string, percent: number) {
+    const currentTargets = sets[setIndex].intensity_targets || [];
+    const updatedTargets = currentTargets.map(t =>
+      t.metric === metricId ? { ...t, percent } : t
+    );
+    updateSet(setIndex, { intensity_targets: updatedTargets });
+  }
+
+  function isIntensityMetricSelected(setIndex: number, metricId: string) {
+    return sets[setIndex].intensity_targets?.some(t => t.metric === metricId) || false;
+  }
+
+  function getIntensityPercent(setIndex: number, metricId: string) {
+    return sets[setIndex].intensity_targets?.find(t => t.metric === metricId)?.percent || 75;
+  }
+
   function copyToAll(setIndex: number) {
     const template = sets[setIndex];
     const newSets = sets.map((set) => ({
       ...set,
       metric_values: { ...template.metric_values },
-      intensity_type: template.intensity_type,
-      intensity_percent: template.intensity_percent,
+      intensity_targets: template.intensity_targets ? [...template.intensity_targets] : [],
       rest_seconds: template.rest_seconds,
       is_amrap: template.is_amrap
     }));
@@ -121,40 +149,48 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                 );
               })}
 
-              {/* Intensity % */}
-              {enabledMeasurements.length > 0 && (
-                <>
-                  <div className="flex flex-col">
-                    <label className="block text-xs text-gray-400 mb-1">Intensity</label>
-                    <select
-                      value={set.intensity_type || ''}
-                      onChange={(e) => updateSet(index, { intensity_type: e.target.value || undefined })}
-                      className="w-32 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
-                    >
-                      <option value="">None</option>
-                      {enabledMeasurements
-                        .filter((m) => m.name.toLowerCase() !== 'reps')
-                        .map((m) => (
-                          <option key={m.id} value={m.id}>% {m.name}</option>
-                        ))}
-                    </select>
-                  </div>
-
-                  {set.intensity_type && (
-                    <div className="flex flex-col">
-                      <label className="block text-xs text-gray-400 mb-1">%</label>
-                      <input
-                        type="number"
-                        value={set.intensity_percent || ''}
-                        onChange={(e) => updateSet(index, { intensity_percent: e.target.value ? parseInt(e.target.value) : undefined })}
-                        className="w-16 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="75"
-                        min="0"
-                        max="200"
-                      />
-                    </div>
+              {/* Intensity % - Single checkbox for all performance measurements */}
+              {enabledMeasurements.some((m) => m.type !== 'reps') && (
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={set.intensity_targets && set.intensity_targets.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // Enable intensity for all performance measurements
+                        const performanceMeasurements = enabledMeasurements.filter(m => m.type !== 'reps');
+                        const targets = performanceMeasurements.map(m => ({
+                          metric: m.id,
+                          percent: 75
+                        }));
+                        updateSet(index, { intensity_targets: targets });
+                      } else {
+                        // Disable intensity
+                        updateSet(index, { intensity_targets: [] });
+                      }
+                    }}
+                    className="w-3.5 h-3.5 rounded"
+                  />
+                  <label className="text-xs text-gray-400 whitespace-nowrap">
+                    Intensity %
+                  </label>
+                  {set.intensity_targets && set.intensity_targets.length > 0 && (
+                    <input
+                      type="number"
+                      value={set.intensity_targets[0]?.percent || 75}
+                      onChange={(e) => {
+                        const newPercent = e.target.value ? parseInt(e.target.value) : 75;
+                        // Update all intensity targets to same percent
+                        const updatedTargets = set.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
+                        updateSet(index, { intensity_targets: updatedTargets });
+                      }}
+                      className="w-12 px-1.5 py-1 bg-white/10 border border-white/20 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      placeholder="75"
+                      min="0"
+                      max="200"
+                    />
                   )}
-                </>
+                </div>
               )}
 
               {/* Rest */}
@@ -201,7 +237,7 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
               value={set.notes || ''}
               onChange={(e) => updateSet(index, { notes: e.target.value })}
               className="w-full px-2 py-1 bg-white/5 border border-white/10 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-              placeholder="Notes for this set..."
+              placeholder="Notes for this set (e.g., '1 blue, 2 red, 1 gray')..."
             />
           </div>
 
@@ -216,8 +252,10 @@ export default function SetBySetEditor({ totalSets, onUpdateSets, initialSets = 
                 </span>
               );
             })}
-            {set.intensity_type && set.intensity_percent && (
-              <span className="text-blue-300">@ {set.intensity_percent}%</span>
+            {set.intensity_targets && set.intensity_targets.length > 0 && (
+              <span className="text-blue-300">
+                @ {set.intensity_targets[0]?.percent}%
+              </span>
             )}
             {set.rest_seconds && <span className="ml-2">| Rest: {set.rest_seconds}s</span>}
           </div>

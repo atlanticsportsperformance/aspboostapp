@@ -33,7 +33,7 @@ export default function ExercisesPage() {
   const [filteredExercises, setFilteredExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [activeCategory, setActiveCategory] = useState<'strength_conditioning' | 'hitting' | 'throwing'>('strength_conditioning');
   const [tagFilter, setTagFilter] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -49,10 +49,8 @@ export default function ExercisesPage() {
   useEffect(() => {
     let filtered = exercises;
 
-    // Filter by category
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter(ex => ex.category === categoryFilter);
-    }
+    // Filter by active category tab
+    filtered = filtered.filter(ex => ex.category === activeCategory);
 
     // Filter by tags
     if (tagFilter.length > 0) {
@@ -70,7 +68,7 @@ export default function ExercisesPage() {
     }
 
     setFilteredExercises(filtered);
-  }, [searchQuery, categoryFilter, tagFilter, exercises]);
+  }, [searchQuery, activeCategory, tagFilter, exercises]);
 
   async function fetchExercises() {
     const supabase = createClient();
@@ -84,14 +82,19 @@ export default function ExercisesPage() {
     console.log('Exercises loaded:', { count: data?.length, data, error });
 
     if (data) {
-      setExercises(data);
-      setFilteredExercises(data);
+      // Filter out system exercises (used for measurement/tag definitions)
+      const userExercises = data.filter(ex => !ex.tags?.includes('_system'));
 
-      // Extract all unique tags
+      setExercises(userExercises);
+      setFilteredExercises(userExercises);
+
+      // Extract all unique tags (excluding _system)
       const tagsSet = new Set<string>();
-      data.forEach((ex) => {
+      userExercises.forEach((ex) => {
         ex.tags?.forEach((tag: string) => {
-          tagsSet.add(tag);
+          if (tag !== '_system') {
+            tagsSet.add(tag);
+          }
         });
       });
       setAvailableTags(Array.from(tagsSet).sort());
@@ -189,35 +192,35 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] p-6">
+    <div className="min-h-screen bg-[#0A0A0A] p-3 md:p-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">Exercise Library</h1>
-          <p className="text-gray-400 mt-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-white">Exercise Library</h1>
+          <p className="text-gray-400 mt-1 text-sm">
             {selectedExercises.length > 0
               ? `${selectedExercises.length} selected`
               : `${exercises.length} exercises`}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 md:gap-3 flex-wrap">
           {selectedExercises.length > 0 ? (
             <>
               <button
                 onClick={() => setShowBulkEditDialog(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all"
+                className="px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-all"
               >
-                Bulk Edit ({selectedExercises.length})
+                Edit ({selectedExercises.length})
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all"
+                className="px-3 md:px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-all"
               >
                 Delete ({selectedExercises.length})
               </button>
               <button
                 onClick={() => setSelectedExercises([])}
-                className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
+                className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 text-white text-sm font-semibold rounded-lg hover:bg-white/20 transition-all"
               >
                 Cancel
               </button>
@@ -226,34 +229,70 @@ export default function ExercisesPage() {
             <>
               <button
                 onClick={() => setManagerOpen(true)}
-                className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
+                className="px-3 md:px-4 py-2 bg-white/10 border border-white/20 text-white text-sm font-semibold rounded-lg hover:bg-white/20 transition-all whitespace-nowrap"
               >
-                ⚙️ Manage Library
+                ⚙️ Manage
               </button>
               <button
                 onClick={handleCreateNew}
-                className="px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all"
+                className="px-3 md:px-4 py-2 bg-[#C9A857] text-black text-sm font-semibold rounded-lg hover:bg-[#B89647] transition-all whitespace-nowrap"
               >
-                + Create Exercise
+                + Create
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="mb-6 flex gap-4 items-start">
+      {/* Category Tabs */}
+      <div className="mb-4 md:mb-6 border-b border-white/10 -mx-3 md:mx-0">
+        <div className="flex gap-0 overflow-x-auto px-3 md:px-0 scrollbar-hide">
+          <button
+            onClick={() => setActiveCategory('strength_conditioning')}
+            className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
+              activeCategory === 'strength_conditioning'
+                ? 'text-[#C9A857] border-[#C9A857]'
+                : 'text-gray-400 border-transparent hover:text-white'
+            }`}
+          >
+            📁 Strength
+          </button>
+          <button
+            onClick={() => setActiveCategory('hitting')}
+            className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
+              activeCategory === 'hitting'
+                ? 'text-[#C9A857] border-[#C9A857]'
+                : 'text-gray-400 border-transparent hover:text-white'
+            }`}
+          >
+            📁 Hitting
+          </button>
+          <button
+            onClick={() => setActiveCategory('throwing')}
+            className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
+              activeCategory === 'throwing'
+                ? 'text-[#C9A857] border-[#C9A857]'
+                : 'text-gray-400 border-transparent hover:text-white'
+            }`}
+          >
+            📁 Throwing
+          </button>
+        </div>
+      </div>
+
+      {/* Search and Tag Filter */}
+      <div className="mb-4 md:mb-6 flex flex-col md:flex-row gap-3 md:gap-4">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 md:max-w-md">
           <input
             type="text"
             placeholder="Search exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 pl-10 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+            className="w-full px-4 py-2.5 md:py-3 pl-10 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
           />
           <svg
-            className="absolute left-3 top-3.5 h-5 w-5 text-gray-400"
+            className="absolute left-3 top-3 h-4 w-4 md:h-5 md:w-5 text-gray-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -267,23 +306,8 @@ export default function ExercisesPage() {
           </svg>
         </div>
 
-        {/* Category Filter */}
-        <div className="w-64">
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat.value} value={cat.value} className="bg-[#0A0A0A]">
-                {cat.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
         {/* Tag Filter */}
-        <div className="w-64">
+        <div className="w-full md:w-64">
           <select
             onChange={(e) => {
               if (e.target.value && !tagFilter.includes(e.target.value)) {
@@ -291,7 +315,7 @@ export default function ExercisesPage() {
                 e.target.value = '';
               }
             }}
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+            className="w-full px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
             defaultValue=""
           >
             <option value="" disabled className="bg-[#0A0A0A]">
@@ -337,6 +361,9 @@ export default function ExercisesPage() {
 
       {/* Exercise Table */}
       <div className="bg-white/[0.02] border border-white/10 rounded-xl overflow-hidden">
+        {/* Mobile: Add horizontal scroll with touch support */}
+        <div className="overflow-x-auto -mx-3 md:mx-0 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+          <div className="min-w-[800px]"> {/* Minimum width to enable scrolling */}
         <table className="w-full">
           <thead className="bg-white/5 border-b border-white/10">
             <tr>
@@ -459,6 +486,8 @@ export default function ExercisesPage() {
             )}
           </tbody>
         </table>
+          </div>
+        </div>
       </div>
 
       {/* Create/Edit Dialog */}

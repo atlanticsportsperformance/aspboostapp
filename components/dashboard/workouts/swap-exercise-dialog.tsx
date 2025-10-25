@@ -29,24 +29,13 @@ interface SwapExerciseDialogProps {
     exercises: { name: string } | null;
   };
   planId?: string; // Only passed when in plan context
-  workoutId?: string; // Only passed when in plan context - needed to determine current week/day
+  workoutId?: string; // Workout being edited
+  athleteId?: string; // Only passed when in athlete context
   onSwap: (exerciseId: string, exercise: Exercise, replaceMode: 'single' | 'future' | 'all') => void;
   onClose: () => void;
 }
 
-const EXERCISE_CATEGORIES = [
-  { value: 'strength_conditioning', label: 'Strength & Conditioning' },
-  { value: 'hitting', label: 'Hitting' },
-  { value: 'throwing', label: 'Throwing' },
-  { value: 'mobility', label: 'Mobility' },
-  { value: 'speed_agility', label: 'Speed/Agility' },
-  { value: 'plyometrics', label: 'Plyometrics' },
-  { value: 'core', label: 'Core' },
-  { value: 'warmup', label: 'Warm-up' },
-  { value: 'cooldown', label: 'Cool-down' },
-];
-
-export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap, onClose }: SwapExerciseDialogProps) {
+export function SwapExerciseDialog({ currentExercise, planId, workoutId, athleteId, onSwap, onClose }: SwapExerciseDialogProps) {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -57,13 +46,16 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
   const [totalInstanceCount, setTotalInstanceCount] = useState(0);
   const supabase = createClient();
 
-  // Get unique tags from exercises
+  // Get unique tags and categories from exercises
   const allTags = Array.from(new Set(exercises.flatMap(ex => ex.tags || []))).sort();
+  const allCategories = Array.from(new Set(exercises.map(ex => ex.category).filter(Boolean))).sort();
 
   useEffect(() => {
     fetchExercises();
     if (planId) {
       countInstancesInPlan();
+    } else if (athleteId) {
+      countInstancesForAthlete();
     }
   }, []);
 
@@ -149,6 +141,90 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
     }
   }
 
+  async function countInstancesForAthlete() {
+    if (!athleteId || !workoutId || (!currentExercise.exercise_id && !currentExercise.placeholder_id)) return;
+
+    // Get current workout's scheduled date
+    const { data: currentInstance, error: currentError } = await supabase
+      .from('workout_instances')
+      .select('scheduled_date')
+      .eq('workout_id', workoutId)
+      .eq('athlete_id', athleteId)
+      .order('scheduled_date', { ascending: true })
+      .limit(1)
+      .single();
+
+    if (currentError || !currentInstance) {
+      console.error('Could not determine current workout position');
+      return;
+    }
+
+    const currentDate = currentInstance.scheduled_date;
+
+    // Get ALL workout instances for this athlete
+    const { data: allInstances } = await supabase
+      .from('workout_instances')
+      .select('workout_id')
+      .eq('athlete_id', athleteId);
+
+    // Get FUTURE workout instances (including current date)
+    const { data: futureInstances } = await supabase
+      .from('workout_instances')
+      .select('workout_id')
+      .eq('athlete_id', athleteId)
+      .gte('scheduled_date', currentDate);
+
+    if (!allInstances || !futureInstances) return;
+
+    const allWorkoutIds = allInstances.map(i => i.workout_id).filter(Boolean);
+    const futureWorkoutIds = futureInstances.map(i => i.workout_id).filter(Boolean);
+
+    // Get routines for ALL workouts
+    const { data: allRoutines } = await supabase
+      .from('routines')
+      .select('id')
+      .in('workout_id', allWorkoutIds);
+
+    // Get routines for FUTURE workouts
+    const { data: futureRoutines } = await supabase
+      .from('routines')
+      .select('id')
+      .in('workout_id', futureWorkoutIds);
+
+    if (!allRoutines || !futureRoutines) return;
+
+    const allRoutineIds = allRoutines.map(r => r.id);
+    const futureRoutineIds = futureRoutines.map(r => r.id);
+
+    // Build query to match by exercise_id OR placeholder_id
+    const buildQuery = (routineIds: string[]) => {
+      let query = supabase
+        .from('routine_exercises')
+        .select('id')
+        .in('routine_id', routineIds);
+
+      if (currentExercise.is_placeholder && currentExercise.placeholder_id) {
+        query = query.eq('placeholder_id', currentExercise.placeholder_id);
+      } else if (currentExercise.exercise_id) {
+        query = query.eq('exercise_id', currentExercise.exercise_id);
+      }
+
+      return query;
+    };
+
+    // Count total instances
+    const { data: totalData } = await buildQuery(allRoutineIds);
+    if (totalData) {
+      setTotalInstanceCount(totalData.length);
+    }
+
+    // Count future instances
+    const { data: futureData } = await buildQuery(futureRoutineIds);
+    if (futureData) {
+      setFutureInstanceCount(futureData.length);
+    }
+  }
+
   async function fetchExercises() {
     setLoading(true);
 
@@ -162,7 +238,9 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
     if (error) {
       console.error('Error fetching exercises:', error);
     } else {
-      setExercises(data || []);
+      // Filter out system exercises (used for measurement/tag definitions)
+      const userExercises = (data || []).filter(ex => !ex.tags?.includes('_system'));
+      setExercises(userExercises);
     }
 
     setLoading(false);
@@ -227,8 +305,10 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
               className="px-3 py-1.5 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 [&>option]:bg-gray-900 [&>option]:text-white"
             >
               <option value="all" className="bg-gray-900 text-white">All Categories</option>
-              {EXERCISE_CATEGORIES.map(cat => (
-                <option key={cat.value} value={cat.value} className="bg-gray-900 text-white">{cat.label}</option>
+              {allCategories.map(category => (
+                <option key={category} value={category} className="bg-gray-900 text-white capitalize">
+                  {category.replace(/_/g, ' ')}
+                </option>
               ))}
             </select>
             <select
@@ -284,11 +364,11 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
 
         {/* Footer */}
         <div className="p-3 border-t border-white/10 space-y-3 flex-shrink-0">
-          {/* Info about instances (only show if in plan context) */}
-          {planId && (totalInstanceCount > 1 || futureInstanceCount > 1) && (
+          {/* Info about instances */}
+          {(planId || athleteId) && (totalInstanceCount > 1 || futureInstanceCount > 1) && (
             <div className="p-2.5 bg-blue-500/10 border border-blue-500/30 rounded">
               <div className="text-blue-200 text-xs">
-                Found <span className="font-medium">{totalInstanceCount} total instance{totalInstanceCount !== 1 ? 's' : ''}</span> of <span className="font-medium">"{currentExerciseName}"</span> in this plan
+                Found <span className="font-medium">{totalInstanceCount} total instance{totalInstanceCount !== 1 ? 's' : ''}</span> of <span className="font-medium">"{currentExerciseName}"</span> {planId ? 'in this plan' : 'for this athlete'}
                 {futureInstanceCount !== totalInstanceCount && (
                   <span className="ml-1">
                     (<span className="font-medium">{futureInstanceCount} future</span>, {totalInstanceCount - futureInstanceCount} past)
@@ -309,8 +389,8 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
             </button>
 
             <div className="flex items-center gap-2">
-              {/* Show single replace button if not in plan context OR only 1 instance */}
-              {(!planId || totalInstanceCount === 1) && (
+              {/* Show single replace button if no context OR only 1 instance */}
+              {((!planId && !athleteId) || totalInstanceCount === 1) && (
                 <button
                   onClick={() => handleSwap('single')}
                   disabled={!selectedExercise}
@@ -320,8 +400,8 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, onSwap,
                 </button>
               )}
 
-              {/* Show all three buttons if in plan context with multiple instances */}
-              {planId && totalInstanceCount > 1 && (
+              {/* Show all three buttons if in plan OR athlete context with multiple instances */}
+              {(planId || athleteId) && totalInstanceCount > 1 && (
                 <>
                   <button
                     onClick={() => handleSwap('single')}

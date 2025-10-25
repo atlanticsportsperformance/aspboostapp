@@ -67,7 +67,8 @@ interface ExerciseDetailPanelProps {
   onDelete: () => void;
   onSwap: (exerciseId: string, exercise: Exercise, replaceMode: 'single' | 'future' | 'all') => void;
   planId?: string; // Optional - only passed when in plan context
-  workoutId?: string; // Optional - only passed when in plan context (needed for week/day calculation)
+  workoutId?: string; // Workout being edited
+  athleteId?: string; // Optional - only passed when in athlete context
 }
 
 export default function ExerciseDetailPanel({
@@ -77,7 +78,8 @@ export default function ExerciseDetailPanel({
   onDelete,
   onSwap,
   planId,
-  workoutId
+  workoutId,
+  athleteId
 }: ExerciseDetailPanelProps) {
   const [enablePerSet, setEnablePerSet] = useState(false);
   const [showMeasurementsDropdown, setShowMeasurementsDropdown] = useState(false);
@@ -110,8 +112,7 @@ export default function ExerciseDetailPanel({
       initialSets.push({
         set_number: i + 1,
         metric_values: { ...exercise.metric_targets } || {},
-        intensity_type: exercise.intensity_targets?.[0]?.metric || undefined,
-        intensity_percent: exercise.intensity_targets?.[0]?.percent || undefined,
+        intensity_targets: exercise.intensity_targets ? [...exercise.intensity_targets.map(t => ({ metric: t.metric, percent: t.percent }))] : [],
         rest_seconds: exercise.rest_seconds || 60,
         is_amrap: exercise.is_amrap || false
       });
@@ -130,32 +131,41 @@ export default function ExerciseDetailPanel({
     onUpdate({ metric_targets: newTargets });
   };
 
-  const handleIntensityMetricChange = (metric: string) => {
-    if (!metric) {
-      onUpdate({ intensity_targets: null });
-      return;
-    }
-    const measurement = getDisplayMeasurements().find(m => m.id === metric);
-    onUpdate({
-      intensity_targets: [{
+  const toggleIntensityMetric = (metricId: string) => {
+    const currentTargets = exercise.intensity_targets || [];
+    const existingIndex = currentTargets.findIndex(t => t.metric === metricId);
+
+    if (existingIndex >= 0) {
+      // Remove this metric from intensity targets
+      const newTargets = currentTargets.filter((_, idx) => idx !== existingIndex);
+      onUpdate({ intensity_targets: newTargets.length > 0 ? newTargets : null });
+    } else {
+      // Add this metric to intensity targets
+      const measurement = getDisplayMeasurements().find(m => m.id === metricId);
+      const newTarget = {
         id: Date.now().toString(),
-        metric,
-        metric_label: measurement ? `Max ${measurement.name}` : metric,
-        percent: exercise.intensity_targets?.[0]?.percent || 75
-      }]
-    });
+        metric: metricId,
+        metric_label: measurement ? `Max ${measurement.name}` : metricId,
+        percent: 75
+      };
+      onUpdate({ intensity_targets: [...currentTargets, newTarget] });
+    }
   };
 
-  const handleIntensityPercentChange = (percent: number) => {
-    const currentTarget = exercise.intensity_targets?.[0];
-    if (currentTarget) {
-      onUpdate({
-        intensity_targets: [{
-          ...currentTarget,
-          percent
-        }]
-      });
-    }
+  const handleIntensityPercentChange = (metricId: string, percent: number) => {
+    const currentTargets = exercise.intensity_targets || [];
+    const updatedTargets = currentTargets.map(target =>
+      target.metric === metricId ? { ...target, percent } : target
+    );
+    onUpdate({ intensity_targets: updatedTargets });
+  };
+
+  const isIntensityMetricSelected = (metricId: string) => {
+    return exercise.intensity_targets?.some(t => t.metric === metricId) || false;
+  };
+
+  const getIntensityPercent = (metricId: string) => {
+    return exercise.intensity_targets?.find(t => t.metric === metricId)?.percent || 75;
   };
 
   // Get all available measurements (from exercise schema or standard set)
@@ -354,11 +364,15 @@ export default function ExerciseDetailPanel({
                   {showMeasurementsDropdown && (
                     <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
                       {getAllAvailableMeasurements().map((measurement) => {
-                        // Show trophy for metrics commonly tracked as maxes
-                        const isMaxTracked = ['weight', 'distance', 'peak_velo', 'exit_velo', 'time'].includes(measurement.id) ||
-                                           measurement.name.toLowerCase().includes('velo') ||
-                                           measurement.name.toLowerCase().includes('max') ||
-                                           measurement.name.toLowerCase().includes('time');
+                        // Show trophy for performance metrics only (not reps)
+                        const isMaxTracked = measurement.type !== 'reps' && (
+                          ['weight', 'distance', 'peak_velo', 'exit_velo', 'time'].includes(measurement.id) ||
+                          measurement.name.toLowerCase().includes('velo') ||
+                          measurement.name.toLowerCase().includes('max') ||
+                          measurement.name.toLowerCase().includes('time') ||
+                          measurement.type === 'performance_decimal' ||
+                          measurement.type === 'performance_integer'
+                        );
 
                         const isEnabled = isMeasurementEnabled(measurement.id);
 
@@ -418,8 +432,10 @@ export default function ExerciseDetailPanel({
                             </span>
                           );
                         })}
-                        {setConfig.intensity_percent && (
-                          <span className="text-blue-300">@ {setConfig.intensity_percent}%</span>
+                        {setConfig.intensity_targets && setConfig.intensity_targets.length > 0 && (
+                          <span className="text-blue-300">
+                            @ {setConfig.intensity_targets[0]?.percent}%
+                          </span>
                         )}
                         {setConfig.is_amrap && (
                           <span className="text-blue-400 text-xs px-1.5 py-0.5 bg-blue-500/20 rounded">AMRAP</span>
@@ -481,38 +497,49 @@ export default function ExerciseDetailPanel({
                   );
                 })}
 
-              {/* Intensity Dropdown */}
-              {getDisplayMeasurements().length > 0 && (
-                <div className="flex flex-col">
-                  <label className="block text-xs text-gray-400 mb-1">Intensity</label>
-                  <select
-                    value={exercise.intensity_targets?.[0]?.metric || ''}
-                    onChange={(e) => handleIntensityMetricChange(e.target.value)}
-                    className="w-32 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:text-gray-900 [&>option]:bg-white"
-                  >
-                    <option value="">None</option>
-                    {getDisplayMeasurements()
-                      .filter((m) => m.name.toLowerCase() !== 'reps')
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>% {m.name}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Intensity % */}
-              {exercise.intensity_targets?.[0]?.metric && (
-                <div className="flex flex-col">
-                  <label className="block text-xs text-gray-400 mb-1">%</label>
+              {/* Intensity % - Single checkbox for all performance measurements */}
+              {getDisplayMeasurements().some((m) => m.type !== 'reps') && (
+                <div className="flex items-center gap-2">
                   <input
-                    type="number"
-                    value={exercise.intensity_targets[0].percent || ''}
-                    onChange={(e) => handleIntensityPercentChange(e.target.value ? parseInt(e.target.value) : 0)}
-                    className="w-16 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="75"
-                    min="0"
-                    max="200"
+                    type="checkbox"
+                    checked={exercise.intensity_targets && exercise.intensity_targets.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // Enable intensity for all performance measurements
+                        const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
+                        const targets = performanceMeasurements.map(m => ({
+                          id: Date.now().toString() + m.id,
+                          metric: m.id,
+                          metric_label: `Max ${m.name}`,
+                          percent: 75
+                        }));
+                        onUpdate({ intensity_targets: targets });
+                      } else {
+                        // Disable intensity
+                        onUpdate({ intensity_targets: null });
+                      }
+                    }}
+                    className="w-4 h-4 rounded"
                   />
+                  <label className="text-xs text-gray-400 whitespace-nowrap">
+                    Intensity %
+                  </label>
+                  {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
+                    <input
+                      type="number"
+                      value={exercise.intensity_targets[0]?.percent || 75}
+                      onChange={(e) => {
+                        const newPercent = e.target.value ? parseInt(e.target.value) : 75;
+                        // Update all intensity targets to same percent
+                        const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
+                        onUpdate({ intensity_targets: updatedTargets });
+                      }}
+                      className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="75"
+                      min="0"
+                      max="200"
+                    />
+                  )}
                 </div>
               )}
               </div>
@@ -565,7 +592,9 @@ export default function ExerciseDetailPanel({
               When athletes log this exercise, automatically save their best performance for these metrics as personal records
             </p>
             <div className="flex flex-wrap gap-2">
-              {getDisplayMeasurements().map((measurement) => {
+              {getDisplayMeasurements()
+                .filter((m) => m.type !== 'reps') // Only show performance measurements for PR tracking
+                .map((measurement) => {
                 const isTracked = isMetricTrackedAsMax(measurement.id);
                 return (
                   <button
@@ -642,6 +671,7 @@ export default function ExerciseDetailPanel({
           }}
           planId={planId}
           workoutId={workoutId}
+          athleteId={athleteId}
           onSwap={(exerciseId, newExercise, replaceMode) => {
             onSwap(exerciseId, newExercise, replaceMode);
             setShowSwapDialog(false);

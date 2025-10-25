@@ -19,7 +19,7 @@ interface CustomMeasurement {
   id: string;
   name: string;
   unit: string;
-  type: 'integer' | 'decimal' | 'text';
+  type: 'reps' | 'performance_decimal' | 'performance_integer';
 }
 
 interface CreateExerciseDialogProps {
@@ -38,16 +38,16 @@ const COMMON_MEASUREMENTS = [
 ];
 
 const VELOCITY_MEASUREMENTS = [
-  { id: 'exit_velo', name: 'Exit Velocity', type: 'decimal' as const, unit: 'mph' },
-  { id: 'peak_velo', name: 'Peak Velocity', type: 'decimal' as const, unit: 'mph' },
+  { id: 'exit_velo', name: 'Exit Velocity', type: 'performance_decimal' as const, unit: 'mph' },
+  { id: 'peak_velo', name: 'Peak Velocity', type: 'performance_decimal' as const, unit: 'mph' },
 ];
 
 const BALL_MEASUREMENTS = [
-  { id: 'gray_ball_velo', name: 'Gray Ball (100g) Velocity', type: 'decimal' as const, unit: 'mph' },
-  { id: 'yellow_ball_velo', name: 'Yellow Ball (150g) Velocity', type: 'decimal' as const, unit: 'mph' },
-  { id: 'red_ball_velo', name: 'Red Ball (225g) Velocity', type: 'decimal' as const, unit: 'mph' },
-  { id: 'blue_ball_velo', name: 'Blue Ball (450g) Velocity', type: 'decimal' as const, unit: 'mph' },
-  { id: 'green_ball_velo', name: 'Green Ball (1000g) Velocity', type: 'decimal' as const, unit: 'mph' },
+  { id: 'gray_ball_velo', name: 'Gray Ball (100g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
+  { id: 'yellow_ball_velo', name: 'Yellow Ball (150g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
+  { id: 'red_ball_velo', name: 'Red Ball (225g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
+  { id: 'blue_ball_velo', name: 'Blue Ball (450g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
+  { id: 'green_ball_velo', name: 'Green Ball (1000g) Velocity', type: 'performance_decimal' as const, unit: 'mph' },
 ];
 
 const CATEGORIES = [
@@ -63,8 +63,6 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
-  const [cues, setCues] = useState('');
-  const [equipment, setEquipment] = useState('');
 
   // Measurements
   const [selectedMeasurements, setSelectedMeasurements] = useState<string[]>([]);
@@ -134,8 +132,6 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
       setSelectedTags(exercise.tags || []);
       setDescription(exercise.description || '');
       setVideoUrl(exercise.video_url || '');
-      setCues(exercise.cues?.join('\n') || '');
-      setEquipment(exercise.equipment?.join(', ') || '');
 
       // Load measurements
       if (exercise.metric_schema?.measurements) {
@@ -185,25 +181,12 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
       measurements: enabledMeasurements,
     };
 
-    // Parse cues and equipment
-    const cuesArray = cues
-      .split('\n')
-      .map(c => c.trim())
-      .filter(Boolean);
-
-    const equipmentArray = equipment
-      .split(',')
-      .map(e => e.trim())
-      .filter(Boolean);
-
     const exerciseData = {
       name: name.trim(),
       category: category,
       tags: selectedTags,
       description: description.trim() || null,
       video_url: videoUrl.trim() || null,
-      cues: cuesArray.length > 0 ? cuesArray : null,
-      equipment: equipmentArray.length > 0 ? equipmentArray : null,
       metric_schema: metric_schema,
       is_active: true,
     };
@@ -355,7 +338,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
             {/* Exercise Notes */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Exercise Notes
+                Exercise Notes (optional)
               </label>
               <textarea
                 value={description}
@@ -366,24 +349,10 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
               />
             </div>
 
-            {/* Equipment */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Equipment (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={equipment}
-                onChange={(e) => setEquipment(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
-                placeholder="e.g., Barbell, Rack, Plates"
-              />
-            </div>
-
             {/* Video URL */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-400 mb-2">
-                Video URL
+                Video URL (optional)
               </label>
               <input
                 type="url"
@@ -391,20 +360,6 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
                 onChange={(e) => setVideoUrl(e.target.value)}
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
                 placeholder="https://youtube.com/..."
-              />
-            </div>
-
-            {/* Coaching Cues */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                Coaching Cues (one per line)
-              </label>
-              <textarea
-                value={cues}
-                onChange={(e) => setCues(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857] resize-none"
-                rows={4}
-                placeholder="Keep chest up&#10;Drive through heels&#10;Full depth"
               />
             </div>
           </div>

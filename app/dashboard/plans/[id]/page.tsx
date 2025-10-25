@@ -312,7 +312,10 @@ export default function PlanCalendarPage() {
         notes: ex.notes,
         metric_targets: ex.metric_targets,
         intensity_targets: ex.intensity_targets,
-        set_configurations: ex.set_configurations
+        set_configurations: ex.set_configurations,
+        enabled_measurements: ex.enabled_measurements,
+        tracked_max_metrics: ex.tracked_max_metrics,
+        is_amrap: ex.is_amrap
       }));
 
       if (exercisesToCopy.length > 0) {
@@ -443,13 +446,6 @@ export default function PlanCalendarPage() {
                 <span className="hidden sm:inline">📋 Assign to Athletes</span>
                 <span className="sm:hidden">📋</span>
               </button>
-              <button
-                onClick={() => setShowWorkoutLibrary({ week: 1, day: 1 })}
-                className="px-3 lg:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs lg:text-sm font-medium transition-all"
-              >
-                <span className="hidden sm:inline">+ Add Workout</span>
-                <span className="sm:hidden">+</span>
-              </button>
             </div>
           </div>
 
@@ -484,11 +480,29 @@ export default function PlanCalendarPage() {
             <PlanTagsEditor
               tags={plan.tags || []}
               onUpdate={async (newTags) => {
-                setPlan({ ...plan, tags: newTags });
-                await supabase
-                  .from('training_plans')
-                  .update({ tags: newTags })
-                  .eq('id', planId);
+                try {
+                  // Update in database first
+                  const { data, error } = await supabase
+                    .from('training_plans')
+                    .update({ tags: newTags })
+                    .eq('id', planId)
+                    .select()
+                    .single();
+
+                  if (error) {
+                    console.error('Failed to update plan tags:', error);
+                    alert('Failed to save tags: ' + (error.message || 'Unknown error'));
+                    return;
+                  }
+
+                  // Update local state with confirmed data
+                  if (data) {
+                    setPlan(data);
+                  }
+                } catch (err) {
+                  console.error('Exception updating tags:', err);
+                  alert('Failed to save tags');
+                }
               }}
             />
           </div>

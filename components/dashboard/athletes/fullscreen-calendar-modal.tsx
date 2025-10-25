@@ -2,13 +2,38 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useDraggable } from '@dnd-kit/core';
 
 interface FullscreenCalendarModalProps {
   athleteId: string;
   onClose: () => void;
+  calendarComponent: React.ReactNode;
 }
 
-export function FullscreenCalendarModal({ athleteId, onClose }: FullscreenCalendarModalProps) {
+// Draggable Recommendation Item Component
+function DraggableRecommendation({ item, type, children }: { item: any; type: 'plan' | 'workout'; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `recommendation-${type}-${item.id}`,
+    data: {
+      type: 'recommendation',
+      recommendationType: type,
+      item: item,
+    },
+  });
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+    opacity: isDragging ? 0.5 : 1,
+  } : undefined;
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+      {children}
+    </div>
+  );
+}
+
+export function FullscreenCalendarModal({ athleteId, onClose, calendarComponent }: FullscreenCalendarModalProps) {
   const [recommendedPlans, setRecommendedPlans] = useState<any[]>([]);
   const [recommendedWorkouts, setRecommendedWorkouts] = useState<any[]>([]);
   const [recommendedRoutines, setRecommendedRoutines] = useState<any[]>([]);
@@ -114,23 +139,21 @@ export function FullscreenCalendarModal({ athleteId, onClose }: FullscreenCalend
                   <h4 className="text-sm font-semibold text-[#C9A857] mb-3">PLANS</h4>
                   <div className="space-y-2">
                     {recommendedPlans.map((plan) => (
-                      <div
-                        key={plan.id}
-                        className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-all cursor-grab"
-                        draggable
-                      >
-                        <p className="text-white font-medium text-sm">{plan.name}</p>
-                        {plan.description && (
-                          <p className="text-gray-400 text-xs mt-1 line-clamp-2">{plan.description}</p>
-                        )}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {plan.tags?.map((tag: string) => (
-                            <span key={tag} className="px-2 py-0.5 bg-[#C9A857]/20 text-[#C9A857] text-xs rounded">
-                              {tag}
-                            </span>
-                          ))}
+                      <DraggableRecommendation key={plan.id} item={plan} type="plan">
+                        <div className="bg-[#C9A857]/10 border border-[#C9A857]/30 rounded-lg p-3 hover:opacity-80 transition-all cursor-grab active:cursor-grabbing">
+                          <p className="text-white font-medium text-sm">{plan.name}</p>
+                          {plan.description && (
+                            <p className="text-[#C9A857] text-xs mt-1 line-clamp-2">{plan.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {plan.tags?.map((tag: string) => (
+                              <span key={tag} className="px-2 py-0.5 bg-white/10 text-white text-xs rounded">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      </DraggableRecommendation>
                     ))}
                   </div>
                 </div>
@@ -141,25 +164,40 @@ export function FullscreenCalendarModal({ athleteId, onClose }: FullscreenCalend
                 <div>
                   <h4 className="text-sm font-semibold text-[#C9A857] mb-3">WORKOUTS</h4>
                   <div className="space-y-2">
-                    {recommendedWorkouts.map((workout) => (
-                      <div
-                        key={workout.id}
-                        className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-all cursor-grab"
-                        draggable
-                      >
-                        <p className="text-white font-medium text-sm">{workout.name}</p>
-                        {workout.category && (
-                          <p className="text-gray-400 text-xs mt-1 capitalize">{workout.category}</p>
-                        )}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {workout.tags?.map((tag: string) => (
-                            <span key={tag} className="px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
+                    {recommendedWorkouts.map((workout) => {
+                      // Color code by category - matches existing app color scheme
+                      const getCategoryColor = (category: string | null) => {
+                        if (!category) return { bg: 'bg-white/5', border: 'border-white/10', text: 'text-gray-400' };
+                        const cat = category.toLowerCase();
+                        // Match colors from plan builder: hitting=red, throwing=blue, strength=green
+                        if (cat.includes('hitting')) return { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400' };
+                        if (cat.includes('throwing') || cat.includes('pitching')) return { bg: 'bg-blue-500/10', border: 'border-blue-500/30', text: 'text-blue-400' };
+                        if (cat.includes('strength') || cat.includes('conditioning')) return { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400' };
+                        return { bg: 'bg-white/5', border: 'border-white/10', text: 'text-gray-400' };
+                      };
+
+                      const colors = getCategoryColor(workout.category);
+
+                      return (
+                        <DraggableRecommendation key={workout.id} item={workout} type="workout">
+                          <div className={`${colors.bg} border ${colors.border} rounded-lg p-3 hover:opacity-80 transition-all cursor-grab active:cursor-grabbing`}>
+                            <p className="text-white font-medium text-sm">{workout.name}</p>
+                            {workout.category && (
+                              <p className={`${colors.text} text-xs mt-1 capitalize font-medium`}>
+                                {workout.category.replace(/_/g, ' ')}
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {workout.tags?.map((tag: string) => (
+                                <span key={tag} className="px-2 py-0.5 bg-white/10 text-white text-xs rounded">
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </DraggableRecommendation>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -179,23 +217,7 @@ export function FullscreenCalendarModal({ athleteId, onClose }: FullscreenCalend
 
         {/* Right Side - Calendar */}
         <div className="flex-1 overflow-auto bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950">
-          <div className="h-full flex items-center justify-center">
-            <div className="text-center">
-              <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <h3 className="text-white text-xl font-semibold mb-2">Calendar Integration Coming Soon</h3>
-              <p className="text-gray-400 text-sm max-w-md">
-                The full calendar will be integrated here. For now, you can see your recommended content on the left and close this to use the regular calendar view.
-              </p>
-              <button
-                onClick={onClose}
-                className="mt-6 px-6 py-3 bg-[#C9A857] hover:bg-[#B89847] text-black font-semibold rounded-lg transition-colors"
-              >
-                Back to Calendar
-              </button>
-            </div>
-          </div>
+          {calendarComponent}
         </div>
       </div>
     </div>

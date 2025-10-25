@@ -67,6 +67,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [showImportPlan, setShowImportPlan] = useState(false);
   const [showWorkoutDetails, setShowWorkoutDetails] = useState(true); // Toggle for month overview
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [copiedWorkout, setCopiedWorkout] = useState<{ instanceId: string; workoutName: string } | null>(null);
 
   const supabase = createClient();
 
@@ -83,7 +84,11 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   }, [athleteId, currentDate, showWorkoutDetails]);
 
   async function fetchWorkoutInstances() {
-    setLoading(true);
+    // Only show loading on initial load or date change, not on detail toggle
+    const isInitialLoad = workoutInstances.length === 0;
+    if (isInitialLoad) {
+      setLoading(true);
+    }
 
     // Get first and last day of current month
     const year = currentDate.getFullYear();
@@ -163,10 +168,31 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
       return;
     }
 
-    const workoutInstance = active.data.current?.workoutInstance;
     const targetDate = over.data.current?.date;
+    if (!targetDate) {
+      setActiveWorkout(null);
+      return;
+    }
 
-    if (!workoutInstance || !targetDate) {
+    // Check if dragging a recommendation
+    if (active.data.current?.type === 'recommendation') {
+      const { recommendationType, item } = active.data.current;
+
+      if (recommendationType === 'plan') {
+        // Handle plan drop - show assign plan modal with pre-selected plan
+        alert(`Dropping plan "${item.name}" on ${targetDate}. Plan assignment coming soon!`);
+      } else if (recommendationType === 'workout') {
+        // Handle workout drop - create workout instance
+        await handleWorkoutDrop(item, targetDate);
+      }
+
+      setActiveWorkout(null);
+      return;
+    }
+
+    // Handle existing workout instance drag (moving workouts)
+    const workoutInstance = active.data.current?.workoutInstance;
+    if (!workoutInstance) {
       setActiveWorkout(null);
       return;
     }
@@ -199,6 +225,30 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
       alert('Failed to move workout');
       // Revert optimistic update on error
       await fetchWorkoutInstances();
+    }
+  }
+
+  async function handleWorkoutDrop(workout: any, targetDate: string) {
+    try {
+      // Create a workout instance for this athlete
+      const { data: newInstance, error } = await supabase
+        .from('workout_instances')
+        .insert({
+          workout_id: workout.id,
+          athlete_id: athleteId,
+          scheduled_date: targetDate,
+          status: 'not_started'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Refresh workout instances to show the new one
+      await fetchWorkoutInstances();
+    } catch (error) {
+      console.error('Error creating workout instance:', error);
+      alert('Failed to add workout to calendar');
     }
   }
 
@@ -284,6 +334,139 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
     await fetchWorkoutInstances();
   }
 
+  // Copy workout instance
+  function handleCopyWorkout(instanceId: string, workoutName: string) {
+    setCopiedWorkout({ instanceId, workoutName });
+  }
+
+  // Paste copied workout to a new date
+  async function handlePasteWorkout(targetDate: string) {
+    if (!copiedWorkout) return;
+
+    try {
+      // Get the source workout instance with all its data
+      const { data: sourceInstance, error: fetchError } = await supabase
+        .from('workout_instances')
+        .select(`
+          *,
+          workouts (
+            *,
+            routines (
+              *,
+              routine_exercises (*)
+            )
+          )
+        `)
+        .eq('id', copiedWorkout.instanceId)
+        .single();
+
+      if (fetchError || !sourceInstance || !sourceInstance.workouts) {
+        alert('Failed to load workout data');
+        return;
+      }
+
+      const sourceWorkout = sourceInstance.workouts;
+
+      // Create a new workout (copy)
+      const { data: newWorkout, error: workoutError } = await supabase
+        .from('workouts')
+        .insert({
+          name: sourceWorkout.name,
+          category: sourceWorkout.category,
+          estimated_duration_minutes: sourceWorkout.estimated_duration_minutes,
+          notes: sourceWorkout.notes,
+          tags: sourceWorkout.tags,
+          is_template: false,
+          athlete_id: athleteId,
+          plan_id: null,
+          placeholder_definitions: sourceWorkout.placeholder_definitions
+        })
+        .select()
+        .single();
+
+      if (workoutError || !newWorkout) {
+        console.error('Error creating workout:', workoutError);
+        alert('Failed to create workout');
+        return;
+      }
+
+      // Copy routines
+      if (sourceWorkout.routines && sourceWorkout.routines.length > 0) {
+        for (const routine of sourceWorkout.routines) {
+          const { data: newRoutine, error: routineError } = await supabase
+            .from('routines')
+            .insert({
+              workout_id: newWorkout.id,
+              name: routine.name,
+              scheme: routine.scheme,
+              order_index: routine.order_index,
+              rest_between_rounds_seconds: routine.rest_between_rounds_seconds,
+              notes: routine.notes,
+              superset_block_name: routine.superset_block_name,
+              text_info: routine.text_info,
+              is_standalone: false,
+              plan_id: null,
+              athlete_id: athleteId
+            })
+            .select()
+            .single();
+
+          if (routineError || !newRoutine) {
+            console.error('Error creating routine:', routineError);
+            continue;
+          }
+
+          // Copy exercises
+          if (routine.routine_exercises && routine.routine_exercises.length > 0) {
+            const exercisesToCopy = routine.routine_exercises.map((ex: any) => ({
+              routine_id: newRoutine.id,
+              exercise_id: ex.exercise_id,
+              is_placeholder: ex.is_placeholder || false,
+              placeholder_id: ex.placeholder_id,
+              placeholder_name: ex.placeholder_name,
+              order_index: ex.order_index,
+              sets: ex.sets,
+              reps_min: ex.reps_min,
+              reps_max: ex.reps_max,
+              rest_seconds: ex.rest_seconds,
+              notes: ex.notes,
+              metric_targets: ex.metric_targets,
+              intensity_targets: ex.intensity_targets,
+              set_configurations: ex.set_configurations,
+              enabled_measurements: ex.enabled_measurements,
+              tracked_max_metrics: ex.tracked_max_metrics,
+              is_amrap: ex.is_amrap
+            }));
+
+            await supabase.from('routine_exercises').insert(exercisesToCopy);
+          }
+        }
+      }
+
+      // Create new workout instance
+      const { error: instanceError } = await supabase
+        .from('workout_instances')
+        .insert({
+          workout_id: newWorkout.id,
+          athlete_id: athleteId,
+          scheduled_date: targetDate,
+          status: 'not_started'
+        });
+
+      if (instanceError) {
+        console.error('Error creating workout instance:', instanceError);
+        alert('Failed to schedule workout');
+        return;
+      }
+
+      // Refresh calendar
+      await fetchWorkoutInstances();
+    } catch (error) {
+      console.error('Error pasting workout:', error);
+      alert('Failed to paste workout');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -310,19 +493,33 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
     days.push(i);
   }
 
-  // Render fullscreen modal if active
-  if (isFullscreen) {
-    return <FullscreenCalendarModal athleteId={athleteId} onClose={() => setIsFullscreen(false)} />;
-  }
+  // Render calendar content (reusable for normal and fullscreen views)
+  const renderCalendar = (isFullscreenView = false) => (
+    <>
+      <div className={isFullscreenView ? "h-full p-4 lg:p-6" : "min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 p-4 lg:p-6"}>
+        {/* Copied Workout Notification */}
+        {copiedWorkout && (
+          <div className="mb-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <span className="text-yellow-300 text-sm font-medium">
+                "{copiedWorkout.workoutName}" copied - Click + in any day to paste
+              </span>
+            </div>
+            <button
+              onClick={() => setCopiedWorkout(null)}
+              className="text-yellow-400 hover:text-yellow-300 transition-colors"
+              title="Clear copied workout"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 p-4 lg:p-6">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -384,16 +581,18 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
                 <span className="hidden sm:inline">Import Plan</span>
                 <span className="sm:hidden">Import</span>
               </button>
-              <button
-                onClick={() => setIsFullscreen(true)}
-                className="px-4 py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-sm rounded-lg transition-all font-medium flex items-center gap-2"
-                title="Expand Calendar"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                <span className="hidden sm:inline">Expand</span>
-              </button>
+              {!isFullscreenView && (
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="px-4 py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-sm rounded-lg transition-all font-medium flex items-center gap-2"
+                  title="Expand Calendar"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  <span className="hidden sm:inline">Expand</span>
+                </button>
+              )}
               <div className="text-sm text-neutral-400">
                 {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
               </div>
@@ -439,6 +638,9 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
                   showDetails={showWorkoutDetails}
                   onWorkoutClick={(instance) => setSelectedInstance(instance)}
                   onWorkoutDelete={(id) => handleDeleteWorkout(id)}
+                  onWorkoutCopy={(id, name) => handleCopyWorkout(id, name)}
+                  onWorkoutPaste={() => handlePasteWorkout(dateStr)}
+                  hasCopiedWorkout={copiedWorkout !== null}
                   onCreateWorkout={() => setShowCreateWorkout({ date: dateStr })}
                   onAddWorkout={() => setShowWorkoutLibrary({ date: dateStr })}
                   onAddRoutine={() => setShowRoutineLibrary({ date: dateStr })}
@@ -531,7 +733,8 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
         {editingWorkoutId && (
           <WorkoutBuilderModal
             workoutId={editingWorkoutId}
-            planId={null as any}
+            planId={null}
+            athleteId={athleteId}
             onClose={() => setEditingWorkoutId(null)}
             onSaved={() => {
               fetchWorkoutInstances();
@@ -566,6 +769,42 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
           />
         )}
       </div>
+    </>
+  );
+
+  // Render fullscreen modal if active
+  if (isFullscreen) {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <FullscreenCalendarModal
+          athleteId={athleteId}
+          onClose={() => setIsFullscreen(false)}
+          calendarComponent={renderCalendar(true)}
+        />
+      </DndContext>
+    );
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      {renderCalendar()}
+      <DragOverlay>
+        {activeWorkout && (
+          <div className="bg-blue-500/20 border border-blue-500 rounded-lg p-2 cursor-grabbing">
+            <p className="text-white text-sm font-medium">{activeWorkout.workouts?.name}</p>
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
@@ -579,6 +818,9 @@ function CalendarDayCell({
   showDetails,
   onWorkoutClick,
   onWorkoutDelete,
+  onWorkoutCopy,
+  onWorkoutPaste,
+  hasCopiedWorkout,
   onCreateWorkout,
   onAddWorkout,
   onAddRoutine,
@@ -590,6 +832,9 @@ function CalendarDayCell({
   showDetails: boolean;
   onWorkoutClick: (instance: WorkoutInstance) => void;
   onWorkoutDelete: (instanceId: string) => void;
+  onWorkoutCopy: (instanceId: string, workoutName: string) => void;
+  onWorkoutPaste: () => void;
+  hasCopiedWorkout: boolean;
   onCreateWorkout: () => void;
   onAddWorkout: () => void;
   onAddRoutine: () => void;
@@ -640,6 +885,23 @@ function CalendarDayCell({
 
               {/* Dropdown Menu */}
               <div className="absolute right-0 top-full mt-1 z-20 bg-neutral-900 border border-neutral-700 rounded-md shadow-lg py-1 min-w-[150px]">
+                {hasCopiedWorkout && (
+                  <>
+                    <button
+                      onClick={() => {
+                        onWorkoutPaste();
+                        setShowDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-white/10 text-sm text-yellow-400 hover:text-yellow-300 transition-colors font-semibold flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Paste Workout
+                    </button>
+                    <div className="border-t border-neutral-700 my-1"></div>
+                  </>
+                )}
                 <button
                   onClick={() => {
                     onCreateWorkout();
@@ -683,6 +945,7 @@ function CalendarDayCell({
               showDetails={showDetails}
               onClick={() => onWorkoutClick(wi)}
               onDelete={() => onWorkoutDelete(wi.id)}
+              onCopy={() => onWorkoutCopy(wi.id, wi.workouts?.name || 'Workout')}
             />
           )
         ))}
@@ -702,11 +965,13 @@ function DraggableWorkoutChip({
   showDetails,
   onClick,
   onDelete,
+  onCopy,
 }: {
   workoutInstance: WorkoutInstance;
   showDetails: boolean;
   onClick: () => void;
   onDelete: () => void;
+  onCopy: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `workout-instance-${workoutInstance.id}`,
@@ -742,18 +1007,18 @@ function DraggableWorkoutChip({
         ${isDragging ? 'opacity-50 scale-95' : 'hover:scale-102 hover:shadow-lg'}
       `}
     >
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-start gap-1">
         <div
           onClick={(e) => {
             e.stopPropagation();
             onClick();
           }}
-          className="flex-1 cursor-pointer"
+          className="flex-1 min-w-0 cursor-pointer"
         >
           {/* Workout Name and Status */}
-          <div className="font-medium line-clamp-1 flex items-center gap-1">
+          <div className="font-medium flex items-start gap-1">
             {getStatusIndicator(workoutInstance.status) && (
-              <span className={`
+              <span className={`flex-shrink-0 leading-tight
                 ${workoutInstance.status === 'completed' ? 'text-green-400' : ''}
                 ${workoutInstance.status === 'in_progress' ? 'text-yellow-400' : ''}
                 ${workoutInstance.status === 'skipped' ? 'text-red-400' : ''}
@@ -761,7 +1026,9 @@ function DraggableWorkoutChip({
                 {getStatusIndicator(workoutInstance.status)}
               </span>
             )}
-            <span className="truncate">{workoutInstance.workouts?.name || 'Workout'}</span>
+            <span className="break-words leading-tight flex-1 min-w-0">
+              {workoutInstance.workouts?.name || 'Workout'}
+            </span>
           </div>
 
           {/* Duration (always shown) */}
@@ -843,18 +1110,32 @@ function DraggableWorkoutChip({
           )}
         </div>
 
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-red-500/30 rounded transition-all flex-shrink-0"
-          title="Delete workout"
-        >
-          <svg className="w-3 h-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-start gap-0.5 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ml-1">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy();
+            }}
+            className="p-0.5 hover:bg-blue-500/30 rounded transition-all"
+            title="Copy workout"
+          >
+            <svg className="w-3 h-3 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="p-0.5 hover:bg-red-500/30 rounded transition-all"
+            title="Delete workout"
+          >
+            <svg className="w-3 h-3 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

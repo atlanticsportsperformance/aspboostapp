@@ -64,9 +64,9 @@ export function DraggableWorkoutCard({
           e.stopPropagation();
           onClick();
         }}
-        className="flex-1 min-w-0 pr-8"
+        className="flex-1 min-w-0 pr-1"
       >
-        <div className="text-[11px] font-medium text-white truncate leading-tight">
+        <div className="text-[11px] font-medium text-white break-words leading-tight">
           {workout.name}
         </div>
         {workout.estimated_duration_minutes && (

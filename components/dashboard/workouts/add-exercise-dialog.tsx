@@ -77,7 +77,9 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
     if (error) {
       console.error('Error fetching exercises:', error);
     } else {
-      setExercises(data || []);
+      // Filter out system exercises (used for measurement/tag definitions)
+      const userExercises = (data || []).filter(ex => !ex.tags?.includes('_system'));
+      setExercises(userExercises);
     }
 
     setLoading(false);

@@ -11,7 +11,8 @@ import WorkoutTagsEditor from '@/components/dashboard/workouts/workout-tags-edit
 
 interface WorkoutBuilderModalProps {
   workoutId: string;
-  planId: string;
+  planId: string | null;
+  athleteId?: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -95,7 +96,7 @@ interface Workout {
   routines: Routine[];
 }
 
-export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: WorkoutBuilderModalProps) {
+export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onSaved }: WorkoutBuilderModalProps) {
   const supabase = createClient();
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,6 +137,15 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
     console.log('=== WORKOUT LOADED IN MODAL ===');
     console.log('Workout:', data.name);
     console.log('plan_id:', data.plan_id);
+    console.log('Routines:', data.routines?.length);
+    if (data.routines) {
+      data.routines.forEach((r: Routine) => {
+        console.log(`  Routine "${r.name}":`, r.routine_exercises?.length, 'exercises');
+        r.routine_exercises?.forEach((re: RoutineExercise) => {
+          console.log(`    - Exercise ID: ${re.exercise_id}, Name: ${re.exercises?.name || 'NULL'}`);
+        });
+      });
+    }
 
     // Sort routines and exercises
     if (data.routines) {
@@ -567,50 +577,108 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
       // Replace instances based on mode
       let workoutIds: string[] = [];
 
-      if (replaceMode === 'all') {
-        // Get ALL workouts in the plan
-        const { data: allProgramDays, error: allDaysError } = await supabase
-          .from('program_days')
-          .select('workout_id')
-          .eq('plan_id', planId);
+      // Handle PLAN context
+      if (planId) {
+        if (replaceMode === 'all') {
+          // Get ALL workouts in the plan
+          const { data: allProgramDays, error: allDaysError } = await supabase
+            .from('program_days')
+            .select('workout_id')
+            .eq('plan_id', planId);
 
-        if (allDaysError || !allProgramDays) {
-          console.error('Error fetching program days:', allDaysError);
-          alert('Failed to replace all instances');
-          return;
+          if (allDaysError || !allProgramDays) {
+            console.error('Error fetching program days:', allDaysError);
+            alert('Failed to replace all instances');
+            return;
+          }
+
+          workoutIds = allProgramDays.map(pd => pd.workout_id).filter(Boolean);
+        } else {
+          // Get FUTURE workouts only (based on week/day)
+          const { data: currentProgramDay, error: currentError } = await supabase
+            .from('program_days')
+            .select('week_number, day_number')
+            .eq('workout_id', workoutId)
+            .single();
+
+          if (currentError || !currentProgramDay) {
+            console.error('Error fetching current workout position:', currentError);
+            alert('Failed to determine current workout position');
+            return;
+          }
+
+          const currentWeek = currentProgramDay.week_number;
+          const currentDay = currentProgramDay.day_number;
+
+          const { data: futureProgramDays, error: futureDaysError } = await supabase
+            .from('program_days')
+            .select('workout_id')
+            .eq('plan_id', planId)
+            .or(`week_number.gt.${currentWeek},and(week_number.eq.${currentWeek},day_number.gte.${currentDay})`);
+
+          if (futureDaysError || !futureProgramDays) {
+            console.error('Error fetching future program days:', futureDaysError);
+            alert('Failed to replace future instances');
+            return;
+          }
+
+          workoutIds = futureProgramDays.map(pd => pd.workout_id).filter(Boolean);
         }
+      }
+      // Handle ATHLETE context (no plan)
+      else if (athleteId) {
+        if (replaceMode === 'all') {
+          // Get ALL workout instances for this athlete
+          const { data: allInstances, error: allInstancesError } = await supabase
+            .from('workout_instances')
+            .select('workout_id')
+            .eq('athlete_id', athleteId);
 
-        workoutIds = allProgramDays.map(pd => pd.workout_id).filter(Boolean);
+          if (allInstancesError || !allInstances) {
+            console.error('Error fetching workout instances:', allInstancesError);
+            alert('Failed to replace all instances');
+            return;
+          }
+
+          workoutIds = allInstances.map(inst => inst.workout_id).filter(Boolean);
+        } else {
+          // Get FUTURE workout instances (based on scheduled_date)
+          // First get current instance's scheduled date
+          const { data: currentInstance, error: currentError } = await supabase
+            .from('workout_instances')
+            .select('scheduled_date')
+            .eq('workout_id', workoutId)
+            .eq('athlete_id', athleteId)
+            .order('scheduled_date', { ascending: true })
+            .limit(1)
+            .single();
+
+          if (currentError || !currentInstance) {
+            console.error('Error fetching current workout instance:', currentError);
+            alert('Failed to determine current workout position');
+            return;
+          }
+
+          const currentDate = currentInstance.scheduled_date;
+
+          // Get future instances (including current date)
+          const { data: futureInstances, error: futureError } = await supabase
+            .from('workout_instances')
+            .select('workout_id')
+            .eq('athlete_id', athleteId)
+            .gte('scheduled_date', currentDate);
+
+          if (futureError || !futureInstances) {
+            console.error('Error fetching future workout instances:', futureError);
+            alert('Failed to replace future instances');
+            return;
+          }
+
+          workoutIds = futureInstances.map(inst => inst.workout_id).filter(Boolean);
+        }
       } else {
-        // Get FUTURE workouts only (based on week/day)
-        const { data: currentProgramDay, error: currentError } = await supabase
-          .from('program_days')
-          .select('week_number, day_number')
-          .eq('workout_id', workoutId)
-          .single();
-
-        if (currentError || !currentProgramDay) {
-          console.error('Error fetching current workout position:', currentError);
-          alert('Failed to determine current workout position');
-          return;
-        }
-
-        const currentWeek = currentProgramDay.week_number;
-        const currentDay = currentProgramDay.day_number;
-
-        const { data: futureProgramDays, error: futureDaysError } = await supabase
-          .from('program_days')
-          .select('workout_id')
-          .eq('plan_id', planId)
-          .or(`week_number.gt.${currentWeek},and(week_number.eq.${currentWeek},day_number.gte.${currentDay})`);
-
-        if (futureDaysError || !futureProgramDays) {
-          console.error('Error fetching future program days:', futureDaysError);
-          alert('Failed to replace future instances');
-          return;
-        }
-
-        workoutIds = futureProgramDays.map(pd => pd.workout_id).filter(Boolean);
+        alert('Cannot replace multiple instances: no plan or athlete context');
+        return;
       }
 
       if (workoutIds.length === 0) {
@@ -702,7 +770,16 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
     }
 
     // Refresh workout to show new exercise
+    console.log('=== EXERCISE SWAPPED - REFRESHING WORKOUT ===');
+    console.log('Selected Exercise ID:', selectedExerciseId);
+    console.log('New Exercise ID:', newExerciseId);
+
     await fetchWorkout();
+
+    // Force re-selection to trigger UI update
+    const tempId = selectedExerciseId;
+    setSelectedExerciseId(null);
+    setTimeout(() => setSelectedExerciseId(tempId), 0);
   }
 
   async function handleDeleteExercise(exerciseId: string) {
@@ -1017,6 +1094,7 @@ export function WorkoutBuilderModal({ workoutId, planId, onClose, onSaved }: Wor
               onSwap={handleSwapExercise}
               planId={planId}
               workoutId={workoutId}
+              athleteId={athleteId}
             />
           )}
         </div>
