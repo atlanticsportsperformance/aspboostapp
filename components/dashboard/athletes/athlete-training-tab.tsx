@@ -78,11 +78,12 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
         // Step 2: Get workout details
         const { data: workoutDetails, error: workoutsError } = await supabase
           .from('workouts')
-          .select('id, name, description')
+          .select('id, name')
           .in('id', workoutIds);
 
         console.log('🔍 [Training History] Workouts:', {
           workoutDetails,
+          workoutsError,
           count: workoutDetails?.length
         });
 
@@ -199,7 +200,10 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
               <button
                 key={workout.id}
                 onClick={() => {
-                  if (workout.status === 'completed' || workout.status === 'in_progress') {
+                  // Navigate to view page for completed workouts, execute page for in-progress
+                  if (workout.status === 'completed') {
+                    router.push(`/dashboard/athletes/${athleteId}/workouts/${workout.id}/view`);
+                  } else if (workout.status === 'in_progress') {
                     router.push(`/dashboard/athletes/${athleteId}/workouts/${workout.id}/execute`);
                   }
                 }}
@@ -210,22 +214,22 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="text-gray-400 text-sm font-medium">
-                        {new Date(workout.scheduled_date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
+                        {(() => {
+                          // Parse date as local to avoid timezone issues
+                          const [year, month, day] = workout.scheduled_date.split('-').map(Number);
+                          const date = new Date(year, month - 1, day);
+                          return date.toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          });
+                        })()}
                       </div>
                     </div>
                     <h3 className="text-white font-semibold text-lg group-hover:text-[#C9A857] transition-colors">
                       {workout.workouts?.name || 'Unnamed Workout'}
                     </h3>
-                    {workout.workouts?.description && (
-                      <p className="text-gray-400 text-sm mt-1 line-clamp-1">
-                        {workout.workouts.description}
-                      </p>
-                    )}
 
                     {/* Workout Metrics Row */}
                     {setCount > 0 && (

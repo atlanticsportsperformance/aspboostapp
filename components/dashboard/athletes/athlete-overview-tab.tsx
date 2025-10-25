@@ -308,38 +308,91 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
   const age = formatAge(athlete.date_of_birth);
 
   return (
-    <div className="space-y-6">
-      {/* Top Row - Stats and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="space-y-4">
+      {/* Stats Row - Compact for Mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Workouts */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-2">Total Workouts</p>
-          <p className="text-3xl font-bold text-white">{stats.totalWorkouts}</p>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Total Workouts</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.totalWorkouts}</p>
         </div>
 
         {/* Completion Rate */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-5">
-          <p className="text-gray-400 text-sm mb-2">Completion Rate</p>
-          <p className="text-3xl font-bold text-white">{stats.completionRate}%</p>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Completion Rate</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.completionRate}%</p>
+        </div>
+
+        {/* Current Streak */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Current Streak</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.currentStreak} days</p>
         </div>
 
         {/* Personal Records Button */}
         <Link
           href={`/dashboard/athletes/${athlete.id}/records`}
-          className="bg-gradient-to-br from-[#C9A857]/10 to-transparent border border-[#C9A857]/20 rounded-xl p-5 hover:border-[#C9A857]/40 transition-all group flex items-center justify-between"
+          className="bg-gradient-to-br from-[#C9A857]/10 to-transparent border border-[#C9A857]/20 rounded-xl p-3 lg:p-4 hover:border-[#C9A857]/40 transition-all group flex flex-col items-center justify-center"
         >
-          <div>
-            <p className="text-gray-400 text-sm mb-1">View</p>
-            <p className="text-white font-bold group-hover:text-[#C9A857] transition-colors">Personal Records</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-[#C9A857]/10 flex items-center justify-center">
-            <span className="text-xl">🏆</span>
-          </div>
+          <span className="text-lg mb-1">🏆</span>
+          <p className="text-white text-xs lg:text-sm font-semibold group-hover:text-[#C9A857] transition-colors text-center">Records</p>
         </Link>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Upcoming Workouts - Priority Section */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-bold text-white">Upcoming Workouts</h3>
+          <p className="text-xs text-gray-400 mt-1">{taggedItems.workouts.length} scheduled this week</p>
+        </div>
+
+        {taggedItems.workouts.length > 0 ? (
+          <div className="space-y-2 max-h-[300px] lg:max-h-[400px] overflow-y-auto pr-2">
+            {taggedItems.workouts.map((instance: any) => (
+              <div
+                key={instance.id}
+                className={`p-3 rounded-lg border-l-4 ${getCategoryColor(instance.workouts?.category)}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-medium text-sm truncate">{instance.workouts?.name || 'Unnamed Workout'}</p>
+                      {instance.workouts?.category && (
+                        <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300 capitalize flex-shrink-0">
+                          {instance.workouts.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+                      <span>
+                        {new Date(instance.scheduled_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </span>
+                      {instance.workouts?.estimated_duration_minutes && (
+                        <>
+                          <span>•</span>
+                          <span>{instance.workouts.estimated_duration_minutes} min</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span className={`${getStatusBadge(instance.status)} px-2 py-0.5 rounded`}>
+                        {instance.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">No upcoming workouts</p>
+            <p className="text-gray-500 text-xs mt-1">Schedule workouts in the Calendar tab</p>
+          </div>
+        )}
+      </div>
+
+      {/* Main Content - Stack on Mobile, Grid on Desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Profile Card */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-6">
@@ -552,21 +605,19 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           </div>
         </div>
 
-        {/* Third Column - Group Assignments, Upcoming Workouts, Recent Activity */}
-        <div className="space-y-6">
-          {/* Group Assignments */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4">Group Assignments</h3>
+        {/* Group Assignments */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+          <h3 className="text-base lg:text-lg font-bold text-white mb-4">Group Assignments</h3>
             {teams.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
                 {teams.map((team: any) => (
-                  <div key={team.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                    <div>
-                      <p className="text-white font-medium">{team.name}</p>
-                      <p className="text-sm text-gray-400 capitalize">{team.level.replace('_', ' ')}</p>
+                  <div key={team.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white font-medium truncate">{team.name}</p>
+                      <p className="text-xs lg:text-sm text-gray-400 capitalize truncate">{team.level.replace('_', ' ')}</p>
                     </div>
                     {team.jersey_number && (
-                      <span className="px-3 py-1 bg-[#C9A857]/10 text-[#C9A857] rounded-md font-bold">
+                      <span className="px-2 lg:px-3 py-1 bg-[#C9A857]/10 text-[#C9A857] rounded-md font-bold text-sm flex-shrink-0">
                         #{team.jersey_number}
                       </span>
                     )}
@@ -574,75 +625,23 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-400 text-sm">No group assignments</p>
+              <p className="text-gray-400 text-xs lg:text-sm">No group assignments</p>
             )}
           </div>
 
-          {/* Upcoming Workouts - Next 7 Days */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold text-white">Upcoming Workouts</h3>
-            <p className="text-xs text-gray-400 mt-1">{taggedItems.workouts.length} scheduled this week</p>
-          </div>
-
-          {taggedItems.workouts.length > 0 ? (
-            <div className="space-y-2 overflow-y-auto max-h-[400px] pr-2">
-              {taggedItems.workouts.map((instance: any) => (
-                <div
-                  key={instance.id}
-                  className={`p-3 rounded-lg border-l-4 ${getCategoryColor(instance.workouts?.category)}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-white font-medium text-sm">{instance.workouts?.name || 'Unnamed Workout'}</p>
-                        {instance.workouts?.category && (
-                          <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300 capitalize">
-                            {instance.workouts.category}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span>
-                          {new Date(instance.scheduled_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </span>
-                        {instance.workouts?.estimated_duration_minutes && (
-                          <>
-                            <span>•</span>
-                            <span>{instance.workouts.estimated_duration_minutes} min</span>
-                          </>
-                        )}
-                        <span>•</span>
-                        <span className={`${getStatusBadge(instance.status)} px-2 py-0.5 rounded`}>
-                          {instance.status.replace('_', ' ')}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-gray-400 text-sm">No upcoming workouts</p>
-              <p className="text-gray-500 text-xs mt-1">Schedule workouts in the Calendar tab</p>
-            </div>
-          )}
-        </div>
-
         {/* Recent Activity Feed */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <h3 className="text-lg font-bold text-white mb-4">Recent Activity</h3>
+        <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+          <h3 className="text-base lg:text-lg font-bold text-white mb-4">Recent Activity</h3>
           {recentActivity.length > 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3 lg:space-y-4 max-h-[300px] overflow-y-auto">
               {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start gap-3">
-                  <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                <div key={index} className="flex items-start gap-2 lg:gap-3">
+                  <div className={`h-8 w-8 lg:h-10 lg:w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                     activity.type === 'workout_completed' ? 'bg-emerald-500/10' :
                     activity.type === 'plan_assigned' ? 'bg-blue-500/10' :
                     'bg-gray-500/10'
                   }`}>
-                    <svg className={`h-5 w-5 ${
+                    <svg className={`h-4 w-4 lg:h-5 lg:w-5 ${
                       activity.type === 'workout_completed' ? 'text-emerald-400' :
                       activity.type === 'plan_assigned' ? 'text-blue-400' :
                       'text-gray-400'
@@ -655,19 +654,17 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                       )}
                     </svg>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-white">{activity.description}</p>
-                    <p className="text-sm text-gray-400">{formatRelativeTime(activity.timestamp)}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm lg:text-base truncate">{activity.description}</p>
+                    <p className="text-xs lg:text-sm text-gray-400">{formatRelativeTime(activity.timestamp)}</p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-gray-400 text-sm">No recent activity</p>
+            <p className="text-gray-400 text-xs lg:text-sm">No recent activity</p>
           )}
         </div>
-        </div>
-        {/* End of Third Column wrapper */}
       </div>
     </div>
   );
