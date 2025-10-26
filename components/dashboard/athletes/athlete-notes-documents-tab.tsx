@@ -203,7 +203,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading notes and documents...</p>
         </div>
       </div>
@@ -227,7 +227,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 placeholder="Brief subject line..."
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
                 disabled={submitting}
               />
             </div>
@@ -239,7 +239,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Add detailed notes about this athlete..."
                 rows={4}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-transparent resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent resize-none"
                 disabled={submitting}
               />
             </div>
@@ -261,7 +261,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-3 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? 'Saving...' : 'Save Note'}
             </button>
@@ -272,7 +272,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
         {pinnedNotes.length > 0 && (
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[#C9A857]" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-[#9BDDFF]" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L11 4.323V3a1 1 0 011-1zm-5 8.274l-.818 2.552c-.25.78-.03 1.632.584 2.15.613.519 1.512.667 2.288.37l.702-.267-.848-2.65-1.905-.755z" />
               </svg>
               Pinned Notes
@@ -325,7 +325,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
           <h2 className="text-2xl font-bold text-white">Documents</h2>
           <button
             onClick={() => alert('Upload functionality - Coming soon\n\nWill include:\n- Drag & drop file upload\n- Multiple file selection\n- Supabase Storage integration\n- Progress indicators')}
-            className="px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all"
+            className="px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-all"
           >
             + Upload Document
           </button>
@@ -333,7 +333,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
 
         {/* Upload Area */}
         <div
-          className="bg-white/5 border-2 border-dashed border-white/20 rounded-xl p-12 text-center hover:border-[#C9A857]/50 transition-colors cursor-pointer mb-6"
+          className="bg-white/5 border-2 border-dashed border-white/20 rounded-xl p-12 text-center hover:border-[#9BDDFF]/50 transition-colors cursor-pointer mb-6"
           onClick={() => alert('Upload functionality - Coming soon')}
         >
           <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -359,7 +359,7 @@ export default function AthleteNotesDocumentsTab({ athleteId }: NotesDocumentsTa
               return (
                 <div key={folder} className="mb-6">
                   <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                    <svg className="w-5 h-5 text-[#C9A857]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-5 h-5 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
                     {folder} ({docs.length})
@@ -415,7 +415,7 @@ function NoteCard({ note, currentUserId, onTogglePin, onDelete, formatRelativeTi
           <div className="flex items-center gap-2 mb-1">
             <h4 className="text-white font-semibold">{note.subject}</h4>
             {note.is_pinned && (
-              <svg className="w-4 h-4 text-[#C9A857]" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-[#9BDDFF]" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L11 4.323V3a1 1 0 011-1zm-5 8.274l-.818 2.552c-.25.78-.03 1.632.584 2.15.613.519 1.512.667 2.288.37l.702-.267-.848-2.65-1.905-.755z" />
               </svg>
             )}
@@ -432,7 +432,7 @@ function NoteCard({ note, currentUserId, onTogglePin, onDelete, formatRelativeTi
               title={note.is_pinned ? 'Unpin' : 'Pin'}
             >
               <svg
-                className={`w-5 h-5 ${note.is_pinned ? 'text-[#C9A857]' : 'text-gray-400'}`}
+                className={`w-5 h-5 ${note.is_pinned ? 'text-[#9BDDFF]' : 'text-gray-400'}`}
                 fill={note.is_pinned ? 'currentColor' : 'none'}
                 viewBox="0 0 20 20"
                 stroke="currentColor"

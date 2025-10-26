@@ -212,7 +212,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
               {/* Plan Tags Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-[#C9A857]">PLANS</h3>
+                  <h3 className="text-sm font-semibold text-[#9BDDFF]">PLANS</h3>
                   <span className="text-xs text-gray-500">({selectedPlanTags.size})</span>
                 </div>
                 {planTags.length > 0 ? (
@@ -223,7 +223,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
                         onClick={() => toggleTag(tag, 'plan')}
                         className={`px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
                           selectedPlanTags.has(tag)
-                            ? 'bg-[#C9A857] text-black'
+                            ? 'bg-[#9BDDFF] text-black'
                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
@@ -239,7 +239,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
               {/* Workout Tags Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-[#C9A857]">WORKOUTS</h3>
+                  <h3 className="text-sm font-semibold text-[#9BDDFF]">WORKOUTS</h3>
                   <span className="text-xs text-gray-500">({selectedWorkoutTags.size})</span>
                 </div>
                 {workoutTags.length > 0 ? (
@@ -250,7 +250,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
                         onClick={() => toggleTag(tag, 'workout')}
                         className={`px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
                           selectedWorkoutTags.has(tag)
-                            ? 'bg-[#C9A857] text-black'
+                            ? 'bg-[#9BDDFF] text-black'
                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
@@ -266,7 +266,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
               {/* Exercise Tags Section */}
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-[#C9A857]">EXERCISES</h3>
+                  <h3 className="text-sm font-semibold text-[#9BDDFF]">EXERCISES</h3>
                   <span className="text-xs text-gray-500">({selectedExerciseTags.size})</span>
                 </div>
                 {exerciseTags.length > 0 ? (
@@ -277,7 +277,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
                         onClick={() => toggleTag(tag, 'exercise')}
                         className={`px-3 py-1.5 rounded-md font-medium text-xs transition-all ${
                           selectedExerciseTags.has(tag)
-                            ? 'bg-[#C9A857] text-black'
+                            ? 'bg-[#9BDDFF] text-black'
                             : 'bg-white/5 text-gray-300 hover:bg-white/10'
                         }`}
                       >
@@ -309,7 +309,7 @@ export default function ManageTagsModal({ athleteId, onClose, onSuccess }: Manag
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-3 py-1.5 text-sm bg-[#C9A857] hover:bg-[#B89647] text-black font-semibold rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-sm bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save Tags'}
             </button>

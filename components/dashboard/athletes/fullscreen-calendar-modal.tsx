@@ -139,14 +139,14 @@ export function FullscreenCalendarModal({ athleteId, onClose, calendarComponent 
               {/* Recommended Plans */}
               {recommendedPlans.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-[#C9A857] mb-3">PLANS</h4>
+                  <h4 className="text-sm font-semibold text-[#9BDDFF] mb-3">PLANS</h4>
                   <div className="space-y-2">
                     {recommendedPlans.map((plan) => (
                       <DraggableRecommendation key={plan.id} item={plan} type="plan">
-                        <div className="bg-[#C9A857]/10 border border-[#C9A857]/30 rounded-lg p-3 hover:opacity-80 transition-all cursor-grab active:cursor-grabbing">
+                        <div className="bg-[#9BDDFF]/10 border border-[#9BDDFF]/30 rounded-lg p-3 hover:opacity-80 transition-all cursor-grab active:cursor-grabbing">
                           <p className="text-white font-medium text-sm">{plan.name}</p>
                           {plan.description && (
-                            <p className="text-[#C9A857] text-xs mt-1 line-clamp-2">{plan.description}</p>
+                            <p className="text-[#9BDDFF] text-xs mt-1 line-clamp-2">{plan.description}</p>
                           )}
                           <div className="flex flex-wrap gap-1 mt-2">
                             {plan.tags?.map((tag: string) => (
@@ -165,7 +165,7 @@ export function FullscreenCalendarModal({ athleteId, onClose, calendarComponent 
               {/* Recommended Workouts */}
               {recommendedWorkouts.length > 0 && (
                 <div>
-                  <h4 className="text-sm font-semibold text-[#C9A857] mb-3">WORKOUTS</h4>
+                  <h4 className="text-sm font-semibold text-[#9BDDFF] mb-3">WORKOUTS</h4>
                   <div className="space-y-2">
                     {recommendedWorkouts.map((workout) => {
                       // Color code by category - matches existing app color scheme

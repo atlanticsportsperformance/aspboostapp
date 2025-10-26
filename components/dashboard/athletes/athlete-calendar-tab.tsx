@@ -665,7 +665,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
             {!isFullscreenView && (
               <button
                 onClick={() => setIsFullscreen(true)}
-                className="px-3 py-1.5 md:px-4 md:py-2 bg-[#C9A857] hover:bg-[#B89847] text-black text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
                 title="Expand Calendar"
               >
                 <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1317,7 +1317,7 @@ function WorkoutInstanceModal({
               <>
                 <Link
                   href={`/dashboard/athletes/${athleteId}/workouts/${instance.id}/execute`}
-                  className="px-6 py-3 bg-[#C9A857] text-black rounded-lg font-semibold hover:bg-[#B89847] transition-colors"
+                  className="px-6 py-3 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg font-semibold transition-colors"
                 >
                   View/Edit Workout
                 </Link>

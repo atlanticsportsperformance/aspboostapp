@@ -227,8 +227,8 @@ export default function GroupsPage() {
       <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A]">
         <div className="text-center space-y-4">
           <div className="relative w-16 h-16 mx-auto">
-            <div className="absolute inset-0 rounded-full border-2 border-[#C9A857]/20"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-[#C9A857] border-t-transparent animate-spin"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-[#9BDDFF]/20"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-[#9BDDFF] border-t-transparent animate-spin"></div>
           </div>
           <p className="text-sm text-gray-500 font-medium">Loading groups...</p>
         </div>
@@ -271,7 +271,7 @@ export default function GroupsPage() {
               {/* Create Group Button */}
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="relative group px-4 py-2 bg-[#C9A857] hover:bg-[#B89647] text-black font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg shadow-[#C9A857]/20"
+                className="relative group px-4 py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg shadow-[#9BDDFF]/20"
               >
                 <Plus size={18} />
                 <span>New Group</span>
@@ -287,11 +287,11 @@ export default function GroupsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           {/* Total Groups */}
           <div className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.15] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#C9A857]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#9BDDFF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
-                <div className="p-2 bg-[#C9A857]/10 rounded-lg">
-                  <Users size={18} className="text-[#C9A857]" />
+                <div className="p-2 bg-[#9BDDFF]/10 rounded-lg">
+                  <Users size={18} className="text-[#9BDDFF]" />
                 </div>
                 {stats.weeklyGrowth > 0 && <TrendingUp size={14} className="text-emerald-500" />}
               </div>
@@ -356,10 +356,10 @@ export default function GroupsPage() {
           </div>
 
           {/* Quick Action */}
-          <div className="group relative bg-gradient-to-br from-[#C9A857]/20 to-[#C9A857]/5 border border-[#C9A857]/20 rounded-xl p-5 hover:border-[#C9A857]/40 transition-all duration-300 overflow-hidden cursor-pointer">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#C9A857]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <div className="group relative bg-gradient-to-br from-[#9BDDFF]/20 to-[#9BDDFF]/5 border border-[#9BDDFF]/20 rounded-xl p-5 hover:border-[#9BDDFF]/40 transition-all duration-300 overflow-hidden cursor-pointer">
+            <div className="absolute inset-0 bg-gradient-to-br from-[#9BDDFF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
             <div className="relative flex flex-col items-center justify-center h-full text-center">
-              <Award size={24} className="text-[#C9A857] mb-2" />
+              <Award size={24} className="text-[#9BDDFF] mb-2" />
               <p className="text-sm font-semibold text-white mb-1">Quick Schedule</p>
               <p className="text-xs text-gray-400">Bulk assign workouts</p>
             </div>
@@ -435,7 +435,7 @@ export default function GroupsPage() {
               {!searchQuery && (
                 <button
                   onClick={() => setShowCreateModal(true)}
-                  className="px-6 py-3 bg-[#C9A857] hover:bg-[#B89647] text-black font-semibold rounded-lg transition-all inline-flex items-center gap-2"
+                  className="px-6 py-3 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-semibold rounded-lg transition-all inline-flex items-center gap-2"
                 >
                   <Plus size={20} />
                   Create Your First Group
@@ -668,7 +668,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
     { name: 'Pink', value: '#ec4899' },
     { name: 'Indigo', value: '#6366f1' },
     { name: 'Teal', value: '#14b8a6' },
-    { name: 'Gold', value: '#C9A857' },
+    { name: 'Gold', value: '#9BDDFF' },
     { name: 'Emerald', value: '#059669' },
     { name: 'Cyan', value: '#06b6d4' },
     { name: 'Amber', value: '#f59e0b' }
@@ -743,7 +743,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Varsity Baseball, Elite Pitchers"
-              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent transition-all outline-none"
+              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent transition-all outline-none"
             />
           </div>
 
@@ -757,7 +757,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Brief description of this group..."
               rows={3}
-              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent resize-none transition-all outline-none"
+              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent resize-none transition-all outline-none"
             />
           </div>
 
@@ -773,7 +773,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
                   onClick={() => setColor(colorOption.value)}
                   className={`h-10 rounded-lg transition-all ${
                     color === colorOption.value
-                      ? 'ring-2 ring-offset-2 ring-offset-neutral-900 ring-[#C9A857] scale-110'
+                      ? 'ring-2 ring-offset-2 ring-offset-neutral-900 ring-[#9BDDFF] scale-110'
                       : 'hover:scale-105'
                   }`}
                   style={{ backgroundColor: colorOption.value }}
@@ -793,7 +793,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="e.g., varsity, baseball, competitive"
-              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent transition-all outline-none"
+              className="w-full px-4 py-3 bg-white/[0.05] border border-white/[0.10] rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent transition-all outline-none"
             />
           </div>
         </div>
@@ -810,7 +810,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <button
             onClick={handleCreate}
             disabled={saving || !name.trim()}
-            className="flex-1 px-4 py-3 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-colors disabled:opacity-50 shadow-lg shadow-[#C9A857]/20"
+            className="flex-1 px-4 py-3 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-colors disabled:opacity-50"
           >
             {saving ? 'Creating...' : 'Create Group'}
           </button>

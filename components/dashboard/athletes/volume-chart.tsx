@@ -241,13 +241,13 @@ export default function VolumeChart({
                 <Tooltip content={<CustomTooltip />} />
                 <Bar
                   dataKey="volume"
-                  fill="#C9A857"
+                  fill="#9BDDFF"
                   radius={[4, 4, 0, 0]}
                 />
                 <Line
                   type="monotone"
                   dataKey="volume"
-                  stroke="#C9A857"
+                  stroke="#9BDDFF"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -309,7 +309,7 @@ export default function VolumeChart({
             onClick={() => setIsExpanded(true)}
             className="text-left flex-shrink-0"
           >
-            <h3 className="text-base font-bold text-white mb-1 group-hover:text-[#C9A857] transition-colors">{exerciseName}</h3>
+            <h3 className="text-base font-bold text-white mb-1 group-hover:text-[#9BDDFF] transition-colors">{exerciseName}</h3>
             <p className="text-xs text-gray-400">Total Volume (reps × weight)</p>
           </button>
 
@@ -323,7 +323,7 @@ export default function VolumeChart({
                   onClick={() => setTimeFilter(filter)}
                   className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                     timeFilter === filter
-                      ? 'bg-[#C9A857] text-black'
+                      ? 'bg-[#9BDDFF] text-black'
                       : 'text-gray-400 hover:text-white hover:bg-white/10'
                   }`}
                 >
@@ -380,7 +380,7 @@ export default function VolumeChart({
                     onClick={() => setTimeFilter(filter)}
                     className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
                       timeFilter === filter
-                        ? 'bg-[#C9A857] text-black'
+                        ? 'bg-[#9BDDFF] text-black'
                         : 'text-gray-400 hover:text-white hover:bg-white/10'
                     }`}
                   >

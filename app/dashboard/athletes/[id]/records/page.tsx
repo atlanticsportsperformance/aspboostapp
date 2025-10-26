@@ -72,7 +72,7 @@ export default function PersonalRecordsPage() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading personal records...</p>
         </div>
       </div>
@@ -112,7 +112,7 @@ export default function PersonalRecordsPage() {
 
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
               {profile?.first_name?.[0] || 'A'}
               {profile?.last_name?.[0] || ''}
             </div>

@@ -372,10 +372,10 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
         {/* Personal Records Button */}
         <Link
           href={`/dashboard/athletes/${athlete.id}/records`}
-          className="bg-gradient-to-br from-[#C9A857]/10 to-transparent border border-[#C9A857]/20 rounded-xl p-3 lg:p-4 hover:border-[#C9A857]/40 transition-all group flex flex-col items-center justify-center"
+          className="bg-gradient-to-br from-[#9BDDFF]/10 to-transparent border border-[#9BDDFF]/20 rounded-xl p-3 lg:p-4 hover:border-[#9BDDFF]/40 transition-all group flex flex-col items-center justify-center"
         >
           <span className="text-lg mb-1">🏆</span>
-          <p className="text-white text-xs lg:text-sm font-semibold group-hover:text-[#C9A857] transition-colors text-center">Records</p>
+          <p className="text-white text-xs lg:text-sm font-semibold group-hover:text-[#9BDDFF] transition-colors text-center">Records</p>
         </Link>
       </div>
 
@@ -449,7 +449,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           </div>
 
           <div className="text-center mb-6">
-            <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold text-3xl mb-4">
+            <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-3xl mb-4">
               {profile?.first_name?.[0] || 'A'}
               {profile?.last_name?.[0] || ''}
             </div>
@@ -482,7 +482,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           {/* Tags Section */}
           {athleteTags.length > 0 && (
             <div className="pt-4 border-t border-white/10">
-              <h4 className="text-sm font-semibold text-[#C9A857] mb-3">ATHLETE TAGS</h4>
+              <h4 className="text-sm font-semibold text-[#9BDDFF] mb-3">ATHLETE TAGS</h4>
               <div className="space-y-3">
                 {/* Plan Tags */}
                 {athleteTags.filter(t => t.tag_type === 'plan').length > 0 && (
@@ -569,7 +569,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                   </svg>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Email</p>
-                    <a href={`mailto:${profile.email}`} className="text-white hover:text-[#C9A857] transition-colors">
+                    <a href={`mailto:${profile.email}`} className="text-white hover:text-[#9BDDFF] transition-colors">
                       {profile.email}
                     </a>
                   </div>
@@ -583,7 +583,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                   </svg>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Phone</p>
-                    <a href={`tel:${profile.phone}`} className="text-white hover:text-[#C9A857] transition-colors">
+                    <a href={`tel:${profile.phone}`} className="text-white hover:text-[#9BDDFF] transition-colors">
                       {profile.phone}
                     </a>
                   </div>
@@ -597,12 +597,12 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                     <div key={contact.id} className="mb-3 last:mb-0">
                       <p className="text-white font-medium">{contact.first_name} {contact.last_name}</p>
                       {contact.email && (
-                        <a href={`mailto:${contact.email}`} className="text-sm text-gray-400 hover:text-[#C9A857] block">
+                        <a href={`mailto:${contact.email}`} className="text-sm text-gray-400 hover:text-[#9BDDFF] block">
                           {contact.email}
                         </a>
                       )}
                       {contact.phone && (
-                        <a href={`tel:${contact.phone}`} className="text-sm text-gray-400 hover:text-[#C9A857] block">
+                        <a href={`tel:${contact.phone}`} className="text-sm text-gray-400 hover:text-[#9BDDFF] block">
                           {contact.phone}
                         </a>
                       )}
@@ -651,7 +651,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
             <h3 className="text-base lg:text-lg font-bold text-white">Group Assignments</h3>
             <button
               onClick={() => setShowAddToGroupModal(true)}
-              className="px-2 lg:px-3 py-1 text-xs lg:text-sm bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+              className="px-2 lg:px-3 py-1 text-xs lg:text-sm bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] transition-colors font-medium"
             >
               + Add
             </button>
@@ -825,7 +825,7 @@ function AddAthleteToGroupModal({
               <select
                 value={selectedGroupId}
                 onChange={(e) => setSelectedGroupId(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               >
                 <option value="">Choose a group...</option>
                 {groups.map((group) => (
@@ -843,7 +843,7 @@ function AddAthleteToGroupModal({
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               >
                 <option value="member">Member</option>
                 <option value="leader">Leader</option>
@@ -864,7 +864,7 @@ function AddAthleteToGroupModal({
           <button
             onClick={handleAdd}
             disabled={saving || !selectedGroupId}
-            className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] disabled:opacity-50 transition-colors font-medium"
+            className="flex-1 px-4 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 transition-colors font-medium"
           >
             {saving ? 'Adding...' : 'Add to Group'}
           </button>

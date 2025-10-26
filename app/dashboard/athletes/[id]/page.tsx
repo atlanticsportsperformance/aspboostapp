@@ -9,6 +9,7 @@ import Link from 'next/link';
 import OverviewTab from '@/components/dashboard/athletes/athlete-overview-tab';
 import CalendarTab from '@/components/dashboard/athletes/athlete-calendar-tab';
 import PerformanceTab from '@/components/dashboard/athletes/athlete-performance-tab';
+import ForceProfileTab from '@/components/dashboard/athletes/athlete-force-profile-tab';
 import ManageTagsModal from '@/components/dashboard/athletes/manage-tags-modal';
 
 interface Profile {
@@ -46,6 +47,9 @@ interface PlanAssignment {
 interface Athlete {
   id: string;
   user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
   primary_position: string | null;
   secondary_position: string | null;
   grad_year: number | null;
@@ -72,6 +76,8 @@ export default function AthleteDetailPage() {
   const [athleteData, setAthleteData] = useState<AthleteData | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showManageTagsModal, setShowManageTagsModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -170,7 +176,8 @@ export default function AthleteDetailPage() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'calendar', label: 'Calendar & Programming', icon: '📅' },
-    { id: 'performance', label: 'Programming KPIs', icon: '📈' }
+    { id: 'performance', label: 'Programming KPIs', icon: '📈' },
+    { id: 'force-profile', label: 'Force Profile', icon: '⚡' }
   ];
 
   const updateTabInUrl = (tabId: string) => {
@@ -181,11 +188,37 @@ export default function AthleteDetailPage() {
     window.history.pushState({}, '', url.toString());
   };
 
+  const handleDeleteAthlete = async () => {
+    if (!athleteData) return;
+
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`/api/athletes/${athleteId}/delete`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete athlete');
+      }
+
+      // Success! Show message and redirect
+      alert(`✅ ${data.message}`);
+      router.push('/dashboard/athletes');
+    } catch (error) {
+      console.error('Error deleting athlete:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to delete athlete'}`);
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading athlete profile...</p>
         </div>
       </div>
@@ -197,7 +230,7 @@ export default function AthleteDetailPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-gray-400">Athlete not found</p>
-          <Link href="/dashboard/athletes" className="text-[#C9A857] hover:underline mt-2 inline-block">
+          <Link href="/dashboard/athletes" className="text-[#9BDDFF] hover:underline mt-2 inline-block">
             Return to Athletes
           </Link>
         </div>
@@ -206,8 +239,9 @@ export default function AthleteDetailPage() {
   }
 
   const { athlete, profile } = athleteData;
-  const fullName = profile
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+  // Names are stored directly on athlete table now
+  const fullName = athlete.first_name && athlete.last_name
+    ? `${athlete.first_name} ${athlete.last_name}`.trim()
     : `Athlete #${athlete.id.slice(0, 8)}`;
 
   return (
@@ -229,9 +263,9 @@ export default function AthleteDetailPage() {
 
           <div className="flex items-center gap-4">
             {/* Avatar and Name */}
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
-              {profile?.first_name?.[0] || 'A'}
-              {profile?.last_name?.[0] || ''}
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
+              {athlete.first_name?.[0] || 'A'}
+              {athlete.last_name?.[0] || ''}
             </div>
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white">{fullName}</h1>
@@ -261,7 +295,7 @@ export default function AthleteDetailPage() {
                   onClick={() => updateTabInUrl(tab.id)}
                   className={`px-4 py-3 font-medium transition-all duration-200 border-b-2 ${
                     activeTab === tab.id
-                      ? 'border-[#C9A857] text-white'
+                      ? 'border-[#9BDDFF] text-white'
                       : 'border-transparent text-gray-400 hover:text-white'
                   }`}
                   style={mounted && activeTab === tab.id ? {} : undefined}
@@ -272,16 +306,28 @@ export default function AthleteDetailPage() {
               ))}
             </div>
 
-            {/* Manage Tags Button */}
-            <button
-              onClick={() => setShowManageTagsModal(true)}
-              className="px-3 py-1.5 bg-[#C9A857]/10 hover:bg-[#C9A857]/20 text-[#C9A857] text-sm font-medium rounded-lg transition-colors border border-[#C9A857]/20 flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              Manage Tags
-            </button>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowManageTagsModal(true)}
+                className="px-3 py-1.5 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-sm font-medium rounded-lg transition-colors border border-[#9BDDFF]/20 flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Manage Tags
+              </button>
+
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20 flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
           </div>
         </div>
 
@@ -290,7 +336,7 @@ export default function AthleteDetailPage() {
           <select
             value={activeTab}
             onChange={(e) => updateTabInUrl(e.target.value)}
-            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
           >
             {tabs.map((tab) => (
               <option key={tab.id} value={tab.id}>
@@ -299,16 +345,27 @@ export default function AthleteDetailPage() {
             ))}
           </select>
 
-          {/* Manage Tags Button - Mobile */}
-          <button
-            onClick={() => setShowManageTagsModal(true)}
-            className="w-full px-3 py-2 bg-[#C9A857]/10 hover:bg-[#C9A857]/20 text-[#C9A857] text-sm font-medium rounded-lg transition-colors border border-[#C9A857]/20 flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            Manage Tags
-          </button>
+          {/* Action Buttons - Mobile */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowManageTagsModal(true)}
+              className="flex-1 px-3 py-2 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-sm font-medium rounded-lg transition-colors border border-[#9BDDFF]/20 flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Tags
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex-1 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20 flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
 
@@ -332,7 +389,75 @@ export default function AthleteDetailPage() {
         {activeTab === 'overview' && mounted && <OverviewTab athleteData={athleteData} />}
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
         {activeTab === 'performance' && <PerformanceTab athleteId={athleteId} />}
+        {activeTab === 'force-profile' && <ForceProfileTab athleteId={athleteId} />}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">Delete Athlete</h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  Are you sure you want to delete <span className="text-white font-semibold">{fullName}</span>?
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-3">
+                  <p className="text-red-400 text-sm font-medium">
+                    ⚠️ This action cannot be undone. This will permanently delete:
+                  </p>
+                  <ul className="text-red-400/80 text-xs mt-2 space-y-1 ml-4">
+                    <li>• All workout history and logs</li>
+                    <li>• All plan assignments</li>
+                    <li>• All max records</li>
+                    <li>• All group memberships</li>
+                    <li>• All notes and documents</li>
+                  </ul>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-emerald-400 text-xs">
+                    ✅ <span className="font-medium">Preserved:</span> VALD test data and percentile contributions will remain in the database for statistical integrity.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAthlete}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

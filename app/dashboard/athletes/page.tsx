@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AddAthleteModal from '@/components/dashboard/athletes/add-athlete-modal';
 
 interface Profile {
   id: string;
@@ -27,11 +28,15 @@ interface Plan {
 interface Athlete {
   id: string;
   user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
   primary_position: string | null;
   secondary_position: string | null;
   grad_year: number | null;
   is_active: boolean;
   created_at: string;
+  vald_profile_id?: string | null;
   profile?: Profile | null;
   teams?: Team[];
   currentPlan?: Plan | null;
@@ -48,6 +53,13 @@ export default function AthletesPage() {
   const [filteredAthletes, setFilteredAthletes] = useState<Athlete[]>([]);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active_plans' | 'no_plan' | 'at_risk'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+
+  // Bulk selection state
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -61,16 +73,16 @@ export default function AthletesPage() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    async function fetchAthletes() {
+  // Function to fetch athletes (can be called to refresh)
+  async function fetchAthletes() {
       const supabase = createClient();
 
       console.log('=== ATHLETES PAGE LOADING ===');
 
-      // Step 1: Get all active athletes
+      // Step 1: Get all active athletes (include VALD profile status)
       const { data: athletesData, error: athletesError } = await supabase
         .from('athletes')
-        .select('*')
+        .select('*, vald_profile_id')
         .eq('is_active', true)
         .order('created_at', { ascending: false });
 
@@ -223,6 +235,7 @@ export default function AthletesPage() {
       setLoading(false);
     }
 
+  useEffect(() => {
     fetchAthletes();
   }, []);
 
@@ -275,11 +288,39 @@ export default function AthletesPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const handleBulkDelete = async () => {
+    setBulkDeleteLoading(true);
+    try {
+      const response = await fetch('/api/athletes/bulk-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ athleteIds: Array.from(selectedAthletes) }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete athletes');
+      }
+
+      alert(`✅ Successfully deleted ${data.deleted} athlete(s)`);
+      setSelectedAthletes(new Set());
+      setBulkMode(false);
+      setShowBulkDeleteModal(false);
+      await fetchAthletes(); // Refresh list
+    } catch (error) {
+      console.error('Error deleting athletes:', error);
+      alert(`❌ Error: ${error instanceof Error ? error.message : 'Failed to delete athletes'}`);
+    } finally {
+      setBulkDeleteLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading athletes...</p>
         </div>
       </div>
@@ -294,52 +335,86 @@ export default function AthletesPage() {
           <h1 className="text-2xl lg:text-3xl font-bold text-white">Athletes</h1>
           <p className="text-gray-400 mt-1">Manage athlete profiles and training programs</p>
         </div>
-        <button
-          onClick={() => alert('Add Athlete modal - Coming soon')}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all duration-200"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Athlete
-        </button>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative">
-        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search athletes by name, position, or team..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
-        />
-      </div>
-
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          { id: 'all', label: 'All Athletes', count: athletes.length },
-          { id: 'active_plans', label: 'Active Plans', count: athletes.filter(a => a.currentPlan).length },
-          { id: 'no_plan', label: 'No Active Plan', count: athletes.filter(a => !a.currentPlan).length },
-          { id: 'at_risk', label: 'At Risk (<70%)', count: athletes.filter(a => (a.completionRate || 0) < 70).length }
-        ].map(filter => (
+        {/* Desktop Action Buttons */}
+        <div className="hidden sm:flex items-center gap-2">
           <button
-            key={filter.id}
-            onClick={() => setActiveFilter(filter.id as any)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              activeFilter === filter.id
-                ? 'bg-[#C9A857] text-black'
-                : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+            onClick={() => {
+              setBulkMode(!bulkMode);
+              setSelectedAthletes(new Set());
+            }}
+            className={`px-4 py-2 font-semibold rounded-lg transition-all duration-200 ${
+              bulkMode
+                ? 'bg-gray-600 text-white hover:bg-gray-700'
+                : 'bg-white/5 text-white hover:bg-white/10'
             }`}
-            style={mounted && activeFilter === filter.id ? {} : undefined}
           >
-            {filter.label} <span className="ml-1.5 text-sm opacity-75">({filter.count})</span>
+            {bulkMode ? 'Cancel Selection' : 'Bulk Manage'}
           </button>
-        ))}
+
+          {bulkMode && selectedAthletes.size > 0 && (
+            <button
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg border border-red-500/20 transition-all duration-200 flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+              Delete ({selectedAthletes.size})
+            </button>
+          )}
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-all duration-200 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Athlete
+          </button>
+        </div>
+      </div>
+
+      {/* Search Bar and Filter Dropdown */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search Bar */}
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search athletes by name, position, or team..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
+          />
+        </div>
+
+        {/* Filter Dropdown */}
+        <div className="relative sm:w-56">
+          <select
+            value={activeFilter}
+            onChange={(e) => setActiveFilter(e.target.value as any)}
+            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent pr-10"
+          >
+            <option value="all" className="bg-[#0A0A0A] text-white">
+              All Athletes ({athletes.length})
+            </option>
+            <option value="active_plans" className="bg-[#0A0A0A] text-white">
+              Active Plans ({athletes.filter(a => a.currentPlan).length})
+            </option>
+            <option value="no_plan" className="bg-[#0A0A0A] text-white">
+              No Active Plan ({athletes.filter(a => !a.currentPlan).length})
+            </option>
+            <option value="at_risk" className="bg-[#0A0A0A] text-white">
+              At Risk &lt;70% ({athletes.filter(a => (a.completionRate || 0) < 70).length})
+            </option>
+          </select>
+          <svg className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -399,6 +474,22 @@ export default function AthletesPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/10">
+                {bulkMode && (
+                  <th className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedAthletes.size === filteredAthletes.length && filteredAthletes.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedAthletes(new Set(filteredAthletes.map(a => a.id)));
+                        } else {
+                          setSelectedAthletes(new Set());
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-gray-600 text-[#9BDDFF] focus:ring-[#9BDDFF] focus:ring-offset-gray-900"
+                    />
+                  </th>
+                )}
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Name</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Position</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Team</th>
@@ -419,22 +510,70 @@ export default function AthletesPage() {
                 filteredAthletes.map((athlete) => (
                   <tr
                     key={athlete.id}
-                    onClick={() => router.push(`/dashboard/athletes/${athlete.id}`)}
-                    className="border-b border-white/10 hover:bg-white/5 cursor-pointer transition-colors duration-150"
+                    onClick={(e) => {
+                      if (bulkMode) {
+                        e.stopPropagation();
+                        const newSelected = new Set(selectedAthletes);
+                        if (newSelected.has(athlete.id)) {
+                          newSelected.delete(athlete.id);
+                        } else {
+                          newSelected.add(athlete.id);
+                        }
+                        setSelectedAthletes(newSelected);
+                      } else {
+                        router.push(`/dashboard/athletes/${athlete.id}`);
+                      }
+                    }}
+                    className={`border-b border-white/10 hover:bg-white/5 cursor-pointer transition-colors duration-150 ${
+                      bulkMode && selectedAthletes.has(athlete.id) ? 'bg-[#9BDDFF]/10' : ''
+                    }`}
                   >
+                    {bulkMode && (
+                      <td className="px-6 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedAthletes.has(athlete.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            const newSelected = new Set(selectedAthletes);
+                            if (e.target.checked) {
+                              newSelected.add(athlete.id);
+                            } else {
+                              newSelected.delete(athlete.id);
+                            }
+                            setSelectedAthletes(newSelected);
+                          }}
+                          className="w-4 h-4 rounded border-gray-600 text-[#9BDDFF] focus:ring-[#9BDDFF] focus:ring-offset-gray-900"
+                        />
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold">
-                          {athlete.profile?.first_name?.[0] || 'A'}
-                          {athlete.profile?.last_name?.[0] || ''}
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold">
+                          {athlete.first_name?.[0] || 'A'}
+                          {athlete.last_name?.[0] || ''}
                         </div>
-                        <div>
-                          <p className="text-white font-medium">
-                            {athlete.profile
-                              ? `${athlete.profile.first_name || ''} ${athlete.profile.last_name || ''}`.trim()
-                              : `Athlete #${athlete.id.slice(0, 8)}`
-                            }
-                          </p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-white font-medium">
+                              {athlete.first_name && athlete.last_name
+                                ? `${athlete.first_name} ${athlete.last_name}`.trim()
+                                : `Athlete #${athlete.id.slice(0, 8)}`
+                              }
+                            </p>
+                            {athlete.vald_profile_id && (
+                              <div className="group relative">
+                                <div className="h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                                  <svg className="h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                  VALD Connected
+                                </div>
+                              </div>
+                            )}
+                          </div>
                           {athlete.grad_year && (
                             <p className="text-sm text-gray-400">Class of {athlete.grad_year}</p>
                           )}
@@ -515,18 +654,27 @@ export default function AthletesPage() {
               className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
             >
               <div className="flex items-start gap-3 mb-2">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#C9A857] to-[#A08845] flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
-                  {athlete.profile?.first_name?.[0] || 'A'}
-                  {athlete.profile?.last_name?.[0] || ''}
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
+                  {athlete.first_name?.[0] || 'A'}
+                  {athlete.last_name?.[0] || ''}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-white font-semibold text-base">
-                      {athlete.profile
-                        ? `${athlete.profile.first_name || ''} ${athlete.profile.last_name || ''}`.trim()
-                        : `Athlete #${athlete.id.slice(0, 8)}`
-                      }
-                    </h3>
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-white font-semibold text-base">
+                        {athlete.first_name && athlete.last_name
+                          ? `${athlete.first_name} ${athlete.last_name}`.trim()
+                          : `Athlete #${athlete.id.slice(0, 8)}`
+                        }
+                      </h3>
+                      {athlete.vald_profile_id && (
+                        <div className="h-4 w-4 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                          <svg className="h-2.5 w-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(athlete.completionRate)}`}>
                       {athlete.completionRate}%
                     </span>
@@ -562,6 +710,92 @@ export default function AthletesPage() {
           ))
         )}
       </div>
+
+      {/* Mobile Floating Add Button */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="sm:hidden fixed bottom-6 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center"
+      >
+        <svg className="w-7 h-7 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
+
+      {/* Add Athlete Modal */}
+      <AddAthleteModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={() => {
+          fetchAthletes(); // Refresh the athletes list
+        }}
+      />
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0A0A0A] border border-white/10 rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-start gap-4 mb-4">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-2">Delete {selectedAthletes.size} Athlete{selectedAthletes.size > 1 ? 's' : ''}</h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  Are you sure you want to permanently delete <span className="text-white font-semibold">{selectedAthletes.size} athlete{selectedAthletes.size > 1 ? 's' : ''}</span>?
+                </p>
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-3">
+                  <p className="text-red-400 text-sm font-medium">
+                    ⚠️ This action cannot be undone. This will permanently delete:
+                  </p>
+                  <ul className="text-red-400/80 text-xs mt-2 space-y-1 ml-4">
+                    <li>• All workout history and logs</li>
+                    <li>• All plan assignments</li>
+                    <li>• All max records</li>
+                    <li>• All group memberships</li>
+                    <li>• All notes and documents</li>
+                  </ul>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 mb-4">
+                  <p className="text-emerald-400 text-xs">
+                    ✅ <span className="font-medium">Preserved:</span> VALD test data and percentile contributions will remain.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={bulkDeleteLoading}
+                className="flex-1 px-4 py-2 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                disabled={bulkDeleteLoading}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {bulkDeleteLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

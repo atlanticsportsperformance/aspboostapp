@@ -21,7 +21,6 @@ interface ExerciseMax {
 export default function MaxTrendsDashboard({ athleteId }: MaxTrendsDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [exerciseMaxes, setExerciseMaxes] = useState<ExerciseMax[]>([]);
-  const [metricSearch, setMetricSearch] = useState<string>('');
   const [exerciseSearch, setExerciseSearch] = useState<string>('');
 
   useEffect(() => {
@@ -90,23 +89,19 @@ export default function MaxTrendsDashboard({ athleteId }: MaxTrendsDashboardProp
   const uniqueExercises = Array.from(new Set(exerciseMaxes.map(em => em.exercise_id)));
   const uniqueMetrics = Array.from(new Set(exerciseMaxes.map(em => em.metric_id)));
 
-  // Filter exercise maxes based on search
+  // Filter exercise maxes based on exercise search only
   const filteredMaxes = exerciseMaxes.filter((em) => {
-    const metricMatch = metricSearch === '' ||
-      em.metric_label.toLowerCase().includes(metricSearch.toLowerCase()) ||
-      em.metric_id.toLowerCase().includes(metricSearch.toLowerCase());
-
     const exerciseMatch = exerciseSearch === '' ||
       em.exercise_name.toLowerCase().includes(exerciseSearch.toLowerCase());
 
-    return metricMatch && exerciseMatch;
+    return exerciseMatch;
   });
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading max trends...</p>
         </div>
       </div>
@@ -133,13 +128,8 @@ export default function MaxTrendsDashboard({ athleteId }: MaxTrendsDashboardProp
     <div className="space-y-6">
       {/* Header with Search */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-white mb-1">Max Trends Over Time</h2>
-          <p className="text-gray-400 text-sm">Track progress for each exercise and measurement</p>
-        </div>
-
         {/* Search Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex flex-col sm:flex-row gap-3 w-full">
           {/* Exercise Search */}
           <div className="relative">
             <svg
@@ -155,7 +145,7 @@ export default function MaxTrendsDashboard({ athleteId }: MaxTrendsDashboardProp
               placeholder="Search exercises..."
               value={exerciseSearch}
               onChange={(e) => setExerciseSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-[#1a1a1a] text-white border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-[#C9A857] w-full sm:w-48"
+              className="pl-10 pr-4 py-2 bg-[#1a1a1a] text-white border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-[#9BDDFF] w-full sm:w-48"
             />
             {exerciseSearch && (
               <button
@@ -169,47 +159,6 @@ export default function MaxTrendsDashboard({ athleteId }: MaxTrendsDashboardProp
             )}
           </div>
 
-          {/* Metric Search */}
-          <div className="relative">
-            <svg
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search metrics..."
-              value={metricSearch}
-              onChange={(e) => setMetricSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-[#1a1a1a] text-white border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-[#C9A857] w-full sm:w-48"
-            />
-            {metricSearch && (
-              <button
-                onClick={() => setMetricSearch('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Clear All */}
-          {(exerciseSearch || metricSearch) && (
-            <button
-              onClick={() => {
-                setExerciseSearch('');
-                setMetricSearch('');
-              }}
-              className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-colors whitespace-nowrap"
-            >
-              Clear All
-            </button>
-          )}
         </div>
       </div>
 

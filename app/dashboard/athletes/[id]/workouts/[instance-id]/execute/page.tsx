@@ -136,15 +136,28 @@ export default function WorkoutExecutionPage() {
           notes: setData.notes || null
         };
 
+        // Check if there's any actual data to save
+        const hasData = logData.actual_reps !== null ||
+                       logData.actual_weight !== null ||
+                       logData.actual_duration_seconds !== null ||
+                       logData.actual_rpe !== null ||
+                       logData.notes !== null;
+
         if (existingLog) {
-          // Update existing log
-          await supabase
-            .from('exercise_logs')
-            .update(logData)
-            .eq('id', existingLog.id);
-        } else {
-          // Create new log
-          await supabase.from('exercise_logs').insert({
+          // Update existing log only if there's new data
+          if (hasData) {
+            const { error: updateError } = await supabase
+              .from('exercise_logs')
+              .update(logData)
+              .eq('id', existingLog.id);
+
+            if (updateError) {
+              console.error('❌ Error updating exercise log:', updateError);
+            }
+          }
+        } else if (hasData) {
+          // Only create new log if there's actual data
+          const { error: insertError } = await supabase.from('exercise_logs').insert({
             workout_instance_id: instanceId,
             routine_exercise_id: exercise.id,
             athlete_id: athleteId,
@@ -157,6 +170,12 @@ export default function WorkoutExecutionPage() {
             target_intensity_percent: setData.intensityPercent || null,
             ...logData
           });
+
+          if (insertError) {
+            console.error('❌ Error inserting exercise log:', insertError);
+          } else {
+            console.log('✅ Inserted exercise log:', { exercise: exercise.exercises?.name, set: setNumber, reps: logData.actual_reps, weight: logData.actual_weight });
+          }
         }
       }
     }
@@ -199,7 +218,7 @@ export default function WorkoutExecutionPage() {
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent mb-4"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent mb-4"></div>
           <p className="text-gray-400">Loading workout...</p>
         </div>
       </div>
@@ -229,11 +248,11 @@ export default function WorkoutExecutionPage() {
             </div>
 
             {instance.status === 'in_progress' && (
-              <div className="flex-shrink-0 flex items-center gap-1.5 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded-full px-2.5 py-1">
-                <svg className="w-3 h-3 text-[#C9A857]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex-shrink-0 flex items-center gap-1.5 bg-[#9BDDFF]/10 border border-[#9BDDFF]/30 rounded-full px-2.5 py-1">
+                <svg className="w-3 h-3 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm font-mono font-bold text-[#C9A857] tabular-nums">
+                <span className="text-sm font-mono font-bold text-[#9BDDFF] tabular-nums">
                   {Math.floor(timer/60)}:{(timer%60).toString().padStart(2,'0')}
                 </span>
               </div>
@@ -245,11 +264,11 @@ export default function WorkoutExecutionPage() {
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-white/5 rounded-full h-1 overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-[#C9A857] to-green-500 h-full rounded-full transition-all duration-500 ease-out"
+                  className="bg-gradient-to-r from-[#9BDDFF] to-green-500 h-full rounded-full transition-all duration-500 ease-out"
                   style={{width: `${allExercises.length > 0 ? (completed/allExercises.length)*100 : 0}%`}}
                 />
               </div>
-              <span className="text-[10px] font-semibold text-[#C9A857] tabular-nums whitespace-nowrap">
+              <span className="text-[10px] font-semibold text-[#9BDDFF] tabular-nums whitespace-nowrap">
                 {completed}/{allExercises.length}
               </span>
             </div>
@@ -258,7 +277,7 @@ export default function WorkoutExecutionPage() {
       </div>
 
       {/* Content */}
-      <div className="px-4 py-3">
+      <div className="px-0 md:px-4 py-3">
         {instance.status === 'not_started' && (
           <div className="text-center py-16 px-4">
             <div className="max-w-md mx-auto">
@@ -296,12 +315,12 @@ export default function WorkoutExecutionPage() {
 
               return (
                 <div key={routine.id} className="relative">
-                  {/* Visual grouping - Left border for ALL blocks */}
-                  <div className="border-l-4 border-[#C9A857] pl-4">
+                  {/* Visual grouping - Left gold border on ALL views */}
+                  <div className="border-l-4 border-[#9BDDFF] pl-3 md:pl-4">
                     {/* Block Header - Show if name is NOT "Exercise" */}
                     {hasBlockTitle && (
-                      <div className="mb-2 -ml-4 pl-4">
-                        <h3 className="text-sm font-bold text-[#C9A857] uppercase tracking-wide">
+                      <div className="mb-2 -ml-3 md:-ml-4 pl-3 md:pl-4">
+                        <h3 className="text-sm font-bold text-[#9BDDFF] uppercase tracking-wide">
                           {routine.name}
                         </h3>
                         {routine.description && (
@@ -313,8 +332,8 @@ export default function WorkoutExecutionPage() {
                       </div>
                     )}
 
-                    {/* Exercise Cards - Grouped tightly by block */}
-                    <div className="space-y-0.5">
+                    {/* Exercise Cards - Mobile: no spacing, Desktop: tight spacing */}
+                    <div className="space-y-0 md:space-y-0.5">
                       {(routine.routine_exercises || []).map((exercise: any, exerciseIdx: number) => {
                     const videoId = getYouTubeVideoId(exercise.exercises?.video_url);
                     // Generate exercise code (A1, A2, B1, etc.)
@@ -934,11 +953,15 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
   const isTrackingPR = exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0;
 
   return (
-    <div className={`bg-white/5 border-2 rounded-xl overflow-hidden transition-all ${
-      isComplete ? 'border-green-500/40' :
-      isTrackingPR ? 'border-[#C9A857] shadow-lg shadow-[#C9A857]/20' :
-      'border-white/10'
-    }`}>
+    <div className={`
+      border-t border-white/5 md:border-t-0
+      md:bg-white/5 md:border-2 md:rounded-xl
+      overflow-hidden transition-all
+      ${isComplete ? 'md:border-green-500/40' :
+        isTrackingPR ? 'md:border-[#9BDDFF] md:shadow-lg md:shadow-[#9BDDFF]/20' :
+        'md:border-white/10'
+      }
+    `}>
       {/* Collapsed Header - Exercise.com Style */}
       <button
         onClick={onToggle}
@@ -965,7 +988,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
               <h3 className="font-semibold text-base">{exercise.exercises.name}</h3>
             )}
             {isTrackingPR && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-[#C9A857]/20 text-[#C9A857] rounded font-bold border border-[#C9A857]/40">
+              <span className="text-[10px] px-1.5 py-0.5 bg-[#9BDDFF]/20 text-[#9BDDFF] rounded font-bold border border-[#9BDDFF]/40">
                 🏆 PR
               </span>
             )}
@@ -1042,8 +1065,8 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
 
               {/* Coach Notes from Workout Builder */}
               {exercise.notes && (
-                <div className="mb-2 p-2 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded">
-                  <p className="text-[9px] text-[#C9A857] font-semibold mb-0.5 uppercase">Coach Notes</p>
+                <div className="mb-2 p-2 bg-[#9BDDFF]/10 border border-[#9BDDFF]/30 rounded">
+                  <p className="text-[9px] text-[#9BDDFF] font-semibold mb-0.5 uppercase">Coach Notes</p>
                   <p className="text-xs text-gray-200 leading-tight">{exercise.notes}</p>
                 </div>
               )}
@@ -1075,8 +1098,8 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                       {isAMRAP && <span className="text-blue-400 text-[10px] px-1.5 py-0.5 bg-blue-500/20 rounded">AMRAP</span>}
                     </div>
                     {setData.intensityPercent && (
-                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#C9A857]/10 border border-[#C9A857]/30 rounded">
-                        <span className="text-sm font-bold text-[#C9A857]">
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#9BDDFF]/10 border border-[#9BDDFF]/30 rounded">
+                        <span className="text-sm font-bold text-[#9BDDFF]">
                           {setData.intensityPercent}% Intensity
                         </span>
                       </div>
@@ -1122,8 +1145,8 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                         // Check if this metric is being tracked for PR
                         const isTrackedForPR = exercise.tracked_max_metrics?.includes(metricId);
 
-                        // Special handling for reps (could be AMRAP)
-                        const label = (metricId === 'reps' && isAMRAP) ? 'Reps (AMRAP)' : metricName;
+                        // Use metric name as label (AMRAP badge shows separately)
+                        const label = metricName;
                         const targetKey = `target${metricId.charAt(0).toUpperCase() + metricId.slice(1)}`;
                         const targetValue = setData[targetKey];
 
@@ -1141,7 +1164,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                             <label className="block text-[10px] text-gray-400 mb-0.5 uppercase truncate flex items-center gap-1" title={`${label} ${showUnit ? `(${metricUnit})` : ''}`}>
                               {label} {showUnit && `(${metricUnit})`}
                               {isTrackedForPR && (
-                                <span className="text-[#C9A857]" title="Tracking PR for this metric">
+                                <span className="text-[#9BDDFF]" title="Tracking PR for this metric">
                                   <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                   </svg>
@@ -1159,7 +1182,7 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                               }}
                               className={`w-full text-center text-lg font-bold bg-black/40 rounded py-1 focus:outline-none ${
                                 isTrackedForPR
-                                  ? 'border-2 border-[#C9A857] shadow-lg shadow-[#C9A857]/20 focus:border-[#C9A857] focus:shadow-[#C9A857]/40'
+                                  ? 'border-2 border-[#9BDDFF] shadow-lg shadow-[#9BDDFF]/20 focus:border-[#9BDDFF] focus:shadow-[#9BDDFF]/40'
                                   : 'border border-white/20 focus:border-blue-500'
                               }`}
                               step={metricType === 'integer' || metricId === 'reps' ? '1' : '0.1'}

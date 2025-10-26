@@ -192,7 +192,7 @@ export default function WorkoutViewPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A]">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading workout...</p>
         </div>
       </div>
@@ -206,7 +206,7 @@ export default function WorkoutViewPage() {
           <p className="text-gray-400 mb-4">Workout not found</p>
           <Link
             href={`/dashboard/athletes/${athleteId}`}
-            className="text-[#C9A857] hover:underline"
+            className="text-[#9BDDFF] hover:underline"
           >
             Back to Athlete
           </Link>
@@ -281,11 +281,11 @@ export default function WorkoutViewPage() {
           return (
             <div
               key={groupIndex}
-              className={`${isSuperset ? 'border-l-4 border-[#C9A857] pl-4' : ''}`}
+              className={`${isSuperset ? 'border-l-4 border-[#9BDDFF] pl-4' : ''}`}
             >
               {isSuperset && (
                 <div className="mb-2">
-                  <span className="text-xs font-semibold text-[#C9A857] uppercase tracking-wider">
+                  <span className="text-xs font-semibold text-[#9BDDFF] uppercase tracking-wider">
                     Superset {group[0].superset_group}
                   </span>
                 </div>

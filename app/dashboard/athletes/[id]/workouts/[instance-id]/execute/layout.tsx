@@ -32,7 +32,7 @@ export default function WorkoutExecuteLayout({
     return (
       <div className="min-h-screen bg-[#0A0A0A] text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent mb-4"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent mb-4"></div>
           <p className="text-gray-400">Loading...</p>
         </div>
       </div>

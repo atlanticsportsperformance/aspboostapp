@@ -144,8 +144,8 @@ export default function MaxTrendsChart({
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id={`colorValue${exerciseId}${metricId}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#C9A857" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#C9A857" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#9BDDFF" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#9BDDFF" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
@@ -165,11 +165,11 @@ export default function MaxTrendsChart({
                 <Area
                   type="monotone"
                   dataKey="value"
-                  stroke="#C9A857"
+                  stroke="#9BDDFF"
                   strokeWidth={3}
                   fill={`url(#colorValue${exerciseId}${metricId})`}
-                  dot={{ fill: '#C9A857', strokeWidth: 2, r: 5 }}
-                  activeDot={{ r: 7, fill: '#C9A857', stroke: '#000', strokeWidth: 2 }}
+                  dot={{ fill: '#9BDDFF', strokeWidth: 2, r: 5 }}
+                  activeDot={{ r: 7, fill: '#9BDDFF', stroke: '#000', strokeWidth: 2 }}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -229,7 +229,7 @@ export default function MaxTrendsChart({
             onClick={() => setIsExpanded(true)}
             className="text-left flex-shrink-0"
           >
-            <h3 className="text-base font-bold text-white mb-1 group-hover:text-[#C9A857] transition-colors">{exerciseName}</h3>
+            <h3 className="text-base font-bold text-white mb-1 group-hover:text-[#9BDDFF] transition-colors">{exerciseName}</h3>
             <p className="text-xs text-gray-400">{metricLabel} {metricUnit && `(${metricUnit})`}</p>
           </button>
 
@@ -243,7 +243,7 @@ export default function MaxTrendsChart({
                   onClick={() => setTimeFilter(filter)}
                   className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${
                     timeFilter === filter
-                      ? 'bg-[#C9A857] text-black'
+                      ? 'bg-[#9BDDFF] text-black'
                       : 'text-gray-400 hover:text-white hover:bg-white/10'
                   }`}
                 >
@@ -300,7 +300,7 @@ export default function MaxTrendsChart({
                     onClick={() => setTimeFilter(filter)}
                     className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
                       timeFilter === filter
-                        ? 'bg-[#C9A857] text-black'
+                        ? 'bg-[#9BDDFF] text-black'
                         : 'text-gray-400 hover:text-white hover:bg-white/10'
                     }`}
                   >

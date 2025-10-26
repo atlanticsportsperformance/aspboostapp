@@ -29,7 +29,7 @@ export default function AthletePerformanceTab({ athleteId }: PerformanceTabProps
             onClick={() => setViewMode('trends')}
             className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
               viewMode === 'trends'
-                ? 'bg-[#C9A857] text-black'
+                ? 'bg-[#9BDDFF] text-black'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -39,7 +39,7 @@ export default function AthletePerformanceTab({ athleteId }: PerformanceTabProps
             onClick={() => setViewMode('records')}
             className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
               viewMode === 'records'
-                ? 'bg-[#C9A857] text-black'
+                ? 'bg-[#9BDDFF] text-black'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -49,7 +49,7 @@ export default function AthletePerformanceTab({ athleteId }: PerformanceTabProps
             onClick={() => setViewMode('volume')}
             className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
               viewMode === 'volume'
-                ? 'bg-[#C9A857] text-black'
+                ? 'bg-[#9BDDFF] text-black'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -59,7 +59,7 @@ export default function AthletePerformanceTab({ athleteId }: PerformanceTabProps
             onClick={() => setViewMode('history')}
             className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
               viewMode === 'history'
-                ? 'bg-[#C9A857] text-black'
+                ? 'bg-[#9BDDFF] text-black'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >

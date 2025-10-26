@@ -189,7 +189,7 @@ export default function VolumeTrackingDashboard({ athleteId }: VolumeTrackingDas
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading volume data...</p>
         </div>
       </div>
@@ -236,7 +236,7 @@ export default function VolumeTrackingDashboard({ athleteId }: VolumeTrackingDas
             placeholder="Search exercises..."
             value={exerciseSearch}
             onChange={(e) => setExerciseSearch(e.target.value)}
-            className="pl-10 pr-10 py-2 bg-[#1a1a1a] text-white border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857] focus:border-[#C9A857] w-full sm:w-64"
+            className="pl-10 pr-10 py-2 bg-[#1a1a1a] text-white border border-white/20 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-[#9BDDFF] w-full sm:w-64"
           />
           {exerciseSearch && (
             <button

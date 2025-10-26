@@ -382,7 +382,7 @@ export default function GroupDetailPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#C9A857]"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#9BDDFF]"></div>
           <p className="mt-2 text-gray-400">Loading group...</p>
         </div>
       </div>
@@ -394,7 +394,7 @@ export default function GroupDetailPage() {
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
         <div className="text-center">
           <h2 className="text-xl font-semibold text-white">Group not found</h2>
-          <Link href="/dashboard/groups" className="text-[#C9A857] hover:underline mt-2 inline-block">
+          <Link href="/dashboard/groups" className="text-[#9BDDFF] hover:underline mt-2 inline-block">
             Back to Groups
           </Link>
         </div>
@@ -449,7 +449,7 @@ export default function GroupDetailPage() {
             onClick={() => setCurrentView('calendar')}
             className={`px-4 py-2 font-medium transition-colors ${
               currentView === 'calendar'
-                ? 'text-[#C9A857] border-b-2 border-[#C9A857]'
+                ? 'text-[#9BDDFF] border-b-2 border-[#9BDDFF]'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -462,7 +462,7 @@ export default function GroupDetailPage() {
             onClick={() => setCurrentView('members')}
             className={`px-4 py-2 font-medium transition-colors ${
               currentView === 'members'
-                ? 'text-[#C9A857] border-b-2 border-[#C9A857]'
+                ? 'text-[#9BDDFF] border-b-2 border-[#9BDDFF]'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -513,7 +513,7 @@ export default function GroupDetailPage() {
                       setSelectedDate(new Date().toISOString().split('T')[0]);
                       setShowCreateWorkoutModal(true);
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
                   >
                     <Plus size={18} />
                     <span className="hidden sm:inline">Create</span>
@@ -692,7 +692,7 @@ export default function GroupDetailPage() {
               <h2 className="text-xl font-semibold text-white">Group Members</h2>
               <button
                 onClick={() => setShowAddMemberModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
               >
                 <Plus size={18} />
                 Add Member
@@ -705,7 +705,7 @@ export default function GroupDetailPage() {
                 <p className="text-gray-400">No members in this group yet</p>
                 <button
                   onClick={() => setShowAddMemberModal(true)}
-                  className="mt-4 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+                  className="mt-4 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
                 >
                   Add First Member
                 </button>
@@ -715,8 +715,8 @@ export default function GroupDetailPage() {
                 {members.map((member) => (
                   <div key={member.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#C9A857]/10 border border-[#C9A857]/20 flex items-center justify-center">
-                        <Users size={20} className="text-[#C9A857]" />
+                      <div className="w-10 h-10 rounded-full bg-[#9BDDFF]/10 border border-[#9BDDFF]/20 flex items-center justify-center">
+                        <Users size={20} className="text-[#9BDDFF]" />
                       </div>
                       <div>
                         <p className="font-medium text-white">{getAthleteDisplayName(member)}</p>
@@ -824,7 +824,7 @@ export default function GroupDetailPage() {
                 </button>
                 <button
                   onClick={() => router.push('/dashboard/workouts')}
-                  className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+                  className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
                 >
                   Go to Workouts
                 </button>
@@ -867,11 +867,11 @@ function DroppableDay({
     <div
       ref={setNodeRef}
       className={`h-24 border-r border-b border-white/10 p-1 cursor-pointer transition-colors ${
-        isToday ? 'bg-[#C9A857]/10' : 'hover:bg-white/5'
-      } ${isOver ? 'bg-[#C9A857]/20 ring-2 ring-[#C9A857]/50' : ''}`}
+        isToday ? 'bg-[#9BDDFF]/10' : 'hover:bg-white/5'
+      } ${isOver ? 'bg-[#9BDDFF]/20 ring-2 ring-[#9BDDFF]/50' : ''}`}
       onClick={() => onClickDate?.(dateStr)}
     >
-      <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#C9A857]' : 'text-gray-400'}`}>
+      <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#9BDDFF]' : 'text-gray-400'}`}>
         {date.getDate()}
       </div>
       <div className="space-y-0.5 overflow-y-auto max-h-16">
@@ -1036,7 +1036,7 @@ function AddMemberModal({
               <select
                 value={selectedAthleteId}
                 onChange={(e) => setSelectedAthleteId(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               >
                 <option value="">Choose an athlete...</option>
                 {athletes.map((athlete) => (
@@ -1054,7 +1054,7 @@ function AddMemberModal({
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               >
                 <option value="member">Member</option>
                 <option value="leader">Leader</option>
@@ -1075,7 +1075,7 @@ function AddMemberModal({
           <button
             onClick={handleAdd}
             disabled={saving || !selectedAthleteId}
-            className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] disabled:opacity-50 transition-colors font-medium"
+            className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg disabled:opacity-50 transition-colors font-medium"
           >
             {saving ? 'Adding...' : 'Add Member'}
           </button>

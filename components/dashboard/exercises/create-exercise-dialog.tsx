@@ -244,7 +244,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                 placeholder="e.g., Back Squat"
                 required
               />
@@ -258,7 +258,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                 required
               >
                 {CATEGORIES.map((cat) => (
@@ -281,7 +281,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
                   {selectedTags.map((tag) => (
                     <span
                       key={tag}
-                      className="px-3 py-1 bg-[#C9A857]/20 text-[#C9A857] rounded-full text-sm flex items-center gap-2 border border-[#C9A857]/50"
+                      className="px-3 py-1 bg-[#9BDDFF]/20 text-[#9BDDFF] rounded-full text-sm flex items-center gap-2 border border-[#9BDDFF]/50"
                     >
                       {tag}
                       <button
@@ -306,7 +306,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
                         e.target.value = ''; // Reset dropdown
                       }
                     }}
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                     defaultValue=""
                   >
                     <option value="" disabled className="bg-[#0A0A0A]">
@@ -338,7 +338,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857] resize-none"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] resize-none"
                 rows={3}
                 placeholder="Notes about how to perform the exercise..."
               />
@@ -353,7 +353,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
                 type="url"
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                 placeholder="https://youtube.com/..."
               />
             </div>
@@ -414,7 +414,7 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-3 bg-[#C9A857] text-black font-semibold rounded-lg hover:bg-[#B89647] transition-all disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-all disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Saving...' : exercise ? 'Update Exercise' : 'Create Exercise'}

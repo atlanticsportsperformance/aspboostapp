@@ -244,7 +244,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
       {/* Background Effects */}
-      <div className="fixed inset-0 bg-gradient-to-br from-[#C9A857]/5 via-transparent to-transparent pointer-events-none" />
+      <div className="fixed inset-0 bg-gradient-to-br from-[#9BDDFF]/5 via-transparent to-transparent pointer-events-none" />
 
       <div className="relative">
         {/* Main Content */}
@@ -260,15 +260,15 @@ export default function DashboardPage() {
           {/* Key Metrics */}
           <div className="mb-6 sm:mb-8 grid gap-3 sm:gap-6 grid-cols-2 lg:grid-cols-5">
             {/* Total Athletes */}
-            <div className="glass-card-hover shadow-premium rounded-lg p-4 sm:p-6 border-l-2 border-l-[#C9A857]">
+            <div className="glass-card-hover shadow-premium rounded-lg p-4 sm:p-6 border-l-2 border-l-[#9BDDFF]">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white/60">Total Athletes</p>
                   <p className="mt-2 text-3xl font-bold text-white">{totalActiveAthletes}</p>
                   <p className="mt-2 text-xs text-emerald-400">Active members</p>
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#C9A857]/10">
-                  <svg className="h-6 w-6 text-[#C9A857]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#9BDDFF]/10">
+                  <svg className="h-6 w-6 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                   <h2 className="text-xl font-semibold text-white">Today's Schedule</h2>
                   <Link
                     href="/dashboard/calendar"
-                    className="text-sm text-[#C9A857] hover:text-[#D4B76A] transition-colors"
+                    className="text-sm text-[#9BDDFF] hover:text-[#D4B76A] transition-colors"
                   >
                     View Calendar →
                   </Link>
@@ -529,7 +529,7 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-semibold text-white">Programs</h2>
                   <Link
                     href="/dashboard/plans"
-                    className="text-sm text-[#C9A857] hover:text-[#D4B76A] transition-colors"
+                    className="text-sm text-[#9BDDFF] hover:text-[#D4B76A] transition-colors"
                   >
                     View All →
                   </Link>
@@ -551,7 +551,7 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-semibold text-white">Teams</h2>
                   <Link
                     href="/dashboard/teams"
-                    className="text-sm text-[#C9A857] hover:text-[#D4B76A] transition-colors"
+                    className="text-sm text-[#9BDDFF] hover:text-[#D4B76A] transition-colors"
                   >
                     View All →
                   </Link>

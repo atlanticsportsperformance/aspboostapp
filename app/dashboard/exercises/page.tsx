@@ -243,7 +243,7 @@ export default function ExercisesPage() {
               </button>
               <button
                 onClick={handleCreateNew}
-                className="px-3 md:px-4 py-2 bg-[#C9A857] text-black text-sm font-semibold rounded-lg hover:bg-[#B89647] transition-all whitespace-nowrap"
+                className="px-3 md:px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-sm font-semibold rounded-lg transition-all whitespace-nowrap"
               >
                 + Create
               </button>
@@ -259,7 +259,7 @@ export default function ExercisesPage() {
             onClick={() => setActiveCategory('strength_conditioning')}
             className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
               activeCategory === 'strength_conditioning'
-                ? 'text-[#C9A857] border-[#C9A857]'
+                ? 'text-[#9BDDFF] border-[#9BDDFF]'
                 : 'text-gray-400 border-transparent hover:text-white'
             }`}
           >
@@ -269,7 +269,7 @@ export default function ExercisesPage() {
             onClick={() => setActiveCategory('hitting')}
             className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
               activeCategory === 'hitting'
-                ? 'text-[#C9A857] border-[#C9A857]'
+                ? 'text-[#9BDDFF] border-[#9BDDFF]'
                 : 'text-gray-400 border-transparent hover:text-white'
             }`}
           >
@@ -279,7 +279,7 @@ export default function ExercisesPage() {
             onClick={() => setActiveCategory('throwing')}
             className={`px-4 md:px-6 py-3 font-semibold text-xs md:text-sm transition-all border-b-2 whitespace-nowrap ${
               activeCategory === 'throwing'
-                ? 'text-[#C9A857] border-[#C9A857]'
+                ? 'text-[#9BDDFF] border-[#9BDDFF]'
                 : 'text-gray-400 border-transparent hover:text-white'
             }`}
           >
@@ -297,7 +297,7 @@ export default function ExercisesPage() {
             placeholder="Search exercises..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2.5 md:py-3 pl-10 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+            className="w-full px-4 py-2.5 md:py-3 pl-10 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
           />
           <svg
             className="absolute left-3 top-3 h-4 w-4 md:h-5 md:w-5 text-gray-400"
@@ -323,7 +323,7 @@ export default function ExercisesPage() {
                 e.target.value = '';
               }
             }}
-            className="w-full px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+            className="w-full px-4 py-2.5 md:py-3 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
             defaultValue=""
           >
             <option value="" disabled className="bg-[#0A0A0A]">
@@ -347,7 +347,7 @@ export default function ExercisesPage() {
           {tagFilter.map((tag) => (
             <span
               key={tag}
-              className="px-3 py-1 bg-[#C9A857]/20 text-[#C9A857] rounded-full text-sm flex items-center gap-2 border border-[#C9A857]/50"
+              className="px-3 py-1 bg-[#9BDDFF]/20 text-[#9BDDFF] rounded-full text-sm flex items-center gap-2 border border-[#9BDDFF]/50"
             >
               {tag}
               <button
@@ -407,7 +407,7 @@ export default function ExercisesPage() {
                     />
                   </td>
                   <td className="px-6 py-4">
-                    <div className="w-10 h-10 rounded bg-[#C9A857]/20 flex items-center justify-center text-[#C9A857] font-bold text-xs">
+                    <div className="w-10 h-10 rounded bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] font-bold text-xs">
                       ASP
                     </div>
                   </td>
@@ -420,7 +420,7 @@ export default function ExercisesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-[#C9A857]/20 text-[#C9A857] rounded-full text-xs font-medium border border-[#C9A857]/50">
+                    <span className="px-3 py-1 bg-[#9BDDFF]/20 text-[#9BDDFF] rounded-full text-xs font-medium border border-[#9BDDFF]/50">
                       {CATEGORIES.find(c => c.value === exercise.category)?.label || exercise.category}
                     </span>
                   </td>

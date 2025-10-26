@@ -267,7 +267,7 @@ export function AddWorkoutToGroupModal({
               placeholder="Search workouts..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
             />
           </div>
 
@@ -290,7 +290,7 @@ export function AddWorkoutToGroupModal({
                     onClick={() => setSelectedWorkoutId(workout.id)}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
                       selectedWorkoutId === workout.id
-                        ? 'bg-[#C9A857]/10 border-[#C9A857] ring-2 ring-[#C9A857]/50'
+                        ? 'bg-[#9BDDFF]/10 border-[#9BDDFF] ring-2 ring-[#9BDDFF]/50'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >
@@ -319,7 +319,7 @@ export function AddWorkoutToGroupModal({
                         )}
                       </div>
                       {selectedWorkoutId === workout.id && (
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#C9A857] flex items-center justify-center">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#9BDDFF] flex items-center justify-center">
                           <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 12 12">
                             <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
@@ -345,7 +345,7 @@ export function AddWorkoutToGroupModal({
                 type="date"
                 value={scheduledDate}
                 onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               />
             </div>
 
@@ -360,7 +360,7 @@ export function AddWorkoutToGroupModal({
                 type="time"
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               />
             </div>
           </div>
@@ -374,7 +374,7 @@ export function AddWorkoutToGroupModal({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent resize-none"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent resize-none"
               placeholder="Any special instructions for the group..."
             />
           </div>
@@ -386,7 +386,7 @@ export function AddWorkoutToGroupModal({
               id="auto-assign"
               checked={autoAssign}
               onChange={(e) => setAutoAssign(e.target.checked)}
-              className="w-4 h-4 text-[#C9A857] bg-white/5 border-white/20 rounded focus:ring-2 focus:ring-[#C9A857]"
+              className="w-4 h-4 text-[#9BDDFF] bg-white/5 border-white/20 rounded focus:ring-2 focus:ring-[#9BDDFF]"
             />
             <label htmlFor="auto-assign" className="flex-1 cursor-pointer">
               <div className="text-sm font-medium text-white">Auto-assign to all members</div>
@@ -409,7 +409,7 @@ export function AddWorkoutToGroupModal({
           <button
             onClick={handleAddWorkout}
             disabled={saving || !selectedWorkoutId || !scheduledDate}
-            className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] disabled:opacity-50 transition-colors font-medium"
+            className="flex-1 px-4 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 transition-colors font-medium"
           >
             {saving ? 'Adding Workout...' : 'Add to Group Calendar'}
           </button>

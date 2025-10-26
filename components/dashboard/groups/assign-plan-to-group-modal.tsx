@@ -228,8 +228,8 @@ export function AssignPlanToGroupModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#C9A857]/10 rounded-lg">
-              <ClipboardList className="text-[#C9A857]" size={24} />
+            <div className="p-2 bg-[#9BDDFF]/10 rounded-lg">
+              <ClipboardList className="text-[#9BDDFF]" size={24} />
             </div>
             <h2 className="text-2xl font-bold text-white">Assign Plan to Group</h2>
           </div>
@@ -251,7 +251,7 @@ export function AssignPlanToGroupModal({
               placeholder="Search training plans..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
             />
           </div>
 
@@ -274,7 +274,7 @@ export function AssignPlanToGroupModal({
                     onClick={() => setSelectedPlanId(plan.id)}
                     className={`w-full text-left p-3 rounded-lg border transition-colors ${
                       selectedPlanId === plan.id
-                        ? 'bg-[#C9A857]/10 border-[#C9A857] ring-2 ring-[#C9A857]/50'
+                        ? 'bg-[#9BDDFF]/10 border-[#9BDDFF] ring-2 ring-[#9BDDFF]/50'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >
@@ -299,7 +299,7 @@ export function AssignPlanToGroupModal({
                         )}
                       </div>
                       {selectedPlanId === plan.id && (
-                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#C9A857] flex items-center justify-center">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#9BDDFF] flex items-center justify-center">
                           <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 12 12">
                             <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
@@ -324,7 +324,7 @@ export function AssignPlanToGroupModal({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
               All workouts in the plan will be scheduled relative to this date
@@ -338,7 +338,7 @@ export function AssignPlanToGroupModal({
               id="auto-assign-plan"
               checked={autoAssign}
               onChange={(e) => setAutoAssign(e.target.checked)}
-              className="w-4 h-4 text-[#C9A857] bg-white/5 border-white/20 rounded focus:ring-2 focus:ring-[#C9A857]"
+              className="w-4 h-4 text-[#9BDDFF] bg-white/5 border-white/20 rounded focus:ring-2 focus:ring-[#9BDDFF]"
             />
             <label htmlFor="auto-assign-plan" className="flex-1 cursor-pointer">
               <div className="text-sm font-medium text-white">Auto-assign to all members</div>
@@ -368,7 +368,7 @@ export function AssignPlanToGroupModal({
           <button
             onClick={handleAssignPlan}
             disabled={saving || !selectedPlanId || !startDate}
-            className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] disabled:opacity-50 transition-colors font-medium"
+            className="flex-1 px-4 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 transition-colors font-medium"
           >
             {saving ? 'Assigning Plan...' : 'Assign to Group'}
           </button>

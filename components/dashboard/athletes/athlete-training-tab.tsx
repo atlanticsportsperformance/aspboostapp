@@ -146,7 +146,7 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#C9A857] border-r-transparent"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading training history...</p>
         </div>
       </div>
@@ -163,7 +163,7 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
             onClick={() => setTimeFilter(filter)}
             className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
               timeFilter === filter
-                ? 'bg-[#C9A857] text-black'
+                ? 'bg-[#9BDDFF] text-black'
                 : 'text-gray-400 hover:text-white hover:bg-white/10'
             }`}
           >
@@ -227,7 +227,7 @@ export default function TrainingTab({ athleteId }: TrainingTabProps) {
                         })()}
                       </div>
                     </div>
-                    <h3 className="text-white font-semibold text-lg group-hover:text-[#C9A857] transition-colors">
+                    <h3 className="text-white font-semibold text-lg group-hover:text-[#9BDDFF] transition-colors">
                       {workout.workouts?.name || 'Unnamed Workout'}
                     </h3>
 

@@ -156,7 +156,7 @@ export function ExerciseTagsManager({ onClose }: ExerciseTagsManagerProps) {
               onClick={() => setActiveTab(cat.value as any)}
               className={`px-4 py-3 font-medium transition-all border-b-2 ${
                 activeTab === cat.value
-                  ? 'text-[#C9A857] border-[#C9A857]'
+                  ? 'text-[#9BDDFF] border-[#9BDDFF]'
                   : 'text-gray-400 border-transparent hover:text-white'
               }`}
             >
@@ -262,7 +262,7 @@ export function ExerciseTagsManager({ onClose }: ExerciseTagsManagerProps) {
                                   setEditName('');
                                 }
                               }}
-                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A857]"
+                              className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                               autoFocus
                             />
                           </div>
@@ -292,7 +292,7 @@ export function ExerciseTagsManager({ onClose }: ExerciseTagsManagerProps) {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="p-2 bg-white/10 rounded">
-                              <svg className="w-4 h-4 text-[#C9A857]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="w-4 h-4 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                               </svg>
                             </div>

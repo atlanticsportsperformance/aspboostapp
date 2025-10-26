@@ -305,7 +305,7 @@ export function PlanTagsManager({ onClose, onUpdate }: PlanTagsManagerProps) {
               ) : (
                 <button
                   onClick={() => setShowCreateTag(true)}
-                  className="w-full px-4 py-3 bg-[#C9A857]/20 border border-[#C9A857]/50 text-[#C9A857] rounded-lg hover:bg-[#C9A857]/30 transition-all font-medium"
+                  className="w-full px-4 py-3 bg-[#9BDDFF]/20 border border-[#9BDDFF]/50 text-[#9BDDFF] rounded-lg hover:bg-[#9BDDFF]/30 transition-all font-medium"
                 >
                   + Create New Plan Tag
                 </button>

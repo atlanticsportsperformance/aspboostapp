@@ -121,7 +121,7 @@ export default function DashboardLayout({
         <div className="flex items-center justify-between px-4 py-3">
           {/* Mobile Branding */}
           <div className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#C9A857] to-[#A68B46] flex items-center justify-center flex-shrink-0">
+            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] shadow-lg shadow-[#9BDDFF]/30 flex items-center justify-center flex-shrink-0">
               <span className="text-black font-bold text-sm">A</span>
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function DashboardLayout({
         {/* Header */}
         <div className="p-6 border-b border-white/10">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#C9A857] to-[#A68B46] flex items-center justify-center flex-shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] shadow-lg shadow-[#9BDDFF]/30 flex items-center justify-center flex-shrink-0">
               <span className="text-black font-bold text-lg">A</span>
             </div>
             <div>
