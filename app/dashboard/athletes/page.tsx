@@ -549,7 +549,7 @@ export default function AthletesPage() {
                     )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold">
                           {athlete.first_name?.[0] || 'A'}
                           {athlete.last_name?.[0] || ''}
                         </div>
@@ -654,7 +654,7 @@ export default function AthletesPage() {
               className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
             >
               <div className="flex items-start gap-3 mb-2">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
                   {athlete.first_name?.[0] || 'A'}
                   {athlete.last_name?.[0] || ''}
                 </div>

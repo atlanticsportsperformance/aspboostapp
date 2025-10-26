@@ -109,7 +109,7 @@ export default function CMJSection({ athleteId }: CMJSectionProps) {
         <>
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#A08845]/10 border border-[#9BDDFF]/30 rounded-lg p-5">
+            <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#7BC5F0]/10 border border-[#9BDDFF]/30 rounded-lg p-5">
               <p className="text-sm text-gray-400 mb-2">Jump Height</p>
               <p className="text-4xl font-bold text-white">
                 {selectedTest.jump_height_trial_value !== null

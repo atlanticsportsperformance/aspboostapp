@@ -263,7 +263,7 @@ export default function AthleteDetailPage() {
 
           <div className="flex items-center gap-4">
             {/* Avatar and Name */}
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
               {athlete.first_name?.[0] || 'A'}
               {athlete.last_name?.[0] || ''}
             </div>

@@ -120,7 +120,7 @@ export default function SyncHistorySection({ athleteId }: SyncHistorySectionProp
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#A08845]/10 border border-[#9BDDFF]/30 rounded-lg p-6">
+        <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#7BC5F0]/10 border border-[#9BDDFF]/30 rounded-lg p-6">
           <div className="flex items-center gap-3 mb-2">
             <svg className="w-6 h-6 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />

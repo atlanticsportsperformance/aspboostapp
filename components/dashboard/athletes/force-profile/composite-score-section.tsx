@@ -142,7 +142,7 @@ export default function CompositeScoreSection({ athleteId }: CompositeScoreSecti
   return (
     <div className="space-y-6">
       {/* Header Card with Composite Score */}
-      <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#A08845]/10 border border-[#9BDDFF]/30 rounded-xl p-6">
+      <div className="bg-gradient-to-br from-[#9BDDFF]/20 to-[#7BC5F0]/10 border border-[#9BDDFF]/30 rounded-xl p-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* Composite Score */}
           <div className="flex-1">
@@ -179,7 +179,7 @@ export default function CompositeScoreSection({ athleteId }: CompositeScoreSecti
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="px-6 py-3 bg-[#9BDDFF] hover:bg-[#A08845] disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-semibold rounded-lg transition-colors flex items-center gap-2 justify-center"
+            className="px-6 py-3 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 disabled:bg-gray-600 disabled:cursor-not-allowed text-black font-semibold rounded-lg transition-all flex items-center gap-2 justify-center"
           >
             {syncing ? (
               <>

@@ -449,7 +449,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           </div>
 
           <div className="text-center mb-6">
-            <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#A08845] flex items-center justify-center text-black font-bold text-3xl mb-4">
+            <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-3xl mb-4">
               {profile?.first_name?.[0] || 'A'}
               {profile?.last_name?.[0] || ''}
             </div>
