@@ -117,19 +117,27 @@ export default function AthleteDetailPage() {
         profile = profileData;
       }
 
-      // Step 3: Get teams
-      const { data: teamMembersData, error: teamMembersError } = await supabase
-        .from('team_members')
-        .select('jersey_number, status, teams(id, name, level)')
-        .eq('athlete_id', athleteId)
-        .eq('status', 'active');
+      // Step 3: Get groups (new system)
+      const { data: groupMembersData, error: groupMembersError } = await supabase
+        .from('group_members')
+        .select(`
+          id,
+          role,
+          joined_at,
+          groups(id, name, color, description)
+        `)
+        .eq('athlete_id', athleteId);
 
-      console.log('3. Team members:', teamMembersData, teamMembersError);
+      console.log('3. Group members:', groupMembersData, groupMembersError);
 
+      // Format groups data for compatibility (keeping teams variable name for now)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const teams = (teamMembersData || []).map((tm: any) => ({
-        ...tm.teams,
-        jersey_number: tm.jersey_number
+      const teams = (groupMembersData || []).map((gm: any) => ({
+        id: gm.groups?.id,
+        name: gm.groups?.name,
+        level: gm.role, // Use role instead of level (member/leader/captain)
+        color: gm.groups?.color,
+        jersey_number: null // No jersey numbers in new system
       }));
 
       // Step 4: Get active plan assignment
