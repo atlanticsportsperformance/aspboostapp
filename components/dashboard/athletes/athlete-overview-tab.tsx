@@ -26,9 +26,12 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
     routines: [] as any[]
   });
   const [athleteTags, setAthleteTags] = useState<any[]>([]);
+  const [showAddToGroupModal, setShowAddToGroupModal] = useState(false);
+  const [groupMemberships, setGroupMemberships] = useState<any[]>([]);
 
   useEffect(() => {
     fetchOverviewData();
+    fetchGroupMemberships();
   }, [athlete.id]);
 
   async function handleDeleteAllContent() {
@@ -243,6 +246,43 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
 
       console.log('Athlete tags:', tagsData);
       setAthleteTags(tagsData || []);
+  }
+
+  async function fetchGroupMemberships() {
+    const supabase = createClient();
+
+    const { data: memberships, error } = await supabase
+      .from('group_members')
+      .select(`
+        *,
+        groups(id, name, color, description)
+      `)
+      .eq('athlete_id', athlete.id);
+
+    if (error) {
+      console.error('Error fetching group memberships:', error);
+    } else {
+      setGroupMemberships(memberships || []);
+    }
+  }
+
+  async function handleRemoveFromGroup(membershipId: string) {
+    if (!confirm('Remove this athlete from the group? Their group workouts will be detached.')) return;
+
+    const supabase = createClient();
+    const { error } = await supabase
+      .from('group_members')
+      .delete()
+      .eq('id', membershipId);
+
+    if (error) {
+      console.error('Error removing from group:', error);
+      alert('Failed to remove from group');
+      return;
+    }
+
+    // Refresh memberships
+    fetchGroupMemberships();
   }
 
   const formatAge = (dateOfBirth: string | null) => {
@@ -607,20 +647,36 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
 
         {/* Group Assignments */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
-          <h3 className="text-base lg:text-lg font-bold text-white mb-4">Group Assignments</h3>
-            {teams.length > 0 ? (
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-base lg:text-lg font-bold text-white">Group Assignments</h3>
+            <button
+              onClick={() => setShowAddToGroupModal(true)}
+              className="px-2 lg:px-3 py-1 text-xs lg:text-sm bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] transition-colors font-medium"
+            >
+              + Add
+            </button>
+          </div>
+            {groupMemberships.length > 0 ? (
               <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                {teams.map((team: any) => (
-                  <div key={team.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg gap-3">
+                {groupMemberships.map((membership: any) => (
+                  <div key={membership.id} className="flex items-center justify-between p-3 bg-white/5 rounded-lg gap-3 group">
                     <div className="min-w-0 flex-1">
-                      <p className="text-white font-medium truncate">{team.name}</p>
-                      <p className="text-xs lg:text-sm text-gray-400 capitalize truncate">{team.level.replace('_', ' ')}</p>
+                      <p className="text-white font-medium truncate">{membership.groups?.name}</p>
+                      <p className="text-xs lg:text-sm text-gray-400 capitalize truncate">{membership.role}</p>
                     </div>
-                    {team.jersey_number && (
-                      <span className="px-2 lg:px-3 py-1 bg-[#C9A857]/10 text-[#C9A857] rounded-md font-bold text-sm flex-shrink-0">
-                        #{team.jersey_number}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: membership.groups?.color || '#3b82f6' }}
+                        title={`Group color: ${membership.groups?.color}`}
+                      />
+                      <button
+                        onClick={() => handleRemoveFromGroup(membership.id)}
+                        className="opacity-0 group-hover:opacity-100 px-2 py-1 text-xs text-red-400 hover:bg-red-500/10 rounded transition-all"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -664,6 +720,154 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           ) : (
             <p className="text-gray-400 text-xs lg:text-sm">No recent activity</p>
           )}
+        </div>
+      </div>
+
+      {/* Add to Group Modal */}
+      {showAddToGroupModal && (
+        <AddAthleteToGroupModal
+          athleteId={athlete.id}
+          athleteName={fullName || 'Athlete'}
+          existingGroupIds={groupMemberships.map(m => m.groups?.id).filter(Boolean)}
+          onClose={() => setShowAddToGroupModal(false)}
+          onAdded={() => {
+            setShowAddToGroupModal(false);
+            fetchGroupMemberships();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// Add to Group Modal Component
+function AddAthleteToGroupModal({
+  athleteId,
+  athleteName,
+  existingGroupIds,
+  onClose,
+  onAdded
+}: {
+  athleteId: string;
+  athleteName: string;
+  existingGroupIds: string[];
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const [groups, setGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState('');
+  const [role, setRole] = useState('member');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchAvailableGroups();
+  }, []);
+
+  async function fetchAvailableGroups() {
+    const { data: groupsData } = await supabase
+      .from('groups')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false});
+
+    // Filter out groups athlete is already in
+    const available = (groupsData || []).filter(g => !existingGroupIds.includes(g.id));
+    setGroups(available);
+    setLoading(false);
+  }
+
+  async function handleAdd() {
+    if (!selectedGroupId) {
+      alert('Please select a group');
+      return;
+    }
+
+    setSaving(true);
+
+    const { error } = await supabase
+      .from('group_members')
+      .insert({
+        group_id: selectedGroupId,
+        athlete_id: athleteId,
+        role
+      });
+
+    if (error) {
+      console.error('Error adding to group:', error);
+      alert('Failed to add to group');
+      setSaving(false);
+      return;
+    }
+
+    onAdded();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-xl max-w-md w-full p-6">
+        <h2 className="text-2xl font-bold text-white mb-4">Add {athleteName} to Group</h2>
+
+        {loading ? (
+          <div className="text-center py-8 text-gray-400">Loading groups...</div>
+        ) : groups.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            No available groups to add to
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Select Group *
+              </label>
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+              >
+                <option value="">Choose a group...</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Role
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#C9A857] focus:border-transparent"
+              >
+                <option value="member">Member</option>
+                <option value="leader">Leader</option>
+                <option value="captain">Captain</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-3 mt-6">
+          <button
+            onClick={onClose}
+            disabled={saving}
+            className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleAdd}
+            disabled={saving || !selectedGroupId}
+            className="flex-1 px-4 py-2 bg-[#C9A857] text-black rounded-lg hover:bg-[#B89847] disabled:opacity-50 transition-colors font-medium"
+          >
+            {saving ? 'Adding...' : 'Add to Group'}
+          </button>
         </div>
       </div>
     </div>
