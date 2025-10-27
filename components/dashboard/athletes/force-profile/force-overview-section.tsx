@@ -124,8 +124,8 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
 
       {/* Main Layout: Radar + Cards */}
       <div className={`grid gap-4 ${isFullscreen ? 'grid-cols-[1.2fr_1fr] h-[calc(100vh-180px)]' : 'grid-cols-1 lg:grid-cols-[1.2fr_1fr] max-h-[calc(100vh-300px)]'}`}>
-        {/* Left: Radar Chart */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-3 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500">
+        {/* Left: Radar Chart - Much taller to utilize vertical space */}
+        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-3 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500 min-h-[500px] lg:min-h-[600px]">
           {/* Fullscreen Button - Top Right */}
           <button
             onClick={toggleFullscreen}
@@ -148,7 +148,7 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
             )}
           </button>
 
-          <div className={`flex-1 ${isFullscreen ? 'min-h-[600px]' : 'h-full'}`}>
+          <div className="flex-1 min-h-[450px]">
             <ForceOverviewRadar
               data={radarData}
               compositeScore={compositeScore.current.percentile}
