@@ -118,8 +118,8 @@ BEGIN
           )
           VALUES (
             NEW.athlete_id, 'HJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.mean_stiffness_trial_value, NEW.mean_jump_height_trial_value,
-            NEW.mean_rsi_trial_value, NEW.mean_contact_time_trial_value
+            NEW.hop_mean_stiffness_trial_value, NEW.hop_mean_jump_height_trial_value,
+            NEW.hop_mean_rsi_trial_value, NEW.hop_mean_contact_time_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
 

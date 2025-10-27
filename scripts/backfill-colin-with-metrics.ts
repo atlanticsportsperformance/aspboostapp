@@ -151,11 +151,11 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: hjTest.test_id,
         test_date: hjTest.recorded_utc,
-        // HJ metrics
-        hop_mean_stiffness_trial_value: hjTest.mean_stiffness_trial_value,
-        hop_mean_jump_height_trial_value: hjTest.mean_jump_height_trial_value,
-        hop_mean_rsi_trial_value: hjTest.mean_rsi_trial_value,
-        hop_mean_contact_time_trial_value: hjTest.mean_contact_time_trial_value,
+        // HJ metrics (note: hj_tests table uses hop_mean_ prefix)
+        hop_mean_stiffness_trial_value: hjTest.hop_mean_stiffness_trial_value,
+        hop_mean_jump_height_trial_value: hjTest.hop_mean_jump_height_trial_value,
+        hop_mean_rsi_trial_value: hjTest.hop_mean_rsi_trial_value,
+        hop_mean_contact_time_trial_value: hjTest.hop_mean_contact_time_trial_value,
       });
 
     if (hjError) {
