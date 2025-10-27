@@ -248,7 +248,9 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const maxRadius = Math.min(width, height) / 2 - 12; // Match the rendering maxRadius
+    // MUST match the drawing code's labelPadding calculation exactly
+    const labelPadding = Math.max(35, width / 15);
+    const maxRadius = Math.min(width, height) / 2 - labelPadding;
     const angleStep = (2 * Math.PI) / data.length;
 
     let foundPoint = false;

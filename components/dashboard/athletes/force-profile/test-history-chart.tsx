@@ -320,6 +320,7 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold, eli
 
       if (inBar || nearDot) {
         foundPoint = true;
+        console.log('Hover detected!', { x: e.clientX, y: e.clientY, value: point.value, distanceToDot });
         setTooltip({
           x: e.clientX,
           y: e.clientY,
