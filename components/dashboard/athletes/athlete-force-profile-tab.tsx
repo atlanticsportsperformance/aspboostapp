@@ -8,11 +8,12 @@ import SyncHistorySection from './force-profile/sync-history-section';
 
 interface ForceProfileTabProps {
   athleteId: string;
+  athleteName?: string;
 }
 
 type ViewMode = 'composite' | 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp' | 'history';
 
-export default function ForceProfileTab({ athleteId }: ForceProfileTabProps) {
+export default function ForceProfileTab({ athleteId, athleteName }: ForceProfileTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('composite');
   const [valdProfileId, setValdProfileId] = useState<string | null>(null);
   const [playLevel, setPlayLevel] = useState<string>('');
@@ -164,13 +165,20 @@ export default function ForceProfileTab({ athleteId }: ForceProfileTabProps) {
       </div>
 
       {/* Content Sections */}
-      {viewMode === 'composite' && <ForceOverviewSection athleteId={athleteId} />}
+      {viewMode === 'composite' && (
+        <ForceOverviewSection
+          athleteId={athleteId}
+          athleteName={athleteName}
+          viewMode={viewMode}
+          onViewModeChange={(mode) => setViewMode(mode as ViewMode)}
+        />
+      )}
       {viewMode === 'cmj' && <IndividualTestSection athleteId={athleteId} testType="CMJ" playLevel={playLevel} />}
       {viewMode === 'sj' && <IndividualTestSection athleteId={athleteId} testType="SJ" playLevel={playLevel} />}
       {viewMode === 'hj' && <IndividualTestSection athleteId={athleteId} testType="HJ" playLevel={playLevel} />}
       {viewMode === 'ppu' && <IndividualTestSection athleteId={athleteId} testType="PPU" playLevel={playLevel} />}
       {viewMode === 'imtp' && <IndividualTestSection athleteId={athleteId} testType="IMTP" playLevel={playLevel} />}
-      {viewMode === 'history' && <SyncHistorySection athleteId={athleteId} />}
+      {viewMode === 'history' && <SyncHistorySection athleteId={athleteId} />
     </div>
   );
 }

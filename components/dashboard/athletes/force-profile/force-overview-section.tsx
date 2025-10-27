@@ -7,6 +7,9 @@ import ForceOverviewMetricCard from './force-overview-metric-card';
 
 interface ForceOverviewSectionProps {
   athleteId: string;
+  athleteName?: string;
+  viewMode?: string;
+  onViewModeChange?: (mode: string) => void;
 }
 
 interface RadarDataPoint {
@@ -16,7 +19,7 @@ interface RadarDataPoint {
   previous: { percentile: number; value: number; date: string } | null;
 }
 
-export default function ForceOverviewSection({ athleteId }: ForceOverviewSectionProps) {
+export default function ForceOverviewSection({ athleteId, athleteName, viewMode, onViewModeChange }: ForceOverviewSectionProps) {
   const [loading, setLoading] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [radarData, setRadarData] = useState<RadarDataPoint[]>([]);
@@ -104,6 +107,87 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
 
   return (
     <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-[#0A0A0A] p-8' : ''}`}>
+      {/* Fullscreen Header with Athlete Name and Tabs */}
+      {isFullscreen && athleteName && (
+        <div className="mb-6">
+          <h1 className="text-4xl font-bold text-white mb-4">{athleteName}</h1>
+          {onViewModeChange && (
+            <div className="flex gap-1 bg-black/40 rounded-lg p-1 overflow-x-auto">
+              <button
+                onClick={() => onViewModeChange('composite')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'composite'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Force Overview
+              </button>
+              <button
+                onClick={() => onViewModeChange('cmj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'cmj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                CMJ
+              </button>
+              <button
+                onClick={() => onViewModeChange('sj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'sj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                SJ
+              </button>
+              <button
+                onClick={() => onViewModeChange('hj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'hj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                HJ
+              </button>
+              <button
+                onClick={() => onViewModeChange('ppu')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'ppu'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                PPU
+              </button>
+              <button
+                onClick={() => onViewModeChange('imtp')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'imtp'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                IMTP
+              </button>
+              <button
+                onClick={() => onViewModeChange('history')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'history'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Sync History
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Compact Header */}
       <div className="flex items-center gap-3 mb-4 mt-3">
         <h2 className={`font-bold text-white ${isFullscreen ? 'text-3xl' : 'text-xl'}`}>

@@ -354,7 +354,7 @@ export default function AthleteDetailPage() {
         )}
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
         {activeTab === 'performance' && <PerformanceTab athleteId={athleteId} />}
-        {activeTab === 'force-profile' && <ForceProfileTab athleteId={athleteId} />}
+        {activeTab === 'force-profile' && <ForceProfileTab athleteId={athleteId} athleteName={fullName} />}
       </div>
 
       {/* Delete Confirmation Modal */}
