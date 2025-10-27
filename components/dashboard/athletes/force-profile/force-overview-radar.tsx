@@ -138,12 +138,21 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
 
       // Helper to draw with rounded corners that stay close to actual points
       const drawWithRoundedCorners = (radius: number) => {
+        if (currentPoints.length < 3) return;
+
         ctx.beginPath();
 
+        // Start from midpoint between last and first point
+        const firstPoint = currentPoints[0];
+        const lastPoint = currentPoints[currentPoints.length - 1];
+        const startX = (lastPoint.x + firstPoint.x) / 2;
+        const startY = (lastPoint.y + firstPoint.y) / 2;
+        ctx.moveTo(startX, startY);
+
+        // Draw through all points with rounded corners
         for (let i = 0; i < currentPoints.length; i++) {
           const current = currentPoints[i];
           const next = currentPoints[(i + 1) % currentPoints.length];
-          const prev = currentPoints[(i - 1 + currentPoints.length) % currentPoints.length];
 
           // Calculate distance to next point
           const distToNext = Math.sqrt(
@@ -151,21 +160,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
           );
 
           // Use smaller radius to stay closer to the actual point
-          const actualRadius = Math.min(radius, distToNext * 0.15); // Only round 15% of the edge
-
-          if (i === 0) {
-            // Calculate starting point
-            const distToPrev = Math.sqrt(
-              Math.pow(current.x - prev.x, 2) + Math.pow(current.y - prev.y, 2)
-            );
-            const startRadius = Math.min(radius, distToPrev * 0.15);
-
-            // Start slightly before first point
-            const angle = Math.atan2(current.y - prev.y, current.x - prev.x);
-            const startX = current.x - startRadius * Math.cos(angle);
-            const startY = current.y - startRadius * Math.sin(angle);
-            ctx.moveTo(startX, startY);
-          }
+          const actualRadius = Math.min(radius, distToNext * 0.15);
 
           // Draw line toward current point, then arc toward next
           ctx.arcTo(current.x, current.y, next.x, next.y, actualRadius);
