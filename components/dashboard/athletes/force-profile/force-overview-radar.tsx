@@ -198,29 +198,32 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     // Reset shadow
     ctx.shadowBlur = 0;
 
-    // Draw labels with much smaller font - crisp rendering
+    // Draw labels with larger font size for crisp rendering at high DPI
+    // Responsive font size based on canvas width
+    const baseFontSize = Math.max(11, Math.min(14, width / 50));
     ctx.fillStyle = '#fff';
-    ctx.font = '600 9px Inter, sans-serif'; // Much smaller font (was 13px, now 9px)
+    ctx.font = `600 ${baseFontSize}px "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    // Enable subpixel text rendering for crisp labels
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-    ctx.shadowBlur = 3;
+    // Add shadow for better contrast and depth
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+    ctx.shadowBlur = 4;
     ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 1;
+    ctx.shadowOffsetY = 2;
 
     data.forEach((point, index) => {
       const angle = angleStep * index - Math.PI / 2;
-      const labelRadius = maxRadius + 12; // Very close to plot edge
+      const labelRadius = maxRadius + 18; // Slightly more space for larger crisp text
       const x = centerX + labelRadius * Math.cos(angle);
       const y = centerY + labelRadius * Math.sin(angle);
 
       // Split label into multiple lines if needed
       const words = point.displayName.split(' ');
+      const lineHeight = baseFontSize * 1.3;
       if (words.length > 2) {
-        ctx.fillText(words.slice(0, 2).join(' '), x, y - 5);
-        ctx.fillText(words.slice(2).join(' '), x, y + 5);
+        ctx.fillText(words.slice(0, 2).join(' '), x, y - lineHeight / 2);
+        ctx.fillText(words.slice(2).join(' '), x, y + lineHeight / 2);
       } else {
         ctx.fillText(point.displayName, x, y);
       }
