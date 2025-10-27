@@ -46,8 +46,8 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    // Reduce padding to make radar plot bigger (was -60, now -25)
-    const maxRadius = Math.min(width, height) / 2 - 25;
+    // Reduce padding to make radar plot bigger (was -60, now -12 for maximum size)
+    const maxRadius = Math.min(width, height) / 2 - 12;
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -206,7 +206,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
 
     data.forEach((point, index) => {
       const angle = angleStep * index - Math.PI / 2;
-      const labelRadius = maxRadius + 18; // Closer to plot (was +35, now +18)
+      const labelRadius = maxRadius + 12; // Very close to plot edge
       const x = centerX + labelRadius * Math.cos(angle);
       const y = centerY + labelRadius * Math.sin(angle);
 
@@ -235,7 +235,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const maxRadius = Math.min(width, height) / 2 - 25; // Match the rendering maxRadius
+    const maxRadius = Math.min(width, height) / 2 - 12; // Match the rendering maxRadius
     const angleStep = (2 * Math.PI) / data.length;
 
     let foundPoint = false;

@@ -125,7 +125,7 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
       {/* Main Layout: Radar + Cards */}
       <div className={`grid gap-4 ${isFullscreen ? 'grid-cols-[1.2fr_1fr] h-[calc(100vh-180px)]' : 'grid-cols-1 lg:grid-cols-[1.2fr_1fr] max-h-[calc(100vh-300px)]'}`}>
         {/* Left: Radar Chart */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-6 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500">
+        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-3 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500">
           {/* Fullscreen Button - Top Right */}
           <button
             onClick={toggleFullscreen}
@@ -155,16 +155,18 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
             />
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 shadow-lg shadow-green-500/50"></div>
-              <span className="text-xs text-gray-400 font-medium">Current</span>
+          {/* Legend - Compact */}
+          <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-white/10">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-gray-200"></div>
+              <span className="text-[10px] text-gray-400">Current</span>
             </div>
             {compositeScore.previous && (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-1 rounded-full bg-gray-500 shadow-md"></div>
-                <span className="text-xs text-gray-400 font-medium">Previous</span>
+              <div className="flex items-center gap-1.5">
+                <svg className="w-4 h-1" viewBox="0 0 16 4">
+                  <line x1="0" y1="2" x2="16" y2="2" stroke="#9CA3AF" strokeWidth="2" strokeDasharray="3,3" />
+                </svg>
+                <span className="text-[10px] text-gray-400">Previous</span>
               </div>
             )}
           </div>
