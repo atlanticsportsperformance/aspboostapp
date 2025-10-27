@@ -83,12 +83,17 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     const minWeight = Math.min(...weights);
     const maxWeight = Math.max(...weights);
 
+    // Calculate change from first to last measurement (can be + or -)
+    const firstWeight = filtered[0].weight_lbs;
+    const lastWeight = filtered[filtered.length - 1].weight_lbs;
+    const weightChange = lastWeight - firstWeight;
+
     return {
       total_measurements: filtered.length,
       avg_weight_lbs: Math.round(avgWeight * 10) / 10,
       min_weight_lbs: minWeight,
       max_weight_lbs: maxWeight,
-      weight_change_lbs: Math.round((maxWeight - minWeight) * 10) / 10,
+      weight_change_lbs: Math.round(weightChange * 10) / 10,
     };
   }
 

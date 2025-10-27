@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import SetBySetEditor from './set-by-set-editor';
 import { SwapExerciseDialog } from './swap-exercise-dialog';
+import { getActualIntensity, shouldUsePerceivedIntensity, getIntensityLabel } from '@/lib/perceived-intensity';
 
 interface Measurement {
   id: string;
@@ -19,6 +20,7 @@ interface Exercise {
   category: string;
   tags: string[];
   description?: string | null;
+  video_url?: string | null;
   metric_schema?: {
     measurements: Measurement[];
   };
@@ -481,7 +483,65 @@ export default function ExerciseDetailPanel({
                     </div>
                   )}
                 </div>
+
+                {/* Intensity % Checkbox - Inline with dropdown */}
+                {!enablePerSet && getDisplayMeasurements().some((m) => m.type !== 'reps') && (
+                  <div className="flex flex-col gap-1">
+                    <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
+                      <input
+                        type="checkbox"
+                        checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            // Enable intensity for all performance measurements
+                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
+                            const targets = performanceMeasurements.map(m => ({
+                              id: Date.now().toString() + m.id,
+                              metric: m.id,
+                              metric_label: `Max ${m.name}`,
+                              percent: 75
+                            }));
+                            onUpdate({ intensity_targets: targets });
+                          } else {
+                            // Disable intensity
+                            onUpdate({ intensity_targets: null });
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                      />
+                      <span className="text-white text-sm font-medium">Intensity %</span>
+                      {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
+                        <input
+                          type="number"
+                          value={exercise.intensity_targets[0]?.percent || 75}
+                          onChange={(e) => {
+                            const newPercent = e.target.value ? parseInt(e.target.value) : 75;
+                            // Update all intensity targets to same percent
+                            const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
+                            onUpdate({ intensity_targets: updatedTargets });
+                          }}
+                          className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="75"
+                          min="0"
+                          max="200"
+                        />
+                      )}
+                    </label>
+                    {/* Perceived Intensity Indicator for Throwing Exercises */}
+                    {exercise.intensity_targets && exercise.intensity_targets.length > 0 && shouldUsePerceivedIntensity(exercise.exercises?.category) && (
+                      <div className="ml-9 px-2 py-1 bg-blue-500/10 border border-blue-500/30 rounded text-xs">
+                        <span className="text-blue-300">
+                          🎯 Throwing: {exercise.intensity_targets[0]?.percent}% effort → {getActualIntensity(exercise.intensity_targets[0]?.percent)}% actual
+                          {' '}({getIntensityLabel(exercise.intensity_targets[0]?.percent)})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Divider Line */}
+              <div className="border-t border-white/10 my-4"></div>
 
           {!enablePerSet ? (
             exercise.set_configurations && exercise.set_configurations.length > 0 ? (
@@ -569,56 +629,13 @@ export default function ExerciseDetailPanel({
                     </div>
                   );
                 })}
-
-                {/* Intensity % - Single checkbox for all performance measurements */}
-                {getDisplayMeasurements().some((m) => m.type !== 'reps') && (
-                  <div className="flex flex-col">
-                    <label className="block text-xs text-gray-400 mb-1">Intensity %</label>
-                    <div className="flex items-center gap-2 h-[38px]">
-                      <input
-                        type="checkbox"
-                        checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            // Enable intensity for all performance measurements
-                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
-                            const targets = performanceMeasurements.map(m => ({
-                              id: Date.now().toString() + m.id,
-                              metric: m.id,
-                              metric_label: `Max ${m.name}`,
-                              percent: 75
-                            }));
-                            onUpdate({ intensity_targets: targets });
-                          } else {
-                            // Disable intensity
-                            onUpdate({ intensity_targets: null });
-                          }
-                        }}
-                        className="w-4 h-4 rounded"
-                      />
-                      {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
-                        <input
-                          type="number"
-                          value={exercise.intensity_targets[0]?.percent || 75}
-                          onChange={(e) => {
-                            const newPercent = e.target.value ? parseInt(e.target.value) : 75;
-                            // Update all intensity targets to same percent
-                            const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
-                            onUpdate({ intensity_targets: updatedTargets });
-                          }}
-                          className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="75"
-                          min="0"
-                          max="200"
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
 
+              {/* Divider Line */}
+              <div className="border-t border-white/10 my-4"></div>
+
               {/* Rest & Tempo - Second Row */}
-              <div className="flex flex-wrap gap-4 mt-4">
+              <div className="flex flex-wrap gap-4">
                 {/* Rest */}
                 <div className="flex flex-col">
                   <label className="block text-xs text-gray-400 mb-1">Rest (sec)</label>
@@ -654,45 +671,87 @@ export default function ExerciseDetailPanel({
           )}
         </div>
 
-        {/* Track as Max Section */}
-        {getDisplayMeasurements().length > 0 && (
-          <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xl">🏆</span>
-              <h3 className="text-sm font-semibold text-yellow-200">Track as Personal Records</h3>
-            </div>
-            <p className="text-xs text-gray-400 mb-3">
-              When athletes log this exercise, automatically save their best performance for these metrics as personal records
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {getDisplayMeasurements()
-                .filter((m) => m.type !== 'reps') // Only show performance measurements for PR tracking
-                .map((measurement) => {
-                const isTracked = isMetricTrackedAsMax(measurement.id);
-                return (
-                  <button
-                    key={measurement.id}
-                    onClick={() => toggleTrackAsMax(measurement.id)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      isTracked
-                        ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
-                        : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
-                    }`}
-                  >
-                    {isTracked && <span className="mr-1">✓</span>}
-                    {measurement.name}
-                    {measurement.unit && ` (${measurement.unit})`}
-                  </button>
-                );
-              })}
-            </div>
-            {exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0 && (
-              <div className="mt-3 text-xs text-yellow-300/80">
-                <span className="font-medium">{exercise.tracked_max_metrics.length}</span> metric{exercise.tracked_max_metrics.length > 1 ? 's' : ''} will auto-save as max
+        {/* Track as Max Section & Video Preview */}
+        <div className="flex gap-4">
+          {/* Track as Max Section */}
+          {getDisplayMeasurements().length > 0 && (
+            <div className="flex-1 bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-xl">🏆</span>
+                <h3 className="text-sm font-semibold text-yellow-200">Track as Personal Records</h3>
               </div>
-            )}
-          </div>
-        )}
+              <p className="text-xs text-gray-400 mb-3">
+                When athletes log this exercise, automatically save their best performance for these metrics as personal records
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {getDisplayMeasurements()
+                  .filter((m) => m.type !== 'reps') // Only show performance measurements for PR tracking
+                  .map((measurement) => {
+                  const isTracked = isMetricTrackedAsMax(measurement.id);
+                  return (
+                    <button
+                      key={measurement.id}
+                      onClick={() => toggleTrackAsMax(measurement.id)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        isTracked
+                          ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
+                          : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {isTracked && <span className="mr-1">✓</span>}
+                      {measurement.name}
+                      {measurement.unit && ` (${measurement.unit})`}
+                    </button>
+                  );
+                })}
+              </div>
+              {exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0 && (
+                <div className="mt-3 text-xs text-yellow-300/80">
+                  <span className="font-medium">{exercise.tracked_max_metrics.length}</span> metric{exercise.tracked_max_metrics.length > 1 ? 's' : ''} will auto-save as max
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Video Preview */}
+          {exercise.exercises?.video_url && (() => {
+            // Convert YouTube URL to embed format
+            let embedUrl = exercise.exercises.video_url;
+
+            try {
+              // Handle various YouTube URL formats
+              if (embedUrl.includes('youtube.com/watch')) {
+                const videoId = new URL(embedUrl).searchParams.get('v');
+                embedUrl = `https://www.youtube.com/embed/${videoId}`;
+              } else if (embedUrl.includes('youtu.be/')) {
+                const videoId = embedUrl.split('youtu.be/')[1].split('?')[0];
+                embedUrl = `https://www.youtube.com/embed/${videoId}`;
+              } else if (!embedUrl.includes('youtube.com/embed/')) {
+                // If not already in embed format and not a recognized YouTube URL, keep original
+                embedUrl = embedUrl;
+              }
+            } catch (e) {
+              console.error('Error parsing video URL:', e);
+            }
+
+            return (
+              <div className="w-80 bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">🎥</span>
+                  <h3 className="text-sm font-semibold text-white">Exercise Demo</h3>
+                </div>
+                <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                  <iframe
+                    src={embedUrl}
+                    className="w-full h-full border-0"
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                </div>
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Exercise Notes */}
         <div className="space-y-4">
@@ -702,10 +761,10 @@ export default function ExerciseDetailPanel({
               <span>Default Exercise Notes</span>
               <span className="text-xs text-gray-500">🔒 Locked</span>
             </label>
-            <div className="px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-lg text-sm relative">
+            <div className="px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-sm relative">
               <div className="flex items-start gap-2">
-                <span className="text-blue-300 shrink-0">🔒</span>
-                <div className="flex-1 text-blue-200">
+                <span className="text-gray-400 shrink-0">🔒</span>
+                <div className="flex-1 text-white">
                   {exercise.exercises?.description || <span className="text-gray-400 italic">No default description set for this exercise</span>}
                 </div>
               </div>

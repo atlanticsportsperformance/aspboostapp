@@ -61,6 +61,11 @@ export async function GET(
     const minWeight = weights.length > 0 ? Math.min(...weights) : null;
     const maxWeight = weights.length > 0 ? Math.max(...weights) : null;
 
+    // Calculate weight change from first to last measurement (can be + or -)
+    const weightChange = history.length > 0
+      ? history[history.length - 1].weight_lbs - history[0].weight_lbs
+      : null;
+
     return NextResponse.json({
       athlete: {
         id: athleteId,
@@ -73,7 +78,7 @@ export async function GET(
         avg_weight_lbs: avgWeight ? Math.round(avgWeight * 10) / 10 : null,
         min_weight_lbs: minWeight,
         max_weight_lbs: maxWeight,
-        weight_change_lbs: (minWeight && maxWeight) ? Math.round((maxWeight - minWeight) * 10) / 10 : null,
+        weight_change_lbs: weightChange !== null ? Math.round(weightChange * 10) / 10 : null,
       },
     });
   } catch (err) {
