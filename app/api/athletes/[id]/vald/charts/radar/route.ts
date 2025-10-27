@@ -9,6 +9,7 @@ import { createServiceRoleClient } from '@/lib/supabase/server';
 interface MetricData {
   name: string;
   displayName: string;
+  unit: string;
   current: {
     percentile: number;
     value: number;

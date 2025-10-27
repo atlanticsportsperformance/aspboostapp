@@ -46,8 +46,9 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    // Reduce padding to make radar plot bigger (was -60, now -12 for maximum size)
-    const maxRadius = Math.min(width, height) / 2 - 12;
+    // Increase padding to ensure labels fit inside the card (dynamic based on size)
+    const labelPadding = Math.max(35, width / 15);
+    const maxRadius = Math.min(width, height) / 2 - labelPadding;
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -136,10 +137,10 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     });
 
     if (currentPoints.length === data.length) {
-      // Create radial gradient fill using light gray/white
+      // Create radial gradient fill using light gray/white - more transparent
       const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
-      gradient.addColorStop(0, 'rgba(229, 231, 235, 0.15)'); // Light gray 15% at center
-      gradient.addColorStop(1, 'rgba(229, 231, 235, 0.35)'); // Light gray 35% at edge
+      gradient.addColorStop(0, 'rgba(229, 231, 235, 0.05)'); // Light gray 5% at center (reduced from 8%)
+      gradient.addColorStop(1, 'rgba(229, 231, 235, 0.12)'); // Light gray 12% at edge (reduced from 18%)
 
       // Helper to draw with rounded corners that stay close to actual points
       const drawWithRoundedCorners = (radius: number) => {
@@ -214,7 +215,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
 
     data.forEach((point, index) => {
       const angle = angleStep * index - Math.PI / 2;
-      const labelRadius = maxRadius + 18; // Slightly more space for larger crisp text
+      const labelRadius = maxRadius + (labelPadding * 0.5); // Dynamic label spacing based on padding
       const x = centerX + labelRadius * Math.cos(angle);
       const y = centerY + labelRadius * Math.sin(angle);
 
