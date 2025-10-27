@@ -223,53 +223,53 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-6 max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-3 sm:p-4 md:p-6 max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-white">Bodyweight History</h2>
-            <p className="text-neutral-400 text-sm mt-1">{data.athlete.name}</p>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-white">Bodyweight History</h2>
+            <p className="text-neutral-400 text-xs sm:text-sm mt-0.5 sm:mt-1">{data.athlete.name}</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
           >
-            <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-            <div className="text-xs text-neutral-400 mb-1">Current</div>
-            <div className="text-2xl font-bold text-white">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6">
+          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Current</div>
+            <div className="text-base sm:text-xl md:text-2xl font-bold text-white">
               {data.athlete.current_weight_lbs ? `${data.athlete.current_weight_lbs} lbs` : 'N/A'}
             </div>
           </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-            <div className="text-xs text-neutral-400 mb-1">Average</div>
-            <div className="text-2xl font-bold text-[#9BDDFF]">
+          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Average</div>
+            <div className="text-base sm:text-xl md:text-2xl font-bold text-[#9BDDFF]">
               {data.stats.avg_weight_lbs ? `${data.stats.avg_weight_lbs} lbs` : 'N/A'}
             </div>
           </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-            <div className="text-xs text-neutral-400 mb-1">Min</div>
-            <div className="text-2xl font-bold text-green-400">
+          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Min</div>
+            <div className="text-base sm:text-xl md:text-2xl font-bold text-green-400">
               {data.stats.min_weight_lbs ? `${data.stats.min_weight_lbs} lbs` : 'N/A'}
             </div>
           </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-            <div className="text-xs text-neutral-400 mb-1">Max</div>
-            <div className="text-2xl font-bold text-red-400">
+          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Max</div>
+            <div className="text-base sm:text-xl md:text-2xl font-bold text-red-400">
               {data.stats.max_weight_lbs ? `${data.stats.max_weight_lbs} lbs` : 'N/A'}
             </div>
           </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4">
-            <div className="text-xs text-neutral-400 mb-1">Change</div>
-            <div className="text-2xl font-bold text-amber-400">
+          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Change</div>
+            <div className="text-base sm:text-xl md:text-2xl font-bold text-amber-400">
               {data.stats.weight_change_lbs !== null
                 ? `${data.stats.weight_change_lbs > 0 ? '+' : ''}${data.stats.weight_change_lbs} lbs`
                 : 'N/A'}
@@ -278,26 +278,26 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
         </div>
 
         {/* Chart */}
-        <div className="bg-neutral-800/30 border border-neutral-700 rounded-lg p-6 mb-4">
-          <h3 className="text-lg font-semibold text-white mb-4">Weight Over Time</h3>
+        <div className="bg-neutral-800/30 border border-neutral-700 rounded-lg p-3 sm:p-4 md:p-6 mb-3 sm:mb-4">
+          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-2 sm:mb-3 md:mb-4">Weight Over Time</h3>
           <canvas
             ref={canvasRef}
             className="w-full"
-            style={{ width: '100%', height: '400px' }}
+            style={{ width: '100%', height: '300px' }}
           />
         </div>
 
         {/* Data Table */}
-        <div className="bg-neutral-800/30 border border-neutral-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Measurements ({data.stats.total_measurements})</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+        <div className="bg-neutral-800/30 border border-neutral-700 rounded-lg p-3 sm:p-4 md:p-6">
+          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-2 sm:mb-3 md:mb-4">Measurements ({data.stats.total_measurements})</h3>
+          <div className="overflow-x-auto -mx-3 sm:mx-0">
+            <table className="w-full text-xs sm:text-sm min-w-[500px] sm:min-w-0">
               <thead>
                 <tr className="border-b border-neutral-700">
-                  <th className="text-left text-neutral-400 font-medium py-2 px-4">Date</th>
-                  <th className="text-right text-neutral-400 font-medium py-2 px-4">Weight (lbs)</th>
-                  <th className="text-right text-neutral-400 font-medium py-2 px-4">Weight (kg)</th>
-                  <th className="text-right text-neutral-400 font-medium py-2 px-4">Change</th>
+                  <th className="text-left text-neutral-400 font-medium py-2 px-2 sm:px-4">Date</th>
+                  <th className="text-right text-neutral-400 font-medium py-2 px-2 sm:px-4">Weight (lbs)</th>
+                  <th className="text-right text-neutral-400 font-medium py-2 px-2 sm:px-4 hidden sm:table-cell">Weight (kg)</th>
+                  <th className="text-right text-neutral-400 font-medium py-2 px-2 sm:px-4">Change</th>
                 </tr>
               </thead>
               <tbody>
@@ -307,20 +307,20 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
 
                   return (
                     <tr key={point.test_id} className="border-b border-neutral-800 hover:bg-neutral-800/50 transition-colors">
-                      <td className="py-3 px-4 text-white">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-white text-xs sm:text-sm">
                         {new Date(point.date).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
-                          year: 'numeric'
+                          year: window.innerWidth < 640 ? '2-digit' : 'numeric'
                         })}
                       </td>
-                      <td className="py-3 px-4 text-right text-white font-medium">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-white font-medium">
                         {point.weight_lbs} lbs
                       </td>
-                      <td className="py-3 px-4 text-right text-neutral-400">
+                      <td className="py-2 sm:py-3 px-2 sm:px-4 text-right text-neutral-400 hidden sm:table-cell">
                         {point.weight_kg} kg
                       </td>
-                      <td className={`py-3 px-4 text-right font-medium ${
+                      <td className={`py-2 sm:py-3 px-2 sm:px-4 text-right font-medium ${
                         change === null ? 'text-neutral-500' :
                         change > 0 ? 'text-red-400' :
                         change < 0 ? 'text-green-400' :
