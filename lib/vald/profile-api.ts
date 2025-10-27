@@ -18,6 +18,7 @@ interface Profile {
   familyName: string;
   dateOfBirth: Date;
   externalId: string;
+  email?: string; // Email may not always be present in VALD
 }
 
 interface GetAthleteResponse {
@@ -194,6 +195,24 @@ export class ValdProfileApi {
     }
   }
 
+  async getProfileById(profileId: string): Promise<Profile | null> {
+    try {
+      console.log(`Getting full profile details for profileId: ${profileId}`);
+      const endpoint = `/profiles/${profileId}?TenantId=${this.tenantId}`;
+      const response = await this.makeRequest<Profile>(endpoint, {
+        method: "GET",
+      });
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw new Error(`Failed to get profile: ${response.message}`);
+      }
+      console.log('VALD profile details:', JSON.stringify(response.data));
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error getting profile by ID:', error instanceof Error ? error.message : 'Unknown error');
+      return null;
+    }
+  }
+
   async searchByEmail(email: string): Promise<Profile | null> {
     try {
       console.log("Searching for athlete by email in VALD profile API...");
@@ -258,7 +277,21 @@ export class ValdProfileApi {
       });
 
       console.log(`Found ${matches.length} profile(s) matching name: ${firstName} ${lastName}`);
-      return matches;
+
+      // Fetch full profile details for each match to get email and other fields
+      const fullProfiles: Profile[] = [];
+      for (const match of matches) {
+        const fullProfile = await this.getProfileById(match.profileId);
+        if (fullProfile) {
+          fullProfiles.push(fullProfile);
+        } else {
+          // If we can't get full details, use the basic profile
+          fullProfiles.push(match);
+        }
+      }
+
+      console.log(`✅ Fetched full details for ${fullProfiles.length} profile(s)`);
+      return fullProfiles;
     } catch (error) {
       console.error('❌ Error searching athlete by name:', error instanceof Error ? error.message : 'Unknown error');
       throw error;

@@ -74,6 +74,38 @@ export async function createAndLinkVALDProfile(
       throw new Error(`Profile creation already ${existingQueue[0].status} for this athlete`);
     }
 
+    // CRITICAL: Search for existing VALD profile by email FIRST
+    // This prevents duplicate profile creation
+    const valdProfileApi = new ValdProfileApi();
+
+    console.log(`🔍 Searching for existing VALD profile with email: ${params.email}`);
+    const existingProfile = await valdProfileApi.searchByEmail(params.email);
+
+    if (existingProfile) {
+      console.log(`✅ Found existing VALD profile for ${params.email}: ${existingProfile.profileId}`);
+
+      // Link the existing profile instead of creating a new one
+      const { error } = await supabase
+        .from('athletes')
+        .update({
+          vald_profile_id: existingProfile.profileId,
+          vald_sync_id: existingProfile.syncId,
+          vald_external_id: existingProfile.externalId,
+          vald_synced_at: new Date().toISOString(),
+        })
+        .eq('id', params.athleteId);
+
+      if (error) {
+        console.error('Error linking existing VALD profile:', error);
+        throw error;
+      }
+
+      console.log(`✅ Linked existing VALD profile ${existingProfile.profileId} to athlete ${params.athleteId}`);
+      return existingProfile.profileId;
+    }
+
+    console.log(`❌ No existing VALD profile found for ${params.email}. Creating new profile...`);
+
     // Generate UUIDs for VALD sync
     const syncId = randomUUID();
     const externalId = randomUUID();
@@ -81,9 +113,7 @@ export async function createAndLinkVALDProfile(
     // Normalize sex to single character for VALD
     const sex = params.sex.toUpperCase().startsWith('M') ? 'M' : 'F';
 
-    // Create profile in VALD system
-    const valdProfileApi = new ValdProfileApi();
-
+    // Create NEW profile in VALD system
     await valdProfileApi.createAthlete({
       dateOfBirth: params.birthDate,
       email: params.email,
@@ -94,7 +124,7 @@ export async function createAndLinkVALDProfile(
       externalId: externalId,
     });
 
-    console.log('✅ VALD profile created, waiting for profileId...');
+    console.log('✅ NEW VALD profile created, waiting for profileId...');
 
     // Wait a moment for VALD to process
     await new Promise(resolve => setTimeout(resolve, 2000));

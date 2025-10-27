@@ -370,7 +370,7 @@ export default function AthleteDetailPage() {
       </div>
 
       {/* Tab Content */}
-      <div className="p-4 lg:p-8">
+      <div className="p-3 lg:p-4">
         {/* Manage Tags Modal - Renders here but button is in header */}
         {showManageTagsModal && (
           <ManageTagsModal

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Return all matching profiles
+    // Return all matching profiles with email
     return NextResponse.json({
       found: true,
       count: profiles.length,
@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
         familyName: p.familyName,
         dateOfBirth: p.dateOfBirth,
         externalId: p.externalId,
+        email: p.email, // CRITICAL: Include email from VALD profile
       })),
     });
 

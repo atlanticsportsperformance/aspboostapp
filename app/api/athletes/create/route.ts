@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
         primary_position: primaryPosition || null,
         secondary_position: secondaryPosition || null,
         grad_year: gradYear || null,
+        play_level: playLevel, // CRITICAL: Required for percentile calculations
         is_active: true,
       })
       .select()

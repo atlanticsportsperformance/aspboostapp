@@ -78,6 +78,10 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
         throw new Error('First name, last name, and email are required');
       }
 
+      if (!playLevel) {
+        throw new Error('Play level is required');
+      }
+
       if (createValdProfile && !birthDate) {
         throw new Error('Birth date is required to create a VALD profile');
       }
@@ -463,11 +467,12 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
 
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
-                  Play Level
+                  Play Level <span className="text-red-400">*</span>
                 </label>
                 <select
                   value={playLevel}
                   onChange={(e) => setPlayLevel(e.target.value as any)}
+                  required
                   className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
                 >
                   <option value="Youth" className="bg-[#0A0A0A]">Youth</option>
@@ -518,8 +523,13 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                                 setExistingValdProfileId(profile.profileId);
                                 setLinkExistingVald(true);
                                 setCreateValdProfile(false);
+                                // Auto-fill birth date
                                 if (profile.dateOfBirth && !birthDate) {
                                   setBirthDate(profile.dateOfBirth.split('T')[0]);
+                                }
+                                // Auto-fill email from VALD profile
+                                if (profile.email) {
+                                  setEmail(profile.email);
                                 }
                               }}
                               className={`w-full px-3 py-2.5 rounded text-left transition-colors ${
@@ -533,10 +543,19 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                                   <p className="text-white text-sm font-medium">
                                     {profile.givenName} {profile.familyName}
                                   </p>
-                                  <p className="text-gray-400 text-xs mt-0.5">
+                                  {profile.email ? (
+                                    <p className="text-emerald-300 text-xs mt-1 font-medium">
+                                      📧 {profile.email}
+                                    </p>
+                                  ) : (
+                                    <p className="text-amber-400 text-xs mt-1 italic">
+                                      ⚠️ No email in VALD
+                                    </p>
+                                  )}
+                                  <p className="text-gray-400 text-xs mt-1">
                                     DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
                                   </p>
-                                  <p className="text-gray-500 text-xs font-mono mt-0.5">
+                                  <p className="text-gray-500 text-xs font-mono mt-1">
                                     ID: {profile.profileId}
                                   </p>
                                 </div>
@@ -567,20 +586,67 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                 </div>
               </div>
             ) : firstName && lastName ? (
-              /* No matches found - will create new */
-              <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <div className="flex gap-3">
-                  <svg className="w-6 h-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <div className="flex-1">
-                    <h4 className="text-blue-400 font-semibold">No Existing VALD Profile</h4>
-                    <p className="text-blue-300 text-sm mt-1">
-                      No VALD profile found for "{firstName} {lastName}"
-                    </p>
-                    <p className="text-blue-200 text-xs mt-2">
-                      A new VALD profile will be automatically created. Birth date and sex are required.
-                    </p>
+              /* No name matches found - will search by email then decide */
+              <div className="space-y-3">
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-6 h-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="text-blue-400 font-semibold">No Name Match in VALD</h4>
+                      <p className="text-blue-300 text-sm mt-1">
+                        No VALD profile found by name: "{firstName} {lastName}"
+                      </p>
+                      <p className="text-blue-200 text-xs mt-2">
+                        We'll search by <span className="font-semibold">email</span> to check if this athlete exists in VALD.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* CRITICAL EMAIL EXPLANATION */}
+                <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-6 h-6 text-purple-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="text-purple-400 font-semibold text-sm">🔍 How VALD Linking Works</h4>
+                      <div className="text-purple-200 text-xs mt-2 space-y-2">
+                        <p className="leading-relaxed">
+                          <span className="font-semibold">Step 1:</span> We search VALD by <span className="font-semibold underline">email</span>
+                        </p>
+                        <p className="leading-relaxed">
+                          <span className="font-semibold">✅ If found:</span> We'll link to the existing VALD profile (all test data syncs!)
+                        </p>
+                        <p className="leading-relaxed">
+                          <span className="font-semibold">➕ If not found:</span> We'll create a new VALD profile
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* EMAIL WARNING */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-6 h-6 text-amber-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="text-amber-400 font-semibold text-sm">⚠️ Use Their VALD Email</h4>
+                      <p className="text-amber-200 text-xs mt-2 leading-relaxed">
+                        <span className="font-semibold">CRITICAL:</span> To avoid creating duplicates,
+                        use the <span className="font-semibold underline">exact same email</span> as their VALD account.
+                      </p>
+                      <p className="text-amber-300 text-xs mt-2">
+                        Email you entered: <span className="font-mono font-semibold">{email || '(not set yet)'}</span>
+                      </p>
+                      <p className="text-amber-200 text-xs mt-2 italic">
+                        💡 Double-check this matches their VALD email before submitting!
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -595,297 +661,6 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                     <h4 className="text-white font-semibold">Enter Name to Check VALD</h4>
                     <p className="text-gray-400 text-sm mt-1">
                       We'll automatically search for existing VALD profiles when you enter first and last name.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* OLD COMPLEX LOGIC - REMOVED */}
-            {false && valdSearchResult?.found ? (
-              <div className="space-y-4">
-                {/* Check if names match */}
-                {(() => {
-                  const valdFirstName = valdSearchResult.profile.givenName?.toLowerCase().trim();
-                  const valdLastName = valdSearchResult.profile.familyName?.toLowerCase().trim();
-                  const enteredFirstName = firstName?.toLowerCase().trim();
-                  const enteredLastName = lastName?.toLowerCase().trim();
-
-                  const namesMatch = (
-                    (!enteredFirstName || valdFirstName === enteredFirstName) &&
-                    (!enteredLastName || valdLastName === enteredLastName)
-                  );
-
-                  if (!namesMatch && enteredFirstName && enteredLastName) {
-                    // Names don't match - show warning
-                    return (
-                      <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                        <div className="flex gap-3">
-                          <svg className="w-6 h-6 text-yellow-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                          </svg>
-                          <div className="flex-1">
-                            <h4 className="text-yellow-400 font-semibold">Name Mismatch Detected</h4>
-                            <div className="text-yellow-300 text-sm mt-2 space-y-1">
-                              <p>
-                                <span className="font-medium">VALD has:</span> {valdSearchResult.profile.givenName} {valdSearchResult.profile.familyName}
-                              </p>
-                              <p>
-                                <span className="font-medium">You entered:</span> {firstName} {lastName}
-                              </p>
-                            </div>
-                            <p className="text-yellow-200 text-xs mt-3">
-                              The email <span className="font-mono">{email}</span> is registered to a different athlete in VALD.
-                            </p>
-                            <div className="mt-3 pt-3 border-t border-yellow-500/20">
-                              <p className="text-yellow-200 text-xs font-semibold mb-2">What would you like to do?</p>
-                              <div className="space-y-2">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Ignore the mismatch - proceed with the athlete you entered
-                                    // This overrides the warning and doesn't link to the wrong VALD profile
-                                    setLinkExistingVald(false);
-                                    setCreateValdProfile(true);
-                                    setExistingValdProfileId('');
-                                    setValdSearchResult(null); // Clear the mismatch warning
-                                  }}
-                                  className="w-full px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded text-emerald-200 text-sm font-medium transition-colors text-left"
-                                >
-                                  ✓ This is a VALD data error - ignore and proceed with <strong>{firstName} {lastName}</strong>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Link to the VALD profile and use their name
-                                    setFirstName(valdSearchResult.profile.givenName);
-                                    setLastName(valdSearchResult.profile.familyName);
-                                    setLinkExistingVald(true);
-                                    setCreateValdProfile(false);
-                                  }}
-                                  className="w-full px-3 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/30 rounded text-yellow-200 text-sm transition-colors text-left"
-                                >
-                                  Link to <strong>{valdSearchResult.profile.givenName} {valdSearchResult.profile.familyName}</strong>'s VALD account
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    // Create new VALD profile for the athlete you're entering
-                                    setLinkExistingVald(false);
-                                    setCreateValdProfile(true);
-                                    setExistingValdProfileId('');
-                                  }}
-                                  className="w-full px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-blue-200 text-sm transition-colors text-left"
-                                >
-                                  Create new VALD profile for <strong>{firstName} {lastName}</strong> (use different email)
-                                </button>
-                              </div>
-
-                              {/* Show name-based matches if available */}
-                              {valdNameMatches.length > 0 && (
-                                <div className="mt-3 pt-3 border-t border-yellow-500/20">
-                                  <p className="text-yellow-200 text-xs font-semibold mb-2">
-                                    Or link to one of these {valdNameMatches.length} profile(s) with matching name:
-                                  </p>
-                                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                                    {valdNameMatches.map((profile: any) => (
-                                      <button
-                                        key={profile.profileId}
-                                        type="button"
-                                        onClick={() => {
-                                          setExistingValdProfileId(profile.profileId);
-                                          setLinkExistingVald(true);
-                                          setCreateValdProfile(false);
-                                          if (profile.dateOfBirth && !birthDate) {
-                                            setBirthDate(profile.dateOfBirth.split('T')[0]);
-                                          }
-                                        }}
-                                        className="w-full px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-left transition-colors"
-                                      >
-                                        <p className="text-white text-sm font-medium">
-                                          {profile.givenName} {profile.familyName}
-                                        </p>
-                                        <p className="text-gray-400 text-xs mt-0.5">
-                                          DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
-                                        </p>
-                                        <p className="text-gray-500 text-xs font-mono">
-                                          ID: {profile.profileId}
-                                        </p>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  } else {
-                    // Names match - show success
-                    return (
-                      <>
-                        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                          <div className="flex gap-3">
-                            <svg className="w-6 h-6 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <div className="flex-1">
-                              <h4 className="text-emerald-400 font-semibold">Existing VALD Profile Detected</h4>
-                              <p className="text-emerald-300 text-sm mt-1">
-                                {valdSearchResult.profile.givenName} {valdSearchResult.profile.familyName}
-                              </p>
-                              <p className="text-emerald-300/70 text-xs mt-0.5">
-                                Profile ID: {valdSearchResult.profile.profileId}
-                              </p>
-                              <p className="text-emerald-200 text-xs mt-2">
-                                This athlete's existing VALD profile will be automatically linked. All past test data will be synced.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Option to override and create new */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setLinkExistingVald(false);
-                            setCreateValdProfile(true);
-                            setExistingValdProfileId('');
-                          }}
-                          className="text-xs text-gray-400 hover:text-white transition-colors underline"
-                        >
-                          Create new VALD profile instead (not recommended)
-                        </button>
-                      </>
-                    );
-                  }
-                })()}
-              </div>
-            ) : hasSearchedEmail && valdSearchResult ? (
-              <div className="space-y-4">
-                {/* Check if we have name-based matches */}
-                {valdNameMatches.length > 0 ? (
-                  /* Found by name but not by email - likely email is missing in VALD */
-                  <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                    <div className="flex gap-3">
-                      <svg className="w-6 h-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div className="flex-1">
-                        <h4 className="text-blue-400 font-semibold">No Email Match, But Name Match Found</h4>
-                        <p className="text-blue-300 text-sm mt-1">
-                          No VALD profile found with email <span className="font-mono">{email}</span>, but found {valdNameMatches.length} profile(s) with matching name.
-                        </p>
-                        <p className="text-blue-200 text-xs mt-2">
-                          This likely means the VALD profile exists but doesn't have an email address on file.
-                        </p>
-
-                        {/* Show name-based matches */}
-                        <div className="mt-3 pt-3 border-t border-blue-500/20">
-                          <p className="text-blue-200 text-xs font-semibold mb-2">
-                            Select a profile to link:
-                          </p>
-                          <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {valdNameMatches.map((profile: any) => (
-                              <button
-                                key={profile.profileId}
-                                type="button"
-                                onClick={() => {
-                                  setExistingValdProfileId(profile.profileId);
-                                  setLinkExistingVald(true);
-                                  setCreateValdProfile(false);
-                                  if (profile.dateOfBirth && !birthDate) {
-                                    setBirthDate(profile.dateOfBirth.split('T')[0]);
-                                  }
-                                }}
-                                className="w-full px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-left transition-colors"
-                              >
-                                <p className="text-white text-sm font-medium">
-                                  {profile.givenName} {profile.familyName}
-                                </p>
-                                <p className="text-gray-400 text-xs mt-0.5">
-                                  DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
-                                </p>
-                                <p className="text-gray-500 text-xs font-mono">
-                                  ID: {profile.profileId}
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLinkExistingVald(false);
-                              setCreateValdProfile(true);
-                              setExistingValdProfileId('');
-                            }}
-                            className="w-full mt-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded text-blue-200 text-sm transition-colors"
-                          >
-                            Or create new VALD profile instead
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* No email match AND no name match - truly new */
-                  <>
-                    <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                      <div className="flex gap-3">
-                        <svg className="w-6 h-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <div className="flex-1">
-                          <h4 className="text-blue-400 font-semibold">No Existing VALD Profile</h4>
-                          <p className="text-blue-300 text-sm mt-1">
-                            A new VALD profile will be automatically created for this athlete.
-                          </p>
-                          <p className="text-blue-200 text-xs mt-2">
-                            Birth date and sex are required to create a VALD profile.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Option to link existing manually */}
-                    <details className="text-sm">
-                      <summary className="text-gray-400 hover:text-white cursor-pointer transition-colors">
-                        Have a VALD Profile ID? Click to link manually
-                      </summary>
-                      <div className="mt-3">
-                        <input
-                          type="text"
-                          value={existingValdProfileId}
-                          onChange={(e) => {
-                            setExistingValdProfileId(e.target.value);
-                            if (e.target.value) {
-                              setLinkExistingVald(true);
-                              setCreateValdProfile(false);
-                            }
-                          }}
-                          placeholder="Enter VALD Profile ID"
-                          className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-                        />
-                        <p className="text-xs text-gray-500 mt-1.5">
-                          Only use this if you know the exact Profile ID from VALD Hub.
-                        </p>
-                      </div>
-                    </details>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
-                <div className="flex gap-3">
-                  <svg className="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div className="flex-1">
-                    <h4 className="text-white font-semibold">Enter Email to Check VALD</h4>
-                    <p className="text-gray-400 text-sm mt-1">
-                      We'll automatically check if this athlete has an existing VALD profile when you enter their email.
                     </p>
                   </div>
                 </div>

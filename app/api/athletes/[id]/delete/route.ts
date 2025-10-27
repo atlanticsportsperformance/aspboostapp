@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient();
@@ -39,7 +39,8 @@ export async function DELETE(
       );
     }
 
-    const athleteId = params.id;
+    // Await params before accessing properties
+    const { id: athleteId } = await params;
 
     // Verify athlete exists
     const { data: athlete, error: athleteError } = await supabase

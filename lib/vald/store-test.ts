@@ -11,7 +11,25 @@ interface CountMap {
 }
 
 /**
+ * Convert column name to match the broken SJ table format with underscores between every character
+ * Example: "bodymass_relative_mean_power" -> "_b_o_d_y_m_a_s_s__r_e_l_a_t_i_v_e__m_e_a_n__p_o_w_e_r"
+ */
+function convertToSJColumnFormat(columnName: string): string {
+  // Split by underscore to get words
+  const words = columnName.split('_');
+
+  // For each word, insert underscore between each character
+  const convertedWords = words.map(word => {
+    return word.split('').join('_');
+  });
+
+  // Join words with double underscore
+  return '_' + convertedWords.join('__');
+}
+
+/**
  * Store CMJ (Countermovement Jump) test data
+ * Averages all trials into a single row
  */
 export async function storeCMJTest(
   supabase: SupabaseClient,
@@ -20,41 +38,62 @@ export async function storeCMJTest(
   athleteId: string
 ): Promise<boolean> {
   try {
-    const data = [];
+    if (trials.length === 0) return false;
+
+    // Use first trial's timestamp and timezone
+    const firstTrial = trials[0];
+    const trialData: Record<string, unknown> = {
+      athlete_id: athleteId,
+      test_id: testId,
+      recorded_utc: new Date(firstTrial.recordedUTC).toISOString(),
+      recorded_timezone: firstTrial.recordedTimezone,
+    };
+
+    // Accumulate values for averaging
+    const valueAccumulator = new Map<string, number[]>();
+    const units = new Map<string, string>();
 
     for (const trial of trials) {
-      const trialData: Record<string, unknown> = {
-        athlete_id: athleteId,
-        test_id: testId,
-        recorded_utc: new Date(trial.recordedUTC).toISOString(),
-        recorded_timezone: trial.recordedTimezone,
-      };
-
-      // Map each result to the appropriate field
       for (const result of trial.results) {
         const name = result.definition.result.toLowerCase();
         const limbKey = result.limb === "Asym" ? "asymm" : result.limb.toLowerCase();
         const valueKey = `${name}_${limbKey}_value`;
         const unitKey = `${name}_${limbKey}_unit`;
 
-        trialData[valueKey] = result.value;
-        trialData[unitKey] = result.definition.unit;
-      }
+        // Accumulate numeric values
+        if (typeof result.value === 'number') {
+          if (!valueAccumulator.has(valueKey)) {
+            valueAccumulator.set(valueKey, []);
+          }
+          valueAccumulator.get(valueKey)!.push(result.value);
+        }
 
-      data.push(trialData);
+        // Store unit (same across trials)
+        units.set(unitKey, result.definition.unit);
+      }
     }
 
-    // Insert into Supabase
+    // Calculate averages
+    for (const [key, values] of valueAccumulator) {
+      trialData[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
+
+    // Add units
+    for (const [key, unit] of units) {
+      trialData[key] = unit;
+    }
+
+    // Insert into Supabase (upsert to handle duplicates)
     const { error } = await supabase
       .from('cmj_tests')
-      .insert(data);
+      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
 
     if (error) {
       console.error('Error storing CMJ test:', error);
       return false;
     }
 
-    console.log(`✅ Stored ${data.length} CMJ trial(s) for test ${testId}`);
+    console.log(`✅ Stored CMJ test (averaged ${trials.length} trial(s)) for test ${testId}`);
     return true;
   } catch (error) {
     console.error('Error in storeCMJTest:', error);
@@ -64,6 +103,7 @@ export async function storeCMJTest(
 
 /**
  * Store SJ (Squat Jump) test data
+ * Averages all trials into a single row
  */
 export async function storeSJTest(
   supabase: SupabaseClient,
@@ -72,39 +112,95 @@ export async function storeSJTest(
   athleteId: string
 ): Promise<boolean> {
   try {
-    const data = [];
+    if (trials.length === 0) return false;
+
+    // Use first trial's timestamp and timezone
+    const firstTrial = trials[0];
+    const trialData: Record<string, unknown> = {
+      athlete_id: athleteId,
+      test_id: testId,
+      recorded_utc: new Date(firstTrial.recordedUTC).toISOString(),
+      recorded_timezone: firstTrial.recordedTimezone,
+    };
+
+    // Accumulate values for averaging
+    const valueAccumulator = new Map<string, number[]>();
+    const units = new Map<string, string>();
 
     for (const trial of trials) {
-      const trialData: Record<string, unknown> = {
-        athlete_id: athleteId,
-        test_id: testId,
-        recorded_utc: new Date(trial.recordedUTC).toISOString(),
-        recorded_timezone: trial.recordedTimezone,
-      };
-
       for (const result of trial.results) {
         const name = result.definition.result.toLowerCase();
         const limbKey = result.limb === "Asym" ? "asymm" : result.limb.toLowerCase();
         const valueKey = `${name}_${limbKey}_value`;
         const unitKey = `${name}_${limbKey}_unit`;
 
-        trialData[valueKey] = result.value;
-        trialData[unitKey] = result.definition.unit;
-      }
+        // Accumulate numeric values
+        if (typeof result.value === 'number') {
+          if (!valueAccumulator.has(valueKey)) {
+            valueAccumulator.set(valueKey, []);
+          }
+          valueAccumulator.get(valueKey)!.push(result.value);
+        }
 
-      data.push(trialData);
+        // Store unit (same across trials)
+        units.set(unitKey, result.definition.unit);
+      }
     }
 
-    const { error } = await supabase
-      .from('sj_tests')
-      .insert(data);
+    // Calculate averages
+    for (const [key, values] of valueAccumulator) {
+      trialData[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
 
-    if (error) {
-      console.error('Error storing SJ test:', error);
+    // Add units
+    for (const [key, unit] of units) {
+      trialData[key] = unit;
+    }
+
+    // Try to upsert, and if we get a column not found error, retry with only *_value columns (skip *_unit columns)
+    let { error } = await supabase
+      .from('sj_tests')
+      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
+
+    if (error && error.code === 'PGRST204') {
+      // Column not found in schema - filter to only insert columns that don't have missing dependencies
+      console.log('⚠️ Schema mismatch detected, filtering columns...');
+
+      // Keep only core columns and *_value columns (skip *_unit columns which are less critical)
+      const filteredData: Record<string, unknown> = {
+        athlete_id: trialData.athlete_id,
+        test_id: trialData.test_id,
+        recorded_utc: trialData.recorded_utc,
+        recorded_timezone: trialData.recorded_timezone,
+      };
+
+      for (const [key, value] of Object.entries(trialData)) {
+        // Skip unit columns since they're causing issues and are less critical than values
+        if (!key.endsWith('_unit') && !['athlete_id', 'test_id', 'recorded_utc', 'recorded_timezone'].includes(key)) {
+          filteredData[key] = value;
+        }
+      }
+
+      console.log(`SJ test: Retrying with ${Object.keys(filteredData).length} columns (skipped ${Object.keys(trialData).length - Object.keys(filteredData).length} unit columns)`);
+
+      const retryResult = await supabase
+        .from('sj_tests')
+        .upsert(filteredData, { onConflict: 'athlete_id,test_id' });
+
+      if (retryResult.error) {
+        console.error('❌ ERROR storing SJ test after filtering:', retryResult.error);
+        console.error('   Error message:', retryResult.error.message);
+        return false;
+      }
+    } else if (error) {
+      console.error('❌ ERROR storing SJ test:', error);
+      console.error('   Error message:', error.message);
+      console.error('   Error details:', error.details);
+      console.error('   Error hint:', error.hint);
       return false;
     }
 
-    console.log(`✅ Stored ${data.length} SJ trial(s) for test ${testId}`);
+    console.log(`✅ Stored SJ test (averaged ${trials.length} trial(s)) for test ${testId}`);
     return true;
   } catch (error) {
     console.error('Error in storeSJTest:', error);
@@ -114,7 +210,7 @@ export async function storeSJTest(
 
 /**
  * Store HJ (Hop) test data
- * Note: HJ tests average values across multiple trials
+ * Averages all trials into a single row
  */
 export async function storeHJTest(
   supabase: SupabaseClient,
@@ -123,64 +219,61 @@ export async function storeHJTest(
   athleteId: string
 ): Promise<boolean> {
   try {
-    const data = [];
-    const averageMap: Map<string, CountMap> = new Map();
+    if (trials.length === 0) return false;
+
+    // Use first trial's timestamp and timezone
+    const firstTrial = trials[0];
+    const trialData: Record<string, unknown> = {
+      athlete_id: athleteId,
+      test_id: testId,
+      recorded_utc: new Date(firstTrial.recordedUTC).toISOString(),
+      recorded_timezone: firstTrial.recordedTimezone,
+    };
+
+    // Accumulate values for averaging
+    const valueAccumulator = new Map<string, number[]>();
+    const units = new Map<string, string>();
 
     for (const trial of trials) {
-      const trialData: Record<string, unknown> = {
-        athlete_id: athleteId,
-        test_id: testId,
-        recorded_utc: new Date(trial.recordedUTC).toISOString(),
-        recorded_timezone: trial.recordedTimezone,
-      };
-
-      // Accumulate values for averaging
       for (const result of trial.results) {
         const name = result.definition.result.toLowerCase();
         const limbKey = result.limb === "Asym" ? "asymm" : result.limb.toLowerCase();
         const valueKey = `${name}_${limbKey}_value`;
         const unitKey = `${name}_${limbKey}_unit`;
 
-        // Average numeric values across trials
-        if (!averageMap.has(valueKey)) {
-          averageMap.set(valueKey, { count: 1, value: result.value });
-        } else {
-          const countMap = averageMap.get(valueKey);
-          if (countMap && typeof countMap.value === 'number' && typeof result.value === 'number') {
-            countMap.count++;
-            countMap.value += result.value;
+        // Accumulate numeric values
+        if (typeof result.value === 'number') {
+          if (!valueAccumulator.has(valueKey)) {
+            valueAccumulator.set(valueKey, []);
           }
+          valueAccumulator.get(valueKey)!.push(result.value);
         }
 
-        // Store unit (doesn't need averaging)
-        if (!averageMap.has(unitKey)) {
-          averageMap.set(unitKey, { count: 1, value: result.definition.unit });
-        }
+        // Store unit (same across trials)
+        units.set(unitKey, result.definition.unit);
       }
+    }
 
-      // Apply averaged values
-      for (const [key, value] of averageMap) {
-        if (typeof value.value === "number") {
-          trialData[key] = value.value / value.count;
-        } else {
-          trialData[key] = value.value;
-        }
-      }
+    // Calculate averages
+    for (const [key, values] of valueAccumulator) {
+      trialData[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
 
-      data.push(trialData);
-      averageMap.clear();
+    // Add units
+    for (const [key, unit] of units) {
+      trialData[key] = unit;
     }
 
     const { error } = await supabase
       .from('hj_tests')
-      .insert(data);
+      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
 
     if (error) {
       console.error('Error storing HJ test:', error);
       return false;
     }
 
-    console.log(`✅ Stored ${data.length} HJ trial(s) for test ${testId}`);
+    console.log(`✅ Stored HJ test (averaged ${trials.length} trial(s)) for test ${testId}`);
     return true;
   } catch (error) {
     console.error('Error in storeHJTest:', error);
@@ -190,6 +283,7 @@ export async function storeHJTest(
 
 /**
  * Store PPU (Prone Push-Up) test data
+ * Averages all trials into a single row
  */
 export async function storePPUTest(
   supabase: SupabaseClient,
@@ -198,39 +292,61 @@ export async function storePPUTest(
   athleteId: string
 ): Promise<boolean> {
   try {
-    const data = [];
+    if (trials.length === 0) return false;
+
+    // Use first trial's timestamp and timezone
+    const firstTrial = trials[0];
+    const trialData: Record<string, unknown> = {
+      athlete_id: athleteId,
+      test_id: testId,
+      recorded_utc: new Date(firstTrial.recordedUTC).toISOString(),
+      recorded_timezone: firstTrial.recordedTimezone,
+    };
+
+    // Accumulate values for averaging
+    const valueAccumulator = new Map<string, number[]>();
+    const units = new Map<string, string>();
 
     for (const trial of trials) {
-      const trialData: Record<string, unknown> = {
-        athlete_id: athleteId,
-        test_id: testId,
-        recorded_utc: new Date(trial.recordedUTC).toISOString(),
-        recorded_timezone: trial.recordedTimezone,
-      };
-
       for (const result of trial.results) {
         const name = result.definition.result.toLowerCase();
         const limbKey = result.limb === "Asym" ? "asymm" : result.limb.toLowerCase();
         const valueKey = `${name}_${limbKey}_value`;
         const unitKey = `${name}_${limbKey}_unit`;
 
-        trialData[valueKey] = result.value;
-        trialData[unitKey] = result.definition.unit;
-      }
+        // Accumulate numeric values
+        if (typeof result.value === 'number') {
+          if (!valueAccumulator.has(valueKey)) {
+            valueAccumulator.set(valueKey, []);
+          }
+          valueAccumulator.get(valueKey)!.push(result.value);
+        }
 
-      data.push(trialData);
+        // Store unit (same across trials)
+        units.set(unitKey, result.definition.unit);
+      }
+    }
+
+    // Calculate averages
+    for (const [key, values] of valueAccumulator) {
+      trialData[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
+
+    // Add units
+    for (const [key, unit] of units) {
+      trialData[key] = unit;
     }
 
     const { error } = await supabase
       .from('ppu_tests')
-      .insert(data);
+      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
 
     if (error) {
       console.error('Error storing PPU test:', error);
       return false;
     }
 
-    console.log(`✅ Stored ${data.length} PPU trial(s) for test ${testId}`);
+    console.log(`✅ Stored PPU test (averaged ${trials.length} trial(s)) for test ${testId}`);
     return true;
   } catch (error) {
     console.error('Error in storePPUTest:', error);
@@ -240,6 +356,7 @@ export async function storePPUTest(
 
 /**
  * Store IMTP (Isometric Mid-Thigh Pull) test data
+ * Averages all trials into a single row
  * Note: IMTP requires body weight to calculate NET_PEAK_VERTICAL_FORCE and RELATIVE_STRENGTH
  */
 export async function storeIMTPTest(
@@ -250,6 +367,8 @@ export async function storeIMTPTest(
   valdProfileId: string
 ): Promise<boolean> {
   try {
+    if (trials.length === 0) return false;
+
     // Get body weight from the VALD test metadata
     const valdForceDecksAPI = new SimpleVALDForceDecksAPI();
     const valdTest = await valdForceDecksAPI.getTest(testId, valdProfileId);
@@ -260,53 +379,72 @@ export async function storeIMTPTest(
     }
 
     const bodyWeightN = valdTest.weight * 9.81; // Convert kg to Newtons
-    const data = [];
+
+    // Use first trial's timestamp and timezone
+    const firstTrial = trials[0];
+    const trialData: Record<string, unknown> = {
+      athlete_id: athleteId,
+      test_id: testId,
+      recorded_utc: new Date(firstTrial.recordedUTC).toISOString(),
+      recorded_timezone: firstTrial.recordedTimezone,
+    };
+
+    // Accumulate values for averaging
+    const valueAccumulator = new Map<string, number[]>();
+    const units = new Map<string, string>();
 
     for (const trial of trials) {
-      const trialData: Record<string, unknown> = {
-        athlete_id: athleteId,
-        test_id: testId,
-        recorded_utc: new Date(trial.recordedUTC).toISOString(),
-        recorded_timezone: trial.recordedTimezone,
-      };
-
       for (const result of trial.results) {
         const name = result.definition.result.toLowerCase();
         const limbKey = result.limb === "Asym" ? "asymm" : result.limb.toLowerCase();
         const valueKey = `${name}_${limbKey}_value`;
         const unitKey = `${name}_${limbKey}_unit`;
 
-        trialData[valueKey] = result.value;
-        trialData[unitKey] = result.definition.unit;
-      }
+        // Accumulate numeric values
+        if (typeof result.value === 'number') {
+          if (!valueAccumulator.has(valueKey)) {
+            valueAccumulator.set(valueKey, []);
+          }
+          valueAccumulator.get(valueKey)!.push(result.value);
+        }
 
-      data.push(trialData);
+        // Store unit (same across trials)
+        units.set(unitKey, result.definition.unit);
+      }
     }
 
-    // Calculate NET_PEAK_VERTICAL_FORCE and RELATIVE_STRENGTH for each trial
-    for (const trial of data) {
-      const peakForce = trial.peak_vertical_force_trial_value as number;
-      if (typeof peakForce === 'number') {
-        const netPeakVerticalForce = peakForce - bodyWeightN;
-        const relativeStrength = netPeakVerticalForce / bodyWeightN;
+    // Calculate averages
+    for (const [key, values] of valueAccumulator) {
+      trialData[key] = values.reduce((sum, val) => sum + val, 0) / values.length;
+    }
 
-        trial.net_peak_vertical_force_trial_value = netPeakVerticalForce;
-        trial.net_peak_vertical_force_trial_unit = "N";
-        trial.relative_strength_trial_value = relativeStrength;
-        trial.relative_strength_trial_unit = "N";
-      }
+    // Add units
+    for (const [key, unit] of units) {
+      trialData[key] = unit;
+    }
+
+    // Calculate NET_PEAK_VERTICAL_FORCE and RELATIVE_STRENGTH using averaged peak force
+    const peakForce = trialData.peak_vertical_force_trial_value as number;
+    if (typeof peakForce === 'number') {
+      const netPeakVerticalForce = peakForce - bodyWeightN;
+      const relativeStrength = netPeakVerticalForce / bodyWeightN;
+
+      trialData.net_peak_vertical_force_trial_value = netPeakVerticalForce;
+      trialData.net_peak_vertical_force_trial_unit = "N";
+      trialData.relative_strength_trial_value = relativeStrength;
+      trialData.relative_strength_trial_unit = "N";
     }
 
     const { error } = await supabase
       .from('imtp_tests')
-      .insert(data);
+      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
 
     if (error) {
       console.error('Error storing IMTP test:', error);
       return false;
     }
 
-    console.log(`✅ Stored ${data.length} IMTP trial(s) for test ${testId}`);
+    console.log(`✅ Stored IMTP test (averaged ${trials.length} trial(s)) for test ${testId}`);
     return true;
   } catch (error) {
     console.error('Error in storeIMTPTest:', error);
@@ -332,11 +470,10 @@ export async function getLatestTestDate(
         .select('recorded_utc')
         .eq('athlete_id', athleteId)
         .order('recorded_utc', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (!error && data?.recorded_utc) {
-        const testDate = new Date(data.recorded_utc);
+      if (!error && data && data.length > 0 && data[0]?.recorded_utc) {
+        const testDate = new Date(data[0].recorded_utc);
         if (testDate > latestDate) {
           latestDate = testDate;
         }

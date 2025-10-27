@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import EditAthleteProfileModal from './edit-athlete-profile-modal';
 
 interface OverviewTabProps {
   athleteData: any;
@@ -28,6 +29,7 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
   const [athleteTags, setAthleteTags] = useState<any[]>([]);
   const [showAddToGroupModal, setShowAddToGroupModal] = useState(false);
   const [groupMemberships, setGroupMemberships] = useState<any[]>([]);
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
 
   useEffect(() => {
     fetchOverviewData();
@@ -348,7 +350,8 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
   const age = formatAge(athlete.date_of_birth);
 
   return (
-    <div className="space-y-4">
+    <>
+      <div className="space-y-4">
       {/* Stats Row - Compact for Mobile */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Workouts */}
@@ -431,219 +434,160 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
         )}
       </div>
 
-      {/* Main Content - Stack on Mobile, Grid on Desktop */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Combined Profile & Contact Card - Horizontal on Desktop, Vertical on Mobile */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+        <div className="flex items-start justify-between mb-4 lg:mb-6">
+          <h2 className="text-lg lg:text-xl font-bold text-white">Athlete Profile</h2>
+          <button
+            onClick={() => setShowEditProfileModal(true)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+            title="Edit profile"
+          >
+            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+          </button>
+        </div>
 
-        {/* Profile Card */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-start justify-between mb-6">
-            <h2 className="text-xl font-bold text-white">Profile</h2>
-            <button
-              onClick={() => alert('Edit profile - Coming soon')}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
+        {/* Flex Container - Stack on Mobile, Row on Desktop */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+
+          {/* Left Side: Profile Info */}
+          <div className="flex-shrink-0 lg:w-1/3">
+            <div className="text-center lg:text-left">
+              <div className="h-20 w-20 lg:h-24 lg:w-24 mx-auto lg:mx-0 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl lg:text-3xl mb-3">
+                {profile?.first_name?.[0] || 'A'}
+                {profile?.last_name?.[0] || ''}
+              </div>
+              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2">{fullName}</h3>
+              <div className="flex flex-wrap justify-center lg:justify-start gap-1.5 mb-3">
+                {athlete.primary_position && (
+                  <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs font-medium">
+                    {athlete.primary_position}
+                  </span>
+                )}
+                {age && (
+                  <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded text-xs font-medium">
+                    {age}y
+                  </span>
+                )}
+                {athlete.grad_year && (
+                  <span className="px-2 py-0.5 bg-green-500/10 text-green-400 rounded text-xs font-medium">
+                    '{athlete.grad_year.toString().slice(-2)}
+                  </span>
+                )}
+                {athlete.play_level && (
+                  <span className="px-2 py-0.5 bg-[#C9A857]/10 text-[#C9A857] rounded text-xs font-medium">
+                    {athlete.play_level}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Tags - Compact for mobile */}
+            {athleteTags.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-white/10">
+                <p className="text-xs font-semibold text-[#9BDDFF] mb-2">Tags</p>
+                <div className="flex flex-wrap gap-1">
+                  {athleteTags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-gray-300"
+                    >
+                      {tag.tag_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="text-center mb-6">
-            <div className="h-24 w-24 mx-auto rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-3xl mb-4">
-              {profile?.first_name?.[0] || 'A'}
-              {profile?.last_name?.[0] || ''}
-            </div>
-            <h3 className="text-2xl font-bold text-white mb-2">{fullName}</h3>
-            <div className="flex flex-wrap justify-center gap-2">
-              {athlete.primary_position && (
-                <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-md text-sm font-medium">
-                  {athlete.primary_position}
-                </span>
-              )}
-              {age && (
-                <span className="px-3 py-1 bg-purple-500/10 text-purple-400 rounded-md text-sm font-medium">
-                  {age} years old
-                </span>
-              )}
-              {athlete.grad_year && (
-                <span className="px-3 py-1 bg-green-500/10 text-green-400 rounded-md text-sm font-medium">
-                  Class of {athlete.grad_year}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {athlete.bio && (
-            <p className="text-gray-400 text-sm mb-4 pb-4 border-b border-white/10">
-              {athlete.bio}
-            </p>
-          )}
-
-          {/* Tags Section */}
-          {athleteTags.length > 0 && (
-            <div className="pt-4 border-t border-white/10">
-              <h4 className="text-sm font-semibold text-[#9BDDFF] mb-3">ATHLETE TAGS</h4>
-              <div className="space-y-3">
-                {/* Plan Tags */}
-                {athleteTags.filter(t => t.tag_type === 'plan').length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Plans</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {athleteTags
-                        .filter(t => t.tag_type === 'plan')
-                        .map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2.5 py-1 rounded-md text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                          >
-                            {tag.tag_name}
-                          </span>
-                        ))}
-                    </div>
+          {/* Right Side: Contact & Details - Grid on Both Mobile and Desktop */}
+          <div className="flex-1 space-y-4">
+            {/* Contact Info */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2 font-semibold">CONTACT</p>
+              <div className="space-y-2">
+                {profile?.email && (
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <a href={`mailto:${profile.email}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors truncate">
+                      {profile.email}
+                    </a>
                   </div>
                 )}
-
-                {/* Workout Tags */}
-                {athleteTags.filter(t => t.tag_type === 'workout').length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Workouts</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {athleteTags
-                        .filter(t => t.tag_type === 'workout')
-                        .map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2.5 py-1 rounded-md text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30"
-                          >
-                            {tag.tag_name}
-                          </span>
-                        ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Exercise Tags */}
-                {athleteTags.filter(t => t.tag_type === 'exercise').length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1.5">Exercises</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {athleteTags
-                        .filter(t => t.tag_type === 'exercise')
-                        .map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2.5 py-1 rounded-md text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30"
-                          >
-                            {tag.tag_name}
-                          </span>
-                        ))}
-                    </div>
+                {profile?.phone && (
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    <a href={`tel:${profile.phone}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors">
+                      {profile.phone}
+                    </a>
                   </div>
                 )}
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Contact & Details */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-          <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-bold text-white">Contact & Details</h3>
-            <button
-              onClick={() => alert('Edit contact - Coming soon')}
-              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Contact Information */}
-            <div className="space-y-3">
-              {profile?.email && (
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-gray-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Email</p>
-                    <a href={`mailto:${profile.email}`} className="text-white hover:text-[#9BDDFF] transition-colors">
-                      {profile.email}
-                    </a>
-                  </div>
+            {/* Physical Details - Compact Grid */}
+            <div>
+              <p className="text-xs text-gray-400 mb-2 font-semibold">PHYSICAL</p>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
+                <div>
+                  <p className="text-xs text-gray-500">Height</p>
+                  <p className="text-sm text-white font-semibold">
+                    {formatHeight(athlete.height_inches) || '-'}
+                  </p>
                 </div>
-              )}
-
-              {profile?.phone && (
-                <div className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-gray-400 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-1">Phone</p>
-                    <a href={`tel:${profile.phone}`} className="text-white hover:text-[#9BDDFF] transition-colors">
-                      {profile.phone}
-                    </a>
-                  </div>
+                <div>
+                  <p className="text-xs text-gray-500">Weight</p>
+                  <p className="text-sm text-white font-semibold">
+                    {athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : '-'}
+                  </p>
                 </div>
-              )}
+                <div>
+                  <p className="text-xs text-gray-500">Hand</p>
+                  <p className="text-sm text-white font-semibold capitalize">
+                    {athlete.dominant_hand || '-'}
+                  </p>
+                </div>
+                {athlete.secondary_position && (
+                  <div>
+                    <p className="text-xs text-gray-500">2nd Pos</p>
+                    <p className="text-sm text-white font-semibold">
+                      {athlete.secondary_position}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
 
-              {contacts.length > 0 && (
-                <div className="pt-3 border-t border-white/10">
-                  <p className="text-xs text-gray-400 mb-3">Parent/Guardian Contacts</p>
+            {/* Guardian Contacts if any */}
+            {contacts.length > 0 && (
+              <div>
+                <p className="text-xs text-gray-400 mb-2 font-semibold">GUARDIANS</p>
+                <div className="space-y-1.5">
                   {contacts.map((contact) => (
-                    <div key={contact.id} className="mb-3 last:mb-0">
+                    <div key={contact.id} className="text-sm">
                       <p className="text-white font-medium">{contact.first_name} {contact.last_name}</p>
                       {contact.email && (
-                        <a href={`mailto:${contact.email}`} className="text-sm text-gray-400 hover:text-[#9BDDFF] block">
+                        <a href={`mailto:${contact.email}`} className="text-xs text-gray-400 hover:text-[#9BDDFF]">
                           {contact.email}
-                        </a>
-                      )}
-                      {contact.phone && (
-                        <a href={`tel:${contact.phone}`} className="text-sm text-gray-400 hover:text-[#9BDDFF] block">
-                          {contact.phone}
                         </a>
                       )}
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-
-            {/* Physical Stats */}
-            <div className="pt-4 border-t border-white/10">
-              <p className="text-xs text-gray-400 mb-3">Physical Details</p>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Height</p>
-                  <p className="text-white font-semibold">
-                    {formatHeight(athlete.height_inches) || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Weight</p>
-                  <p className="text-white font-semibold">
-                    {athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Dominant Hand</p>
-                  <p className="text-white font-semibold capitalize">
-                    {athlete.dominant_hand || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Secondary Pos.</p>
-                  <p className="text-white font-semibold">
-                    {athlete.secondary_position || '-'}
-                  </p>
-                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Group Assignments */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
@@ -736,7 +680,19 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
           }}
         />
       )}
-    </div>
+      </div>
+
+      {/* Edit Profile Modal */}
+      <EditAthleteProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+        onSuccess={() => {
+          // Refresh the page to show updated data
+          window.location.reload();
+        }}
+        athleteData={athleteData}
+      />
+    </>
   );
 }
 

@@ -18,7 +18,22 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(for file in \"./app/dashboard/athletes/page.tsx\" \"./app/dashboard/athletes/[id]/page.tsx\" \"./app/dashboard/athletes/[id]/records/page.tsx\" \"./app/dashboard/staff/page.tsx\" \"./components/dashboard/athletes/athlete-overview-tab.tsx\" \"./components/dashboard/athletes/force-profile/cmj-section.tsx\" \"./components/dashboard/athletes/force-profile/sync-history-section.tsx\")",
-      "Bash(then sed -i 's/#A08845/#7BC5F0/g' \"$file\")"
+      "Bash(then sed -i 's/#A08845/#7BC5F0/g' \"$file\")",
+      "Bash(git push:*)",
+      "Bash(if [ -f \"vercel.json\" ])",
+      "Bash(then echo \"Vercel config found\")",
+      "Bash(cat:*)",
+      "Bash(elif [ -f \".vercel/project.json\" ])",
+      "Bash(then echo \"Vercel project linked\")",
+      "Bash(else echo \"No Vercel config found. Checking for deployment info...\")",
+      "Bash(source .env.local)",
+      "Bash(npm run build:*)",
+      "Bash(curl:*)",
+      "Bash(node scripts/test-api-now.ts:*)",
+      "Bash(node scripts/test-debug-api.ts:*)",
+      "Bash(node scripts/check-profiles-schema.sql:*)",
+      "Bash(set -a)",
+      "Bash(set +a)"
     ],
     "deny": [],
     "ask": []
