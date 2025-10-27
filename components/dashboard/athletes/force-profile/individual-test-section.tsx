@@ -100,7 +100,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
   // Handle empty filtered data
   if (selectedMetricData.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2 md:space-y-4">
         {/* Metric Selector */}
         <div className="flex gap-2 overflow-x-auto pb-2">
           {uniqueMetrics.map((metricName) => {
@@ -154,7 +154,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
   const valueChange = previousTest ? ((latestTest.value - previousTest.value) / previousTest.value) * 100 : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2 md:space-y-4">
       {/* Metric Selector */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {uniqueMetrics.map((metricName) => {
@@ -194,21 +194,21 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
         ))}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* Stats Cards - Compact on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
         {/* Latest Result */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl">
-          <div className="text-xs text-gray-400 mb-2">Latest Result</div>
-          <div className="text-3xl font-bold text-white mb-1">{latestTest.value.toFixed(1)}</div>
-          <div className="text-xs text-gray-500">
+        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
+          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Latest Result</div>
+          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">{latestTest.value.toFixed(1)}</div>
+          <div className="text-[10px] md:text-xs text-gray-500">
             {new Date(latestTest.test_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
 
         {/* Percentile Rank */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl">
-          <div className="text-xs text-gray-400 mb-2">Percentile Rank</div>
-          <div className={`text-3xl font-bold mb-1 ${
+        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
+          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Percentile Rank</div>
+          <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 ${
             latestTest.percentile_play_level >= 75 ? 'text-green-400' :
             latestTest.percentile_play_level >= 50 ? 'text-[#9BDDFF]' :
             latestTest.percentile_play_level >= 25 ? 'text-yellow-400' :
@@ -216,19 +216,19 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
           }`}>
             {Math.round(latestTest.percentile_play_level)}th
           </div>
-          <div className="text-xs text-gray-500">vs {playLevel} athletes</div>
+          <div className="text-[10px] md:text-xs text-gray-500">vs {playLevel} athletes</div>
         </div>
 
         {/* Change */}
         {previousTest && (
-          <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl">
-            <div className="text-xs text-gray-400 mb-2">Change from Previous</div>
-            <div className={`text-3xl font-bold mb-1 ${
+          <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
+            <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Change from Previous</div>
+            <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 ${
               percentileChange > 0 ? 'text-green-400' : percentileChange < 0 ? 'text-red-400' : 'text-gray-400'
             }`}>
               {percentileChange > 0 ? '+' : ''}{percentileChange.toFixed(0)}
             </div>
-            <div className={`text-xs ${
+            <div className={`text-[10px] md:text-xs ${
               valueChange > 0 ? 'text-green-500' : valueChange < 0 ? 'text-red-500' : 'text-gray-500'
             }`}>
               {valueChange > 0 ? '+' : ''}{valueChange.toFixed(1)}% value change
@@ -238,9 +238,9 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
       </div>
 
       {/* Test History Chart */}
-      <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-6 backdrop-blur-xl shadow-lg shadow-black/20">
-        <div className="text-sm font-semibold text-white mb-4">Test History — {latestTest.display_name}</div>
-        <div className="h-80">
+      <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-6 backdrop-blur-xl shadow-lg shadow-black/20">
+        <div className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-4">Test History — {latestTest.display_name}</div>
+        <div className="h-64 md:h-80">
           <TestHistoryChart
             data={selectedMetricData.map(test => ({
               date: test.test_date,
