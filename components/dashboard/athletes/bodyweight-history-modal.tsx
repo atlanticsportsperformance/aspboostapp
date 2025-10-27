@@ -54,20 +54,20 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     if (!data || timeRange === 'all') return data?.history || [];
 
     const now = new Date();
-    const cutoffDate = new Date();
+    let cutoffDate = new Date();
 
     switch (timeRange) {
       case '1m':
-        cutoffDate.setMonth(now.getMonth() - 1);
+        cutoffDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000); // 30 days
         break;
       case '3m':
-        cutoffDate.setMonth(now.getMonth() - 3);
+        cutoffDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days
         break;
       case '6m':
-        cutoffDate.setMonth(now.getMonth() - 6);
+        cutoffDate = new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000); // 180 days
         break;
       case '1y':
-        cutoffDate.setFullYear(now.getFullYear() - 1);
+        cutoffDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); // 365 days
         break;
     }
 
