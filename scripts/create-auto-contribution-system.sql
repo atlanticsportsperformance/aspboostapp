@@ -90,3 +90,52 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- STEP 2: Drop old triggers if they exist
+-- ============================================================================
+
+DROP TRIGGER IF EXISTS auto_add_contribution_cmj ON cmj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_sj ON sj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_hj ON hj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_ppu ON ppu_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_imtp ON imtp_tests;
+
+-- ============================================================================
+-- STEP 3: Create triggers on all 5 test tables
+-- ============================================================================
+
+CREATE TRIGGER auto_add_contribution_cmj
+  AFTER INSERT ON cmj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_sj
+  AFTER INSERT ON sj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_hj
+  AFTER INSERT ON hj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_ppu
+  AFTER INSERT ON ppu_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_imtp
+  AFTER INSERT ON imtp_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+-- ============================================================================
+-- STEP 4: Add indexes for performance
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_cmj_tests_recorded_utc ON cmj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_sj_tests_recorded_utc ON sj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_hj_tests_recorded_utc ON hj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_ppu_tests_recorded_utc ON ppu_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_imtp_tests_recorded_utc ON imtp_tests(athlete_id, recorded_utc);
