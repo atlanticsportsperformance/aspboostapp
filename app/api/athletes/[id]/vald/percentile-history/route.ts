@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, createServiceRoleClient } from '@/lib/supabase/server';
+import { getMetricColumnName } from '@/lib/vald/metric-column-mapping';
 
 export async function GET(
   request: NextRequest,
@@ -85,59 +86,55 @@ export async function GET(
         });
       }
 
-      // Calculate 75th percentile VALUE and standard deviation for each metric
+      // Get 75th percentile VALUE and calculate standard deviation for each metric
+      // Using percentile_lookup table which has pre-calculated percentiles by play level
       const eliteThresholds: Record<string, number> = {};
       const eliteStdDev: Record<string, number> = {};
-      const metricGroups: Record<string, number[]> = {};
 
-      // Group all values by metric
-      for (const entry of flattenedMetrics) {
-        if (!metricGroups[entry.metric_name]) {
-          metricGroups[entry.metric_name] = [];
+      // Get unique metrics from the flattened data
+      const uniqueMetrics = Array.from(new Set(flattenedMetrics.map(m => m.metric_name)));
+
+      for (const metricName of uniqueMetrics) {
+        // Map display name to metric_column name in percentile_lookup table
+        const metricColumn = getMetricColumnName(testTypeFilter!, metricName);
+
+        if (!metricColumn) {
+          console.warn(`No metric column mapping for ${testTypeFilter}:${metricName}`);
+          continue;
         }
-        metricGroups[entry.metric_name].push(entry.value);
-      }
 
-      // Calculate 75th percentile and standard deviation for each metric (filtered by play level)
-      for (const [metricName, values] of Object.entries(metricGroups)) {
-        // Get all athlete_ids with this metric
-        const { data: allRecords } = await serviceSupabase
-          .from('athlete_percentile_history')
-          .select('value, athlete_id')
-          .eq('test_type', testTypeFilter)
-          .eq('metric_name', metricName)
-          .not('value', 'is', null);
+        // Get 75th percentile value from percentile_lookup table
+        const { data: p75Data } = await serviceSupabase
+          .from('percentile_lookup')
+          .select('value')
+          .eq('metric_column', metricColumn)
+          .eq('play_level', playLevel)
+          .eq('percentile', 75)
+          .single();
 
-        if (allRecords && allRecords.length > 0) {
-          // Get play levels for all athletes
-          const athleteIds = Array.from(new Set(allRecords.map((r: any) => r.athlete_id)));
-          const { data: athletes } = await serviceSupabase
-            .from('athletes')
-            .select('id, play_level')
-            .in('id', athleteIds);
+        if (p75Data && p75Data.value !== null) {
+          eliteThresholds[metricName] = p75Data.value;
 
-          const athletePlayLevelMap = new Map(athletes?.map((a: any) => [a.id, a.play_level]));
+          // Calculate standard deviation from percentile distribution
+          // Get values at key percentiles (25th, 50th, 75th, 90th) to estimate spread
+          const { data: percentileValues } = await serviceSupabase
+            .from('percentile_lookup')
+            .select('value, percentile')
+            .eq('metric_column', metricColumn)
+            .eq('play_level', playLevel)
+            .in('percentile', [25, 50, 75, 90])
+            .order('percentile');
 
-          // Filter to same play level as current athlete
-          const playLevelValues = allRecords
-            .filter((r: any) => athletePlayLevelMap.get(r.athlete_id) === playLevel)
-            .map((r: any) => r.value);
+          if (percentileValues && percentileValues.length >= 2) {
+            // Estimate standard deviation from interquartile range (IQR)
+            // IQR = Q3 - Q1, and for normal distribution: σ ≈ IQR / 1.35
+            const q1 = percentileValues.find(p => p.percentile === 25)?.value;
+            const q3 = percentileValues.find(p => p.percentile === 75)?.value;
 
-          // Use play level values if any exist, otherwise fall back to all athletes
-          // Changed from >= 5 threshold to > 0 to always use play level when data exists
-          const valuesToUse = playLevelValues.length > 0
-            ? playLevelValues
-            : allRecords.map((r: any) => r.value);
-
-          if (valuesToUse.length > 0) {
-            const sortedValues = valuesToUse.sort((a, b) => a - b);
-            const p75Index = Math.floor(sortedValues.length * 0.75);
-            eliteThresholds[metricName] = sortedValues[p75Index];
-
-            // Calculate standard deviation
-            const mean = sortedValues.reduce((sum, val) => sum + val, 0) / sortedValues.length;
-            const variance = sortedValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / sortedValues.length;
-            eliteStdDev[metricName] = Math.sqrt(variance);
+            if (q1 !== undefined && q3 !== undefined && q1 !== null && q3 !== null) {
+              const iqr = q3 - q1;
+              eliteStdDev[metricName] = iqr / 1.35;
+            }
           }
         }
       }
