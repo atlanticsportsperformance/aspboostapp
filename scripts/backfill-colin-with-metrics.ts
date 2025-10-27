@@ -1,6 +1,11 @@
 /**
- * Backfill Colin Ma's contributions WITH METRIC VALUES
- * This script properly copies all metric data from test tables
+ * Backfill Colin Ma's contributions WITH THE 8 CORRECT METRIC VALUES
+ * This script copies ONLY the metrics defined in percentile_metric_mappings:
+ * - CMJ: peak_takeoff_power_trial_value, bodymass_relative_takeoff_power_trial_value
+ * - SJ: sj_peak_takeoff_power_trial_value, sj_bodymass_relative_takeoff_power_trial_value
+ * - HJ: hop_mean_rsi_trial_value
+ * - PPU: ppu_peak_takeoff_force_trial_value
+ * - IMTP: net_peak_vertical_force_trial_value, relative_strength_trial_value
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -72,29 +77,15 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: cmjTest.test_id,
         test_date: cmjTest.recorded_utc,
-        // CMJ metrics
-        jump_height_trial_value: cmjTest.jump_height_trial_value,
-        stiffness_trial_value: cmjTest.stiffness_trial_value,
+        // CMJ metrics (from percentile_metric_mappings)
         peak_takeoff_power_trial_value: cmjTest.peak_takeoff_power_trial_value,
         bodymass_relative_takeoff_power_trial_value: cmjTest.bodymass_relative_takeoff_power_trial_value,
-        eccentric_braking_rfd_trial_value: cmjTest.eccentric_braking_rfd_trial_value,
-        eccentric_duration_trial_value: cmjTest.eccentric_duration_trial_value,
-        concentric_duration_trial_value: cmjTest.concentric_duration_trial_value,
-        rsi_modified_trial_value: cmjTest.rsi_modified_trial_value,
-        countermovement_depth_trial_value: cmjTest.countermovement_depth_trial_value,
-        concentric_peak_force_trial_value: cmjTest.concentric_peak_force_trial_value,
-        eccentric_peak_force_trial_value: cmjTest.eccentric_peak_force_trial_value,
-        eccentric_minimum_force_trial_value: cmjTest.eccentric_minimum_force_trial_value,
-        stiffness_asymm_value: cmjTest.stiffness_asymm_value,
-        eccentric_deceleration_impulse_asymm_value: cmjTest.eccentric_deceleration_impulse_asymm_value,
-        contraction_impulse_asymm_value_cmj: cmjTest.contraction_impulse_asymm_value,
-        concentric_impulse_asymm_value_cmj: cmjTest.concentric_impulse_asymm_value,
       });
 
     if (cmjError) {
       console.error('❌ CMJ Error:', cmjError.message);
     } else {
-      console.log('✅ CMJ inserted with metrics\n');
+      console.log('✅ CMJ inserted with 2 metrics\n');
     }
   }
 
@@ -117,18 +108,15 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: sjTest.test_id,
         test_date: sjTest.recorded_utc,
-        // SJ metrics
-        sj_jump_height_trial_value: sjTest.jump_height_trial_value,
+        // SJ metrics (from percentile_metric_mappings)
         sj_peak_takeoff_power_trial_value: sjTest.peak_takeoff_power_trial_value,
         sj_bodymass_relative_takeoff_power_trial_value: sjTest.bodymass_relative_takeoff_power_trial_value,
-        sj_contraction_impulse_asymm_value: sjTest.contraction_impulse_asymm_value,
-        sj_concentric_impulse_asymm_value: sjTest.concentric_impulse_asymm_value,
       });
 
     if (sjError) {
       console.error('❌ SJ Error:', sjError.message);
     } else {
-      console.log('✅ SJ inserted with metrics\n');
+      console.log('✅ SJ inserted with 2 metrics\n');
     }
   }
 
@@ -151,17 +139,14 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: hjTest.test_id,
         test_date: hjTest.recorded_utc,
-        // HJ metrics (note: hj_tests table uses hop_mean_ prefix)
-        hop_mean_stiffness_trial_value: hjTest.hop_mean_stiffness_trial_value,
-        hop_mean_jump_height_trial_value: hjTest.hop_mean_jump_height_trial_value,
+        // HJ metrics (from percentile_metric_mappings)
         hop_mean_rsi_trial_value: hjTest.hop_mean_rsi_trial_value,
-        hop_mean_contact_time_trial_value: hjTest.hop_mean_contact_time_trial_value,
       });
 
     if (hjError) {
       console.error('❌ HJ Error:', hjError.message);
     } else {
-      console.log('✅ HJ inserted with metrics\n');
+      console.log('✅ HJ inserted with 1 metric\n');
     }
   }
 
@@ -184,17 +169,14 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: ppuTest.test_id,
         test_date: ppuTest.recorded_utc,
-        // PPU metrics
+        // PPU metrics (from percentile_metric_mappings)
         ppu_peak_takeoff_force_trial_value: ppuTest.peak_takeoff_force_trial_value,
-        ppu_peak_eccentric_force_trial_value: ppuTest.peak_eccentric_force_trial_value,
-        ppu_peak_takeoff_force_asymm_value: ppuTest.peak_takeoff_force_asymm_value,
-        ppu_peak_eccentric_force_asymm_value: ppuTest.peak_eccentric_force_asymm_value,
       });
 
     if (ppuError) {
       console.error('❌ PPU Error:', ppuError.message);
     } else {
-      console.log('✅ PPU inserted with metrics\n');
+      console.log('✅ PPU inserted with 1 metric\n');
     }
   }
 
@@ -217,19 +199,15 @@ async function backfillColinWithMetrics() {
         playing_level: playLevel,
         test_id: imtpTest.test_id,
         test_date: imtpTest.recorded_utc,
-        // IMTP metrics
-        peak_vertical_force_trial_value: imtpTest.peak_vertical_force_trial_value,
+        // IMTP metrics (from percentile_metric_mappings)
         net_peak_vertical_force_trial_value: imtpTest.net_peak_vertical_force_trial_value,
         relative_strength_trial_value: imtpTest.relative_strength_trial_value,
-        force_at_100_trial_value: imtpTest.force_at_100_trial_value,
-        force_at_150_trial_value: imtpTest.force_at_150_trial_value,
-        force_at_200_trial_value: imtpTest.force_at_200_trial_value,
       });
 
     if (imtpError) {
       console.error('❌ IMTP Error:', imtpError.message);
     } else {
-      console.log('✅ IMTP inserted with metrics\n');
+      console.log('✅ IMTP inserted with 2 metrics\n');
     }
   }
 

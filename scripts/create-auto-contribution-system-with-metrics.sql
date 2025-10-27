@@ -71,83 +71,68 @@ BEGIN
       -- Insert based on test type with ALL metric values
       CASE current_test_type
         WHEN 'CMJ' THEN
+          -- CMJ: peak_takeoff_power_trial_value, bodymass_relative_takeoff_power_trial_value
           INSERT INTO athlete_percentile_contributions (
             athlete_id, test_type, playing_level, test_id, test_date,
-            jump_height_trial_value, stiffness_trial_value, peak_takeoff_power_trial_value,
-            bodymass_relative_takeoff_power_trial_value, eccentric_braking_rfd_trial_value,
-            eccentric_duration_trial_value, concentric_duration_trial_value,
-            rsi_modified_trial_value, countermovement_depth_trial_value,
-            concentric_peak_force_trial_value, eccentric_peak_force_trial_value,
-            eccentric_minimum_force_trial_value, stiffness_asymm_value,
-            eccentric_deceleration_impulse_asymm_value, contraction_impulse_asymm_value_cmj,
-            concentric_impulse_asymm_value_cmj
+            peak_takeoff_power_trial_value,
+            bodymass_relative_takeoff_power_trial_value
           )
           VALUES (
             NEW.athlete_id, 'CMJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.jump_height_trial_value, NEW.stiffness_trial_value, NEW.peak_takeoff_power_trial_value,
-            NEW.bodymass_relative_takeoff_power_trial_value, NEW.eccentric_braking_rfd_trial_value,
-            NEW.eccentric_duration_trial_value, NEW.concentric_duration_trial_value,
-            NEW.rsi_modified_trial_value, NEW.countermovement_depth_trial_value,
-            NEW.concentric_peak_force_trial_value, NEW.eccentric_peak_force_trial_value,
-            NEW.eccentric_minimum_force_trial_value, NEW.stiffness_asymm_value,
-            NEW.eccentric_deceleration_impulse_asymm_value, NEW.contraction_impulse_asymm_value,
-            NEW.concentric_impulse_asymm_value
+            NEW.peak_takeoff_power_trial_value,
+            NEW.bodymass_relative_takeoff_power_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
 
         WHEN 'SJ' THEN
+          -- SJ: sj_peak_takeoff_power_trial_value, sj_bodymass_relative_takeoff_power_trial_value
           INSERT INTO athlete_percentile_contributions (
             athlete_id, test_type, playing_level, test_id, test_date,
-            sj_jump_height_trial_value, sj_peak_takeoff_power_trial_value,
-            sj_bodymass_relative_takeoff_power_trial_value,
-            sj_contraction_impulse_asymm_value, sj_concentric_impulse_asymm_value
+            sj_peak_takeoff_power_trial_value,
+            sj_bodymass_relative_takeoff_power_trial_value
           )
           VALUES (
             NEW.athlete_id, 'SJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.jump_height_trial_value, NEW.peak_takeoff_power_trial_value,
-            NEW.bodymass_relative_takeoff_power_trial_value,
-            NEW.contraction_impulse_asymm_value, NEW.concentric_impulse_asymm_value
+            NEW.peak_takeoff_power_trial_value,
+            NEW.bodymass_relative_takeoff_power_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
 
         WHEN 'HJ' THEN
+          -- HJ: hop_mean_rsi_trial_value (Reactive Strength Index)
           INSERT INTO athlete_percentile_contributions (
             athlete_id, test_type, playing_level, test_id, test_date,
-            hop_mean_stiffness_trial_value, hop_mean_jump_height_trial_value,
-            hop_mean_rsi_trial_value, hop_mean_contact_time_trial_value
+            hop_mean_rsi_trial_value
           )
           VALUES (
             NEW.athlete_id, 'HJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.hop_mean_stiffness_trial_value, NEW.hop_mean_jump_height_trial_value,
-            NEW.hop_mean_rsi_trial_value, NEW.hop_mean_contact_time_trial_value
+            NEW.hop_mean_rsi_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
 
         WHEN 'PPU' THEN
+          -- PPU: ppu_peak_takeoff_force_trial_value (Peak Takeoff Force)
           INSERT INTO athlete_percentile_contributions (
             athlete_id, test_type, playing_level, test_id, test_date,
-            ppu_peak_takeoff_force_trial_value, ppu_peak_eccentric_force_trial_value,
-            ppu_peak_takeoff_force_asymm_value, ppu_peak_eccentric_force_asymm_value
+            ppu_peak_takeoff_force_trial_value
           )
           VALUES (
             NEW.athlete_id, 'PPU', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.peak_takeoff_force_trial_value, NEW.peak_eccentric_force_trial_value,
-            NEW.peak_takeoff_force_asymm_value, NEW.peak_eccentric_force_asymm_value
+            NEW.peak_takeoff_force_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
 
         WHEN 'IMTP' THEN
+          -- IMTP: net_peak_vertical_force_trial_value, relative_strength_trial_value
           INSERT INTO athlete_percentile_contributions (
             athlete_id, test_type, playing_level, test_id, test_date,
-            peak_vertical_force_trial_value, net_peak_vertical_force_trial_value,
-            relative_strength_trial_value, force_at_100_trial_value,
-            force_at_150_trial_value, force_at_200_trial_value
+            net_peak_vertical_force_trial_value,
+            relative_strength_trial_value
           )
           VALUES (
             NEW.athlete_id, 'IMTP', athlete_play_level, NEW.test_id, NEW.recorded_utc,
-            NEW.peak_vertical_force_trial_value, NEW.net_peak_vertical_force_trial_value,
-            NEW.relative_strength_trial_value, NEW.force_at_100_trial_value,
-            NEW.force_at_150_trial_value, NEW.force_at_200_trial_value
+            NEW.net_peak_vertical_force_trial_value,
+            NEW.relative_strength_trial_value
           )
           ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
       END CASE;
