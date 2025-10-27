@@ -52,6 +52,11 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
+    // Enable crisp text rendering on canvas
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.textRendering = 'optimizeLegibility' as any;
+
     // Helper function to get color based on percentile (using composite for whole shape)
     const getGradientColor = (percentile: number): string => {
       if (percentile >= 75) return '#4ADE80'; // Green (ELITE)
@@ -193,11 +198,17 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     // Reset shadow
     ctx.shadowBlur = 0;
 
-    // Draw labels with much smaller font
+    // Draw labels with much smaller font - crisp rendering
     ctx.fillStyle = '#fff';
     ctx.font = '600 9px Inter, sans-serif'; // Much smaller font (was 13px, now 9px)
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+
+    // Enable subpixel text rendering for crisp labels
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 1;
 
     data.forEach((point, index) => {
       const angle = angleStep * index - Math.PI / 2;
@@ -214,6 +225,9 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
         ctx.fillText(point.displayName, x, y);
       }
     });
+
+    // Reset shadow for other drawing
+    ctx.shadowBlur = 0;
 
   }, [data, hoveredPoint]);
 
