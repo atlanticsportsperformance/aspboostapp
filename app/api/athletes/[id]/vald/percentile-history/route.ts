@@ -123,8 +123,9 @@ export async function GET(
             .filter((r: any) => athletePlayLevelMap.get(r.athlete_id) === playLevel)
             .map((r: any) => r.value);
 
-          // If too few athletes in play level (< 5), use all athletes instead for meaningful threshold
-          const valuesToUse = playLevelValues.length >= 5
+          // Use play level values if any exist, otherwise fall back to all athletes
+          // Changed from >= 5 threshold to > 0 to always use play level when data exists
+          const valuesToUse = playLevelValues.length > 0
             ? playLevelValues
             : allRecords.map((r: any) => r.value);
 
