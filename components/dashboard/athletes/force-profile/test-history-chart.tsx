@@ -50,11 +50,27 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold, eli
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Find min/max values
+    // Find min/max values - include elite threshold and SD bounds if provided
     const values = data.map(d => d.value);
-    const maxValue = Math.max(...values);
-    const minValue = Math.min(...values, 0);
-    const valueRange = maxValue - minValue;
+    let maxValue = Math.max(...values);
+    let minValue = Math.min(...values, 0);
+
+    // Expand range to include elite threshold + 1 SD if provided
+    if (eliteThreshold !== undefined) {
+      const upperBound = eliteStdDev !== undefined ? eliteThreshold + eliteStdDev : eliteThreshold;
+      const lowerBound = eliteStdDev !== undefined ? eliteThreshold - eliteStdDev : eliteThreshold;
+      maxValue = Math.max(maxValue, upperBound);
+      minValue = Math.min(minValue, lowerBound);
+    }
+
+    // Add 10% padding to top and bottom for better visualization
+    let valueRange = maxValue - minValue;
+    const padding10 = valueRange * 0.1;
+    maxValue = maxValue + padding10;
+    minValue = Math.max(0, minValue - padding10); // Don't go below 0
+
+    // Recalculate range after padding
+    valueRange = maxValue - minValue;
 
     // Calculate bar width and spacing
     const barCount = data.length;
