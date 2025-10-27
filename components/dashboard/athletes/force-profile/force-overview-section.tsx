@@ -7,9 +7,7 @@ import ForceOverviewMetricCard from './force-overview-metric-card';
 
 interface ForceOverviewSectionProps {
   athleteId: string;
-  athleteName?: string;
-  viewMode?: string;
-  onViewModeChange?: (mode: string) => void;
+  isFullscreen?: boolean;
 }
 
 interface RadarDataPoint {
@@ -19,9 +17,8 @@ interface RadarDataPoint {
   previous: { percentile: number; value: number; date: string } | null;
 }
 
-export default function ForceOverviewSection({ athleteId, athleteName, viewMode, onViewModeChange }: ForceOverviewSectionProps) {
+export default function ForceOverviewSection({ athleteId, isFullscreen = false }: ForceOverviewSectionProps) {
   const [loading, setLoading] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [radarData, setRadarData] = useState<RadarDataPoint[]>([]);
   const [compositeScore, setCompositeScore] = useState<{
     current: { percentile: number; date: string } | null;
@@ -53,14 +50,6 @@ export default function ForceOverviewSection({ athleteId, athleteName, viewMode,
     }
   }
 
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-    if (!isFullscreen) {
-      document.documentElement.requestFullscreen?.();
-    } else {
-      document.exitFullscreen?.();
-    }
-  };
 
   if (loading) {
     return (
@@ -106,88 +95,7 @@ export default function ForceOverviewSection({ athleteId, athleteName, viewMode,
   };
 
   return (
-    <div className={`${isFullscreen ? 'fixed inset-0 z-50 bg-[#0A0A0A] p-8' : ''}`}>
-      {/* Fullscreen Header with Athlete Name and Tabs */}
-      {isFullscreen && athleteName && (
-        <div className="mb-6">
-          <h1 className="text-4xl font-bold text-white mb-4">{athleteName}</h1>
-          {onViewModeChange && (
-            <div className="flex gap-1 bg-black/40 rounded-lg p-1 overflow-x-auto">
-              <button
-                onClick={() => onViewModeChange('composite')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'composite'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                Force Overview
-              </button>
-              <button
-                onClick={() => onViewModeChange('cmj')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'cmj'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                CMJ
-              </button>
-              <button
-                onClick={() => onViewModeChange('sj')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'sj'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                SJ
-              </button>
-              <button
-                onClick={() => onViewModeChange('hj')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'hj'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                HJ
-              </button>
-              <button
-                onClick={() => onViewModeChange('ppu')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'ppu'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                PPU
-              </button>
-              <button
-                onClick={() => onViewModeChange('imtp')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'imtp'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                IMTP
-              </button>
-              <button
-                onClick={() => onViewModeChange('history')}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-                  viewMode === 'history'
-                    ? 'bg-[#9BDDFF] text-black'
-                    : 'text-gray-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                Sync History
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
+    <div>
       {/* Compact Header */}
       <div className="flex items-center gap-3 mb-4 mt-3">
         <h2 className={`font-bold text-white ${isFullscreen ? 'text-3xl' : 'text-xl'}`}>
@@ -210,28 +118,6 @@ export default function ForceOverviewSection({ athleteId, athleteName, viewMode,
       <div className={`grid gap-4 ${isFullscreen ? 'grid-cols-[1.2fr_1fr] h-[calc(100vh-180px)]' : 'grid-cols-1 lg:grid-cols-[1.2fr_1fr] max-h-[calc(100vh-300px)]'}`}>
         {/* Left: Radar Chart - Much taller to utilize vertical space */}
         <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-3 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500 min-h-[500px] lg:min-h-[600px]">
-          {/* Fullscreen Button - Top Right */}
-          <button
-            onClick={toggleFullscreen}
-            className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white text-xs rounded-lg transition-all border border-white/10 hover:scale-105 hover:shadow-lg hover:shadow-[#9BDDFF]/20"
-          >
-            {isFullscreen ? (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Exit
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                Present
-              </>
-            )}
-          </button>
-
           <div className="flex-1 min-h-[450px]">
             <ForceOverviewRadar
               data={radarData}
