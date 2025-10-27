@@ -165,10 +165,21 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
         </div>
       )}
 
-      {/* Header: Just Tabs + Sync Button (non-fullscreen) */}
+      {/* Header: Title + Tabs + Sync Button (non-fullscreen) */}
       {!isFullscreen && (
-        <div className="flex items-center justify-end gap-2">
-          <div className="flex gap-1 bg-black/40 rounded-lg p-1 overflow-x-auto">
+        <div className="flex items-center justify-between gap-4 mb-2">
+          {/* Left: Title (only show on Force Overview) */}
+          {viewMode === 'composite' ? (
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <h2 className="font-bold text-white text-xl">Force Overview</h2>
+            </div>
+          ) : (
+            <div className="flex-shrink-0"></div>
+          )}
+
+          {/* Right: Tabs + Buttons */}
+          <div className="flex items-center gap-2">
+            <div className="flex gap-1 bg-black/40 rounded-lg p-1 overflow-x-auto">
           <button
             onClick={() => setViewMode('composite')}
             className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
@@ -278,6 +289,7 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
               </>
             )}
           </button>
+          </div>
         </div>
       )}
 

@@ -126,8 +126,8 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
             <span className="text-[10px] text-white/40">
               {new Date(previous.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
             </span>
-            <span className={`text-[10px] font-semibold ${changeColor} flex items-center gap-0.5`}>
-              {changeIcon} {Math.abs(change).toFixed(0)}
+            <span className={`text-sm font-bold ${changeColor} flex items-center gap-1`}>
+              <span className="text-base">{changeIcon}</span> {Math.abs(change).toFixed(0)}
             </span>
           </div>
           <div className="h-2 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">

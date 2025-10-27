@@ -96,11 +96,8 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false }
 
   return (
     <div>
-      {/* Compact Header */}
-      <div className="flex items-center gap-3 mb-4 mt-3">
-        <h2 className={`font-bold text-white ${isFullscreen ? 'text-3xl' : 'text-xl'}`}>
-          Force Overview
-        </h2>
+      {/* Compact Header with zone badge and description */}
+      <div className="flex items-center gap-3 mb-4">
         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
           getZoneLabel(compositeScore.current.percentile) === 'ELITE' ? 'bg-green-500/20 text-green-400' :
           getZoneLabel(compositeScore.current.percentile) === 'OPTIMIZE' ? 'bg-blue-500/20 text-[#9BDDFF]' :
