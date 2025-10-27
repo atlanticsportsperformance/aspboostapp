@@ -685,7 +685,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl overflow-hidden">
           {/* Mobile: Horizontal Scroll Wrapper */}
           <div className="md:overflow-visible overflow-x-auto -mx-3 md:mx-0 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">
-            <div className="min-w-[900px] md:min-w-0">
+            <div className="min-w-[1100px] md:min-w-0">
               {/* Day Headers */}
               <div className="grid grid-cols-7 border-b border-neutral-800 bg-neutral-900">
                 {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
