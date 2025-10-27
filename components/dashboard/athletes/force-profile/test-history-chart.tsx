@@ -264,11 +264,27 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold, eli
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
-    // Helper to get Y position for value
+    // Helper to get Y position for value - MUST match canvas drawing logic exactly
     const values = data.map(d => d.value);
-    const maxValue = Math.max(...values);
-    const minValue = Math.min(...values, 0);
-    const valueRange = maxValue - minValue;
+    let maxValue = Math.max(...values);
+    let minValue = Math.min(...values, 0);
+
+    // Expand range to include elite threshold + 1 SD if provided (same as drawing code)
+    if (eliteThreshold !== undefined) {
+      const upperBound = eliteStdDev !== undefined ? eliteThreshold + eliteStdDev : eliteThreshold;
+      const lowerBound = eliteStdDev !== undefined ? eliteThreshold - eliteStdDev : eliteThreshold;
+      maxValue = Math.max(maxValue, upperBound);
+      minValue = Math.min(minValue, lowerBound);
+    }
+
+    // Add 10% padding to top and bottom (same as drawing code)
+    let valueRange = maxValue - minValue;
+    const padding10 = valueRange * 0.1;
+    maxValue = maxValue + padding10;
+    minValue = Math.max(0, minValue - padding10);
+
+    // Recalculate range after padding
+    valueRange = maxValue - minValue;
 
     const getY = (value: number) => {
       const normalizedValue = (value - minValue) / (valueRange || 1);
