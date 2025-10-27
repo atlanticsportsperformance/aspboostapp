@@ -178,7 +178,7 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
       {viewMode === 'hj' && <IndividualTestSection athleteId={athleteId} testType="HJ" playLevel={playLevel} />}
       {viewMode === 'ppu' && <IndividualTestSection athleteId={athleteId} testType="PPU" playLevel={playLevel} />}
       {viewMode === 'imtp' && <IndividualTestSection athleteId={athleteId} testType="IMTP" playLevel={playLevel} />}
-      {viewMode === 'history' && <SyncHistorySection athleteId={athleteId} />
+      {viewMode === 'history' && <SyncHistorySection athleteId={athleteId} />}
     </div>
   );
 }
