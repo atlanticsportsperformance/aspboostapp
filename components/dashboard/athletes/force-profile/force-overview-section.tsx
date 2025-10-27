@@ -95,13 +95,15 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
     return 'BUILD';
   };
 
-  // Map metric names to test types
-  const getTestTypeFromMetric = (metricName: string): 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp' | null => {
-    if (metricName.toLowerCase().includes('cmj')) return 'cmj';
-    if (metricName.toLowerCase().includes('sj')) return 'sj';
-    if (metricName.toLowerCase().includes('hj')) return 'hj';
-    if (metricName.toLowerCase().includes('ppu')) return 'ppu';
-    if (metricName.toLowerCase().includes('imtp')) return 'imtp';
+  // Map metric display names to test types
+  const getTestTypeFromMetric = (displayName: string): 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp' | null => {
+    const lower = displayName.toLowerCase();
+    // Check for exact prefixes from the radar data
+    if (lower.startsWith('sj ') || lower.includes('sj peak') || lower.includes('sj power')) return 'sj';
+    if (lower.startsWith('hj ') || lower.includes('hj rsi')) return 'hj';
+    if (lower.startsWith('ppu ') || lower.includes('ppu force')) return 'ppu';
+    if (lower.startsWith('imtp ') || lower.includes('imtp')) return 'imtp';
+    if (lower.startsWith('cmj ') || lower.includes('cmj')) return 'cmj';
     return null;
   };
 
@@ -153,7 +155,7 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
         {/* Right: Metric Cards with stagger animation */}
         <div className={`grid gap-3 ${isFullscreen ? 'grid-cols-2 auto-rows-fr' : 'grid-cols-1 md:grid-cols-2'} content-start`}>
           {radarData.map((metric, index) => {
-            const testType = getTestTypeFromMetric(metric.name);
+            const testType = getTestTypeFromMetric(metric.displayName);
             return (
               <div
                 key={metric.name}
