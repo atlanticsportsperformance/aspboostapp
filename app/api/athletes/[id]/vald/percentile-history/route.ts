@@ -85,6 +85,35 @@ export async function GET(
         });
       }
 
+      // Calculate 75th percentile VALUE for each metric (not percentage)
+      const eliteThresholds: Record<string, number> = {};
+      const metricGroups: Record<string, number[]> = {};
+
+      // Group all values by metric
+      for (const entry of flattenedMetrics) {
+        if (!metricGroups[entry.metric_name]) {
+          metricGroups[entry.metric_name] = [];
+        }
+        metricGroups[entry.metric_name].push(entry.value);
+      }
+
+      // Calculate 75th percentile for each metric
+      for (const [metricName, values] of Object.entries(metricGroups)) {
+        // Get all values for this metric across ALL athletes in play level
+        const { data: allValues } = await serviceSupabase
+          .from('athlete_percentile_history')
+          .select('value')
+          .eq('test_type', testTypeFilter)
+          .eq('metric_name', metricName)
+          .not('value', 'is', null);
+
+        if (allValues && allValues.length > 0) {
+          const sortedValues = allValues.map(v => v.value).sort((a, b) => a - b);
+          const p75Index = Math.floor(sortedValues.length * 0.75);
+          eliteThresholds[metricName] = sortedValues[p75Index];
+        }
+      }
+
       return NextResponse.json({
         athlete: {
           id: athleteId,
@@ -93,6 +122,7 @@ export async function GET(
         },
         test_type: testTypeFilter,
         metrics: flattenedMetrics,
+        elite_thresholds: eliteThresholds,
         total_tests: flattenedMetrics.length,
       });
     }

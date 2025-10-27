@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface TestDataPoint {
   date: string;
@@ -14,8 +14,17 @@ interface TestHistoryChartProps {
   eliteThreshold?: number; // 75th percentile value
 }
 
+interface TooltipData {
+  x: number;
+  y: number;
+  date: string;
+  value: number;
+  percentile: number;
+}
+
 export default function TestHistoryChart({ data, metricName, eliteThreshold }: TestHistoryChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
   useEffect(() => {
     if (!canvasRef.current || data.length === 0) return;
@@ -191,11 +200,117 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold }: T
 
   }, [data, eliteThreshold]);
 
+  // Handle mouse movement for hover tooltips
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || data.length === 0) return;
+
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 30, right: 30, bottom: 60, left: 60 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Helper to get Y position for value
+    const values = data.map(d => d.value);
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values, 0);
+    const valueRange = maxValue - minValue;
+
+    const getY = (value: number) => {
+      const normalizedValue = (value - minValue) / (valueRange || 1);
+      return padding.top + chartHeight - normalizedValue * chartHeight;
+    };
+
+    // Helper to get X position for bar center
+    const barCount = data.length;
+    const totalBarWidth = chartWidth / barCount;
+    const barWidth = totalBarWidth * 0.6;
+
+    const getX = (index: number) => {
+      return padding.left + index * totalBarWidth + totalBarWidth / 2;
+    };
+
+    // Check if mouse is over any bar
+    let foundBar = false;
+    data.forEach((point, index) => {
+      const x = getX(index);
+      const y = getY(point.value);
+
+      // Check if mouse is within bar area
+      if (
+        mouseX >= x - barWidth / 2 &&
+        mouseX <= x + barWidth / 2 &&
+        mouseY >= y &&
+        mouseY <= padding.top + chartHeight
+      ) {
+        foundBar = true;
+        setTooltip({
+          x: e.clientX,
+          y: e.clientY,
+          date: point.date,
+          value: point.value,
+          percentile: point.percentile
+        });
+      }
+    });
+
+    if (!foundBar) {
+      setTooltip(null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setTooltip(null);
+  };
+
+  // Get zone color for tooltip
+  const getZoneColor = (percentile: number): string => {
+    if (percentile >= 75) return 'text-green-400';
+    if (percentile >= 50) return 'text-[#9BDDFF]';
+    if (percentile >= 25) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      className="w-full h-full"
-      style={{ width: '100%', height: '100%' }}
-    />
+    <div className="relative w-full h-full">
+      <canvas
+        ref={canvasRef}
+        className="w-full h-full cursor-crosshair"
+        style={{ width: '100%', height: '100%' }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+      />
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: tooltip.x + 10,
+            top: tooltip.y + 10,
+          }}
+        >
+          <div className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl shadow-black/50 animate-in fade-in duration-200">
+            <div className="text-xs text-gray-400 mb-1">
+              {new Date(tooltip.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+            <div className="flex items-baseline gap-2 mb-1">
+              <span className="text-2xl font-bold text-white">
+                {tooltip.value.toFixed(1)}
+              </span>
+              <span className="text-xs text-gray-400">{metricName.split('(')[1]?.replace(')', '') || ''}</span>
+            </div>
+            <div className={`text-sm font-semibold ${getZoneColor(tooltip.percentile)}`}>
+              {Math.round(tooltip.percentile)}th Percentile
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

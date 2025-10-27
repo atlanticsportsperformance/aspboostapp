@@ -20,6 +20,7 @@ interface IndividualTestSectionProps {
 
 export default function IndividualTestSection({ athleteId, testType, playLevel }: IndividualTestSectionProps) {
   const [metrics, setMetrics] = useState<TestMetric[]>([]);
+  const [eliteThresholds, setEliteThresholds] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState<string | null>(null);
 
@@ -32,6 +33,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
         if (data.metrics && data.metrics.length > 0) {
           setMetrics(data.metrics);
           setSelectedMetric(data.metrics[0].metric_name);
+          setEliteThresholds(data.elite_thresholds || {});
         }
       } catch (error) {
         console.error('Error fetching test history:', error);
@@ -151,6 +153,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
               percentile: test.percentile_play_level
             }))}
             metricName={latestTest.display_name}
+            eliteThreshold={eliteThresholds[selectedMetric || '']}
           />
         </div>
       </div>
