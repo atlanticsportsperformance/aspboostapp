@@ -31,9 +31,12 @@ interface BodyweightHistory {
   };
 }
 
+type TimeRange = '1m' | '3m' | '6m' | '1y' | 'all';
+
 export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistoryModalProps) {
   const [data, setData] = useState<BodyweightHistory | null>(null);
   const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState<TimeRange>('all');
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const supabase = createClient();
 
@@ -45,7 +48,49 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     if (data && data.history.length > 0) {
       drawChart();
     }
-  }, [data]);
+  }, [data, timeRange]);
+
+  function getFilteredData(): BodyweightDataPoint[] {
+    if (!data || timeRange === 'all') return data?.history || [];
+
+    const now = new Date();
+    const cutoffDate = new Date();
+
+    switch (timeRange) {
+      case '1m':
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case '3m':
+        cutoffDate.setMonth(now.getMonth() - 3);
+        break;
+      case '6m':
+        cutoffDate.setMonth(now.getMonth() - 6);
+        break;
+      case '1y':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+
+    return data.history.filter(point => new Date(point.date) >= cutoffDate);
+  }
+
+  function getFilteredStats() {
+    const filtered = getFilteredData();
+    if (filtered.length === 0) return data?.stats || null;
+
+    const weights = filtered.map(h => h.weight_lbs);
+    const avgWeight = weights.reduce((sum, w) => sum + w, 0) / weights.length;
+    const minWeight = Math.min(...weights);
+    const maxWeight = Math.max(...weights);
+
+    return {
+      total_measurements: filtered.length,
+      avg_weight_lbs: Math.round(avgWeight * 10) / 10,
+      min_weight_lbs: minWeight,
+      max_weight_lbs: maxWeight,
+      weight_change_lbs: Math.round((maxWeight - minWeight) * 10) / 10,
+    };
+  }
 
   async function fetchBodyweightHistory() {
     try {
@@ -63,6 +108,9 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
 
   function drawChart() {
     if (!canvasRef.current || !data || data.history.length === 0) return;
+
+    const filteredData = getFilteredData();
+    if (filteredData.length === 0) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -84,8 +132,8 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Get data points
-    const weights = data.history.map(d => d.weight_lbs);
+    // Get data points from filtered data
+    const weights = filteredData.map(d => d.weight_lbs);
     const maxWeight = Math.max(...weights);
     const minWeight = Math.min(...weights);
     const weightRange = maxWeight - minWeight;
@@ -95,7 +143,7 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
 
     // Helper functions
     const getX = (index: number) => {
-      return padding.left + (index / (data.history.length - 1)) * chartWidth;
+      return padding.left + (index / (filteredData.length - 1)) * chartWidth;
     };
 
     const getY = (weight: number) => {
@@ -137,7 +185,7 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     ctx.strokeStyle = 'rgba(155, 221, 255, 0.8)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    data.history.forEach((point, index) => {
+    filteredData.forEach((point, index) => {
       const x = getX(index);
       const y = getY(point.weight_lbs);
 
@@ -150,7 +198,7 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     ctx.stroke();
 
     // Draw points
-    data.history.forEach((point, index) => {
+    filteredData.forEach((point, index) => {
       const x = getX(index);
       const y = getY(point.weight_lbs);
 
@@ -178,8 +226,8 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
     ctx.textBaseline = 'top';
 
     // Show up to 6 date labels
-    const labelInterval = Math.ceil(data.history.length / 6);
-    data.history.forEach((point, index) => {
+    const labelInterval = Math.ceil(filteredData.length / 6);
+    filteredData.forEach((point, index) => {
       if (index % labelInterval === 0 || index === data.history.length - 1) {
         const x = getX(index);
         const date = new Date(point.date);
@@ -241,40 +289,64 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
           </button>
         </div>
 
+        {/* Time Range Filters */}
+        <div className="flex items-center gap-2 mb-3 sm:mb-4 overflow-x-auto pb-2">
+          {(['1m', '3m', '6m', '1y', 'all'] as TimeRange[]).map((range) => (
+            <button
+              key={range}
+              onClick={() => setTimeRange(range)}
+              className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                timeRange === range
+                  ? 'bg-[#9BDDFF] text-black'
+                  : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+              }`}
+            >
+              {range === 'all' ? 'All Time' : range.toUpperCase()}
+            </button>
+          ))}
+        </div>
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3 md:gap-4 mb-3 sm:mb-4 md:mb-6">
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
-            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Current</div>
-            <div className="text-base sm:text-xl md:text-2xl font-bold text-white">
-              {data.athlete.current_weight_lbs ? `${data.athlete.current_weight_lbs} lbs` : 'N/A'}
-            </div>
-          </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
-            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Average</div>
-            <div className="text-base sm:text-xl md:text-2xl font-bold text-[#9BDDFF]">
-              {data.stats.avg_weight_lbs ? `${data.stats.avg_weight_lbs} lbs` : 'N/A'}
-            </div>
-          </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
-            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Min</div>
-            <div className="text-base sm:text-xl md:text-2xl font-bold text-green-400">
-              {data.stats.min_weight_lbs ? `${data.stats.min_weight_lbs} lbs` : 'N/A'}
-            </div>
-          </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
-            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Max</div>
-            <div className="text-base sm:text-xl md:text-2xl font-bold text-red-400">
-              {data.stats.max_weight_lbs ? `${data.stats.max_weight_lbs} lbs` : 'N/A'}
-            </div>
-          </div>
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
-            <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Change</div>
-            <div className="text-base sm:text-xl md:text-2xl font-bold text-amber-400">
-              {data.stats.weight_change_lbs !== null
-                ? `${data.stats.weight_change_lbs > 0 ? '+' : ''}${data.stats.weight_change_lbs} lbs`
-                : 'N/A'}
-            </div>
-          </div>
+          {(() => {
+            const filteredStats = getFilteredStats();
+            return (
+              <>
+                <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Current</div>
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-white">
+                    {data.athlete.current_weight_lbs ? `${data.athlete.current_weight_lbs} lbs` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Average</div>
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-[#9BDDFF]">
+                    {filteredStats?.avg_weight_lbs ? `${filteredStats.avg_weight_lbs} lbs` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Min</div>
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-green-400">
+                    {filteredStats?.min_weight_lbs ? `${filteredStats.min_weight_lbs} lbs` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Max</div>
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-red-400">
+                    {filteredStats?.max_weight_lbs ? `${filteredStats.max_weight_lbs} lbs` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-2 sm:p-3 md:p-4">
+                  <div className="text-[10px] sm:text-xs text-neutral-400 mb-0.5 sm:mb-1">Change</div>
+                  <div className="text-base sm:text-xl md:text-2xl font-bold text-amber-400">
+                    {filteredStats?.weight_change_lbs !== null
+                      ? `${filteredStats.weight_change_lbs > 0 ? '+' : ''}${filteredStats.weight_change_lbs} lbs`
+                      : 'N/A'}
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Chart */}
@@ -289,7 +361,7 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
 
         {/* Data Table */}
         <div className="bg-neutral-800/30 border border-neutral-700 rounded-lg p-3 sm:p-4 md:p-6">
-          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-2 sm:mb-3 md:mb-4">Measurements ({data.stats.total_measurements})</h3>
+          <h3 className="text-sm sm:text-base md:text-lg font-semibold text-white mb-2 sm:mb-3 md:mb-4">Measurements ({getFilteredStats()?.total_measurements || 0})</h3>
           <div className="overflow-x-auto -mx-3 sm:mx-0">
             <table className="w-full text-xs sm:text-sm min-w-[500px] sm:min-w-0">
               <thead>
@@ -301,8 +373,9 @@ export function BodyweightHistoryModal({ athleteId, onClose }: BodyweightHistory
                 </tr>
               </thead>
               <tbody>
-                {data.history.map((point, index) => {
-                  const prevWeight = index > 0 ? data.history[index - 1].weight_lbs : null;
+                {getFilteredData().map((point, index) => {
+                  const filteredData = getFilteredData();
+                  const prevWeight = index > 0 ? filteredData[index - 1].weight_lbs : null;
                   const change = prevWeight ? point.weight_lbs - prevWeight : null;
 
                   return (
