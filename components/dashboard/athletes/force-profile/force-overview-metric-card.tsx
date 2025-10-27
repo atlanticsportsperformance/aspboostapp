@@ -12,9 +12,10 @@ interface MetricCardProps {
     value: number;
     date: string;
   } | null;
+  onClick?: () => void;
 }
 
-export default function ForceOverviewMetricCard({ displayName, current, previous }: MetricCardProps) {
+export default function ForceOverviewMetricCard({ displayName, current, previous, onClick }: MetricCardProps) {
   if (!current) {
     return (
       <div className="bg-white/5 rounded-2xl p-5 border border-white/10 backdrop-blur-md">
@@ -72,17 +73,18 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
 
   return (
     <div
-      className={`group bg-gradient-to-br ${bgGradient} rounded-2xl p-4 border ${borderColor}
-                  backdrop-blur-xl transition-all duration-300 ease-out cursor-pointer
-                  hover:scale-[1.02] hover:-translate-y-1 hover:shadow-2xl ${glowColor}
+      onClick={onClick}
+      className={`group bg-gradient-to-br ${bgGradient} rounded-2xl p-3 md:p-4 border ${borderColor}
+                  backdrop-blur-xl transition-all duration-300 ease-out ${onClick ? 'cursor-pointer' : ''}
+                  ${onClick ? 'hover:scale-[1.02] hover:-translate-y-1' : ''} hover:shadow-2xl ${glowColor}
                   shadow-lg shadow-black/20`}
     >
       {/* Header with HUGE percentile number */}
-      <div className="flex items-start justify-between mb-3">
-        <h3 className="text-white/90 font-semibold text-sm leading-tight max-w-[120px]">{displayName}</h3>
+      <div className="flex items-start justify-between mb-2 md:mb-3">
+        <h3 className="text-white/90 font-semibold text-xs md:text-sm leading-tight max-w-[120px]">{displayName}</h3>
         <div className="flex flex-col items-end">
           <div className="flex items-baseline gap-0.5">
-            <span className={`text-4xl font-bold ${textColor} transition-all duration-300 group-hover:scale-110`}>
+            <span className={`text-3xl md:text-4xl font-bold ${textColor} transition-all duration-300 group-hover:scale-110`}>
               {Math.round(current.percentile)}
             </span>
             <span className="text-xs text-white/50 mb-1">%</span>
@@ -99,13 +101,13 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
       </div>
 
       {/* Current Test Bar with rounded caps and glow */}
-      <div className="mb-3">
-        <div className="flex items-center justify-between mb-1.5">
+      <div className="mb-2 md:mb-3">
+        <div className="flex items-center justify-between mb-1 md:mb-1.5">
           <span className="text-[10px] text-white/60 font-medium">
             {new Date(current.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
           </span>
         </div>
-        <div className="h-3 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
+        <div className="h-2.5 md:h-3 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
           <div
             className={`h-full bg-gradient-to-r ${currentGradient} transition-all duration-700 ease-out relative rounded-full
                         shadow-lg ${currentZone === 'ELITE' ? 'shadow-green-500/50' :
@@ -121,13 +123,13 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
 
       {/* Previous Test Bar (if exists) */}
       {previous && (
-        <div className="mb-3">
+        <div className="mb-2 md:mb-3">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] text-white/40">
               {new Date(previous.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
             </span>
-            <span className={`text-sm font-bold ${changeColor} flex items-center gap-1`}>
-              <span className="text-base">{changeIcon}</span> {Math.abs(change).toFixed(0)}
+            <span className={`text-xs md:text-sm font-bold ${changeColor} flex items-center gap-1`}>
+              <span className="text-sm md:text-base">{changeIcon}</span> {Math.abs(change).toFixed(0)}
             </span>
           </div>
           <div className="h-2 bg-black/30 rounded-full overflow-hidden backdrop-blur-sm">
@@ -140,9 +142,9 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
       )}
 
       {/* Value Display */}
-      <div className="mt-3 pt-3 border-t border-white/10">
+      <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-white/10">
         <div className="text-[10px] text-white/50 font-medium">Raw Value</div>
-        <div className="text-sm text-white/90 font-mono font-semibold mt-0.5">{current.value.toFixed(1)}</div>
+        <div className="text-xs md:text-sm text-white/90 font-mono font-semibold mt-0.5">{current.value.toFixed(1)}</div>
       </div>
     </div>
   );

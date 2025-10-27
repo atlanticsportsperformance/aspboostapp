@@ -167,128 +167,162 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
 
       {/* Header: Title + Tabs + Sync Button (non-fullscreen) */}
       {!isFullscreen && (
-        <div className="flex items-center justify-between gap-4 mb-2">
-          {/* Left: Title (only show on Force Overview) */}
-          {viewMode === 'composite' ? (
-            <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4 mb-2">
+          {/* Left: Title (only show on Force Overview on desktop) */}
+          <div className="hidden md:block flex-shrink-0">
+            {viewMode === 'composite' && (
               <h2 className="font-bold text-white text-xl">Force Overview</h2>
-            </div>
-          ) : (
-            <div className="flex-shrink-0"></div>
-          )}
-
-          {/* Right: Tabs + Buttons */}
-          <div className="flex items-center gap-2">
-            <div className="flex gap-1 bg-black/40 rounded-lg p-1 overflow-x-auto">
-          <button
-            onClick={() => setViewMode('composite')}
-            className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-              viewMode === 'composite'
-                ? 'bg-[#9BDDFF] text-black'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            Force Overview
-          </button>
-        <button
-          onClick={() => setViewMode('cmj')}
-          className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-            viewMode === 'cmj'
-              ? 'bg-[#9BDDFF] text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          CMJ
-        </button>
-        <button
-          onClick={() => setViewMode('sj')}
-          className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-            viewMode === 'sj'
-              ? 'bg-[#9BDDFF] text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          SJ
-        </button>
-        <button
-          onClick={() => setViewMode('hj')}
-          className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-            viewMode === 'hj'
-              ? 'bg-[#9BDDFF] text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          HJ
-        </button>
-        <button
-          onClick={() => setViewMode('ppu')}
-          className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-            viewMode === 'ppu'
-              ? 'bg-[#9BDDFF] text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          PPU
-        </button>
-        <button
-          onClick={() => setViewMode('imtp')}
-          className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-            viewMode === 'imtp'
-              ? 'bg-[#9BDDFF] text-black'
-              : 'text-gray-400 hover:text-white hover:bg-white/10'
-          }`}
-        >
-          IMTP
-        </button>
-          <button
-            onClick={() => setViewMode('history')}
-            className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
-              viewMode === 'history'
-                ? 'bg-[#9BDDFF] text-black'
-                : 'text-gray-400 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            Sync History
-          </button>
+            )}
           </div>
 
-          {/* Present Button */}
-          {viewMode === 'composite' && (
-            <button
-              onClick={toggleFullscreen}
-              className="px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
+          {/* Mobile: Dropdown + Sync Button */}
+          <div className="md:hidden w-full flex items-center gap-2">
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as ViewMode)}
+              className="flex-1 px-3 py-2 bg-black/40 border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-              Present
-            </button>
-          )}
+              <option value="composite">Force Overview</option>
+              <option value="cmj">CMJ</option>
+              <option value="sj">SJ</option>
+              <option value="hj">HJ</option>
+              <option value="ppu">PPU</option>
+              <option value="imtp">IMTP</option>
+              <option value="history">Sync History</option>
+            </select>
 
-          {/* Sync Button */}
-          <button
-            onClick={handleSync}
-            disabled={syncing || !valdProfileId}
-            className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
-              valdProfileId
-                ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
-                : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-            } ${syncing ? 'opacity-50' : ''}`}
-          >
-            {syncing ? (
-              <>
+            {/* Sync Button (Mobile) */}
+            <button
+              onClick={handleSync}
+              disabled={syncing || !valdProfileId}
+              className={`px-3 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
+                valdProfileId
+                  ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
+                  : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
+              } ${syncing ? 'opacity-50' : ''}`}
+            >
+              {syncing ? (
                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                Syncing...
-              </>
-            ) : (
-              <>
+              ) : (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Sync
-              </>
+              )}
+            </button>
+          </div>
+
+          {/* Desktop: Tabs + Buttons */}
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex gap-1 bg-black/40 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('composite')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'composite'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Force Overview
+              </button>
+              <button
+                onClick={() => setViewMode('cmj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'cmj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                CMJ
+              </button>
+              <button
+                onClick={() => setViewMode('sj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'sj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                SJ
+              </button>
+              <button
+                onClick={() => setViewMode('hj')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'hj'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                HJ
+              </button>
+              <button
+                onClick={() => setViewMode('ppu')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'ppu'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                PPU
+              </button>
+              <button
+                onClick={() => setViewMode('imtp')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'imtp'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                IMTP
+              </button>
+              <button
+                onClick={() => setViewMode('history')}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                  viewMode === 'history'
+                    ? 'bg-[#9BDDFF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                Sync History
+              </button>
+            </div>
+
+            {/* Present Button (Desktop only) */}
+            {viewMode === 'composite' && (
+              <button
+                onClick={toggleFullscreen}
+                className="px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-700 hover:from-purple-600 hover:to-purple-800 text-white shadow-lg shadow-purple-500/20"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                Present
+              </button>
             )}
-          </button>
+
+            {/* Sync Button (Desktop) */}
+            <button
+              onClick={handleSync}
+              disabled={syncing || !valdProfileId}
+              className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
+                valdProfileId
+                  ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
+                  : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
+              } ${syncing ? 'opacity-50' : ''}`}
+            >
+              {syncing ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Sync
+                </>
+              )}
+            </button>
           </div>
         </div>
       )}
@@ -298,6 +332,7 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
         <ForceOverviewSection
           athleteId={athleteId}
           isFullscreen={isFullscreen}
+          onNavigateToTest={(testType) => setViewMode(testType)}
         />
       )}
       {viewMode === 'cmj' && <IndividualTestSection athleteId={athleteId} testType="CMJ" playLevel={playLevel} />}

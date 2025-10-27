@@ -8,6 +8,7 @@ import ForceOverviewMetricCard from './force-overview-metric-card';
 interface ForceOverviewSectionProps {
   athleteId: string;
   isFullscreen?: boolean;
+  onNavigateToTest?: (testType: 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp') => void;
 }
 
 interface RadarDataPoint {
@@ -17,7 +18,7 @@ interface RadarDataPoint {
   previous: { percentile: number; value: number; date: string } | null;
 }
 
-export default function ForceOverviewSection({ athleteId, isFullscreen = false }: ForceOverviewSectionProps) {
+export default function ForceOverviewSection({ athleteId, isFullscreen = false, onNavigateToTest }: ForceOverviewSectionProps) {
   const [loading, setLoading] = useState(true);
   const [radarData, setRadarData] = useState<RadarDataPoint[]>([]);
   const [compositeScore, setCompositeScore] = useState<{
@@ -94,6 +95,16 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false }
     return 'BUILD';
   };
 
+  // Map metric names to test types
+  const getTestTypeFromMetric = (metricName: string): 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp' | null => {
+    if (metricName.toLowerCase().includes('cmj')) return 'cmj';
+    if (metricName.toLowerCase().includes('sj')) return 'sj';
+    if (metricName.toLowerCase().includes('hj')) return 'hj';
+    if (metricName.toLowerCase().includes('ppu')) return 'ppu';
+    if (metricName.toLowerCase().includes('imtp')) return 'imtp';
+    return null;
+  };
+
   return (
     <div>
       {/* Compact Header with zone badge and description */}
@@ -141,21 +152,25 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false }
 
         {/* Right: Metric Cards with stagger animation */}
         <div className={`grid gap-3 ${isFullscreen ? 'grid-cols-2 auto-rows-fr' : 'grid-cols-1 md:grid-cols-2'} content-start`}>
-          {radarData.map((metric, index) => (
-            <div
-              key={metric.name}
-              className="animate-in fade-in slide-in-from-right duration-500"
-              style={{
-                animationDelay: `${index * 100}ms`,
-              }}
-            >
-              <ForceOverviewMetricCard
-                displayName={metric.displayName}
-                current={metric.current}
-                previous={metric.previous}
-              />
-            </div>
-          ))}
+          {radarData.map((metric, index) => {
+            const testType = getTestTypeFromMetric(metric.name);
+            return (
+              <div
+                key={metric.name}
+                className="animate-in fade-in slide-in-from-right duration-500"
+                style={{
+                  animationDelay: `${index * 100}ms`,
+                }}
+              >
+                <ForceOverviewMetricCard
+                  displayName={metric.displayName}
+                  current={metric.current}
+                  previous={metric.previous}
+                  onClick={testType && onNavigateToTest ? () => onNavigateToTest(testType) : undefined}
+                />
+              </div>
+            );
+          })}
         </div>
       </div>
 
