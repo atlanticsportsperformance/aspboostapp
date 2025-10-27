@@ -623,7 +623,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
 
               <button
                 onClick={goToToday}
-                className="px-3 py-1.5 md:px-4 md:py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium touch-manipulation"
+                className="px-3 py-1.5 md:px-4 md:py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium touch-manipulation"
               >
                 Today
               </button>
@@ -641,7 +641,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
               onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
               className={`px-3 py-1.5 md:px-4 md:py-2 border text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation ${
                 showWorkoutDetails
-                  ? 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-purple-600 border-purple-600 text-white hover:bg-purple-700'
                   : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
               }`}
               title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
@@ -684,8 +684,8 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
         {/* Calendar Grid */}
         <div className="bg-neutral-900/50 border border-neutral-800 rounded-xl overflow-hidden">
           {/* Mobile: Horizontal Scroll Wrapper */}
-          <div className="md:overflow-visible overflow-x-auto -mx-3 md:mx-0 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
-            <div className="min-w-[640px] md:min-w-0">
+          <div className="md:overflow-visible overflow-x-auto -mx-3 md:mx-0 scrollbar-thin scrollbar-thumb-white/30 scrollbar-track-transparent">
+            <div className="min-w-[900px] md:min-w-0">
               {/* Day Headers */}
               <div className="grid grid-cols-7 border-b border-neutral-800 bg-neutral-900">
                 {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
@@ -942,14 +942,14 @@ function CalendarDayCell({
       className={`
         min-h-[100px] md:min-h-[120px] border-r border-b border-neutral-800 p-1.5 md:p-2 relative transition-all
         ${isOver ? 'bg-blue-500/20 ring-2 ring-blue-500 ring-inset' : 'bg-neutral-900/30 hover:bg-neutral-800/30'}
-        ${isToday ? 'ring-2 ring-blue-400 ring-inset' : ''}
+        ${isToday ? 'ring-2 ring-amber-500 ring-inset' : ''}
       `}
     >
       {/* Day Number and Add Button */}
       <div className="flex items-start justify-between mb-1.5 md:mb-2">
         <div className={`
           text-xs md:text-sm font-semibold w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full
-          ${isToday ? 'bg-blue-500 text-white' : 'text-neutral-400'}
+          ${isToday ? 'bg-amber-500 text-white' : 'text-neutral-400'}
         `}>
           {day}
         </div>
