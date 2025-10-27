@@ -123,12 +123,17 @@ export async function GET(
             .filter((r: any) => athletePlayLevelMap.get(r.athlete_id) === playLevel)
             .map((r: any) => r.value);
 
-          if (playLevelValues.length > 0) {
-            const sortedValues = playLevelValues.sort((a, b) => a - b);
+          // If too few athletes in play level (< 5), use all athletes instead for meaningful threshold
+          const valuesToUse = playLevelValues.length >= 5
+            ? playLevelValues
+            : allRecords.map((r: any) => r.value);
+
+          if (valuesToUse.length > 0) {
+            const sortedValues = valuesToUse.sort((a, b) => a - b);
             const p75Index = Math.floor(sortedValues.length * 0.75);
             eliteThresholds[metricName] = sortedValues[p75Index];
 
-            // Calculate standard deviation of play level values
+            // Calculate standard deviation
             const mean = sortedValues.reduce((sum, val) => sum + val, 0) / sortedValues.length;
             const variance = sortedValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / sortedValues.length;
             eliteStdDev[metricName] = Math.sqrt(variance);

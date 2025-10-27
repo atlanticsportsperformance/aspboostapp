@@ -284,20 +284,26 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold, eli
       return padding.left + index * totalBarWidth + totalBarWidth / 2;
     };
 
-    // Check if mouse is over any bar
-    let foundBar = false;
+    // Check if mouse is over any bar OR near any dot
+    let foundPoint = false;
     data.forEach((point, index) => {
       const x = getX(index);
       const y = getY(point.value);
 
       // Check if mouse is within bar area
-      if (
+      const inBar = (
         mouseX >= x - barWidth / 2 &&
         mouseX <= x + barWidth / 2 &&
         mouseY >= y &&
         mouseY <= padding.top + chartHeight
-      ) {
-        foundBar = true;
+      );
+
+      // Check if mouse is near the dot (within 15px radius)
+      const distanceToDot = Math.sqrt(Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2));
+      const nearDot = distanceToDot < 15;
+
+      if (inBar || nearDot) {
+        foundPoint = true;
         setTooltip({
           x: e.clientX,
           y: e.clientY,
@@ -308,7 +314,7 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold, eli
       }
     });
 
-    if (!foundBar) {
+    if (!foundPoint) {
       setTooltip(null);
     }
   };
