@@ -46,7 +46,8 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const maxRadius = Math.min(width, height) / 2 - 60;
+    // Reduce padding to make radar plot bigger (was -60, now -25)
+    const maxRadius = Math.min(width, height) / 2 - 25;
 
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
@@ -197,23 +198,23 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     // Reset shadow
     ctx.shadowBlur = 0;
 
-    // Draw labels with better styling
+    // Draw labels with much smaller font
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px Inter, sans-serif';
+    ctx.font = '600 9px Inter, sans-serif'; // Much smaller font (was 13px, now 9px)
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
     data.forEach((point, index) => {
       const angle = angleStep * index - Math.PI / 2;
-      const labelRadius = maxRadius + 35;
+      const labelRadius = maxRadius + 18; // Closer to plot (was +35, now +18)
       const x = centerX + labelRadius * Math.cos(angle);
       const y = centerY + labelRadius * Math.sin(angle);
 
       // Split label into multiple lines if needed
       const words = point.displayName.split(' ');
       if (words.length > 2) {
-        ctx.fillText(words.slice(0, 2).join(' '), x, y - 6);
-        ctx.fillText(words.slice(2).join(' '), x, y + 8);
+        ctx.fillText(words.slice(0, 2).join(' '), x, y - 5);
+        ctx.fillText(words.slice(2).join(' '), x, y + 5);
       } else {
         ctx.fillText(point.displayName, x, y);
       }
@@ -234,7 +235,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     const height = rect.height;
     const centerX = width / 2;
     const centerY = height / 2;
-    const maxRadius = Math.min(width, height) / 2 - 60;
+    const maxRadius = Math.min(width, height) / 2 - 25; // Match the rendering maxRadius
     const angleStep = (2 * Math.PI) / data.length;
 
     let foundPoint = false;
@@ -299,12 +300,12 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
         onMouseLeave={handleMouseLeave}
       />
 
-      {/* Center composite score with glow */}
+      {/* Center composite score with glow - responsive sizing */}
       <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-        <div className={`text-6xl font-bold transition-all duration-300 ${getZoneColor(compositeScore)} ${getZoneGlow(compositeScore)}`}>
+        <div className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold transition-all duration-300 ${getZoneColor(compositeScore)} ${getZoneGlow(compositeScore)}`}>
           {Math.round(compositeScore)}
         </div>
-        <div className="text-xs text-gray-400 mt-2 font-medium">Force Profile</div>
+        <div className="text-[10px] sm:text-xs text-gray-400 mt-1 sm:mt-2 font-medium">Force Profile</div>
       </div>
 
       {/* Interactive Tooltip */}

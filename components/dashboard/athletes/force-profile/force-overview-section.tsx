@@ -190,10 +190,10 @@ export default function ForceOverviewSection({ athleteId }: ForceOverviewSection
         </div>
       </div>
 
-      {/* Composite Score Footer */}
-      {compositeScore.previous && (
-        <div className="mt-4 bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl shadow-lg shadow-black/20 animate-in fade-in slide-in-from-bottom duration-500">
-          <div className="flex items-center justify-between">
+      {/* Composite Score Footer - only show if dates are actually different */}
+      {compositeScore.previous && compositeScore.previous.date !== compositeScore.current.date && (
+        <div className="mt-4 bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl shadow-lg shadow-black/20 animate-in fade-in slide-in-from-bottom duration-500 hidden md:block">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="text-sm text-white/80 font-semibold">Composite Score Change</div>
               <div className="text-xs text-gray-500 mt-1 font-medium">

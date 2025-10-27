@@ -7,9 +7,11 @@ import EditAthleteProfileModal from './edit-athlete-profile-modal';
 
 interface OverviewTabProps {
   athleteData: any;
+  onManageTags?: () => void;
+  onDeleteAthlete?: () => void;
 }
 
-export default function OverviewTab({ athleteData }: OverviewTabProps) {
+export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete }: OverviewTabProps) {
   const { athlete, profile, teams, currentPlan, planAssignment } = athleteData;
 
   const [stats, setStats] = useState({
@@ -485,9 +487,22 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
             </div>
 
             {/* Tags - Compact for mobile */}
-            {athleteTags.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-white/10">
-                <p className="text-xs font-semibold text-[#9BDDFF] mb-2">Tags</p>
+            <div className="mt-3 pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-semibold text-[#9BDDFF]">Tags</p>
+                {onManageTags && (
+                  <button
+                    onClick={onManageTags}
+                    className="px-2 py-1 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-xs font-medium rounded transition-colors border border-[#9BDDFF]/20 flex items-center gap-1"
+                  >
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    Manage
+                  </button>
+                )}
+              </div>
+              {athleteTags.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
                   {athleteTags.map((tag, idx) => (
                     <span
@@ -498,8 +513,10 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-gray-500">No tags yet</p>
+              )}
+            </div>
           </div>
 
           {/* Right Side: Contact & Details - Grid on Both Mobile and Desktop */}
@@ -681,6 +698,25 @@ export default function OverviewTab({ athleteData }: OverviewTabProps) {
         />
       )}
       </div>
+
+      {/* Danger Zone - Delete Athlete */}
+      {onDeleteAthlete && (
+        <div className="mt-8 bg-red-500/5 border border-red-500/20 rounded-xl p-6">
+          <h3 className="text-lg font-bold text-red-400 mb-2">Danger Zone</h3>
+          <p className="text-sm text-gray-400 mb-4">
+            Deleting this athlete will permanently remove all their data including workouts, progress tracking, and records. This action cannot be undone.
+          </p>
+          <button
+            onClick={onDeleteAthlete}
+            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-lg transition-colors border border-red-500/20 flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete Athlete
+          </button>
+        </div>
+      )}
 
       {/* Edit Profile Modal */}
       <EditAthleteProfileModal
