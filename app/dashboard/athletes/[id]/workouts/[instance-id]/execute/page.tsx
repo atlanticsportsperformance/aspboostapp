@@ -562,45 +562,45 @@ export default function WorkoutExecutionPage() {
 
       {/* Incomplete Exercises Warning Modal */}
       {showIncompleteWarning && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-neutral-900 border border-yellow-500/30 rounded-2xl shadow-2xl max-w-lg w-full p-6">
-            <div className="flex items-start gap-4 mb-4">
-              <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                <svg className="w-6 h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 md:p-4">
+          <div className="bg-neutral-900 border border-yellow-500/30 rounded-xl md:rounded-2xl shadow-2xl max-w-lg w-full p-4 md:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start gap-3 md:gap-4 mb-3 md:mb-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
               </div>
-              <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-2">Incomplete Exercises</h3>
-                <p className="text-gray-300 text-sm mb-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg md:text-xl font-bold text-white mb-1.5 md:mb-2">Incomplete Exercises</h3>
+                <p className="text-gray-300 text-xs md:text-sm mb-3 md:mb-4">
                   You have {incompleteExercises.length} exercise{incompleteExercises.length > 1 ? 's' : ''} with missing data:
                 </p>
-                <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                <div className="space-y-1.5 md:space-y-2 mb-3 md:mb-4 max-h-40 md:max-h-48 overflow-y-auto">
                   {incompleteExercises.map((item, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-3">
-                      <div className="font-semibold text-white text-sm mb-1">
+                    <div key={idx} className="bg-white/5 border border-white/10 rounded-lg p-2 md:p-3">
+                      <div className="font-semibold text-white text-xs md:text-sm mb-0.5 md:mb-1 truncate">
                         {item.exercise.exercises?.name || 'Unknown Exercise'}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-[10px] md:text-xs text-gray-400">
                         {item.isEmpty ? (
-                          <span className="text-yellow-400">⚠️ No data entered for any set</span>
+                          <span className="text-yellow-400">⚠️ No data entered</span>
                         ) : (
-                          <span>Missing data for set{item.incompleteSets.length > 1 ? 's' : ''}: {item.incompleteSets.join(', ')} of {item.totalSets}</span>
+                          <span>Missing set{item.incompleteSets.length > 1 ? 's' : ''}: {item.incompleteSets.join(', ')} of {item.totalSets}</span>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-gray-400 text-xs">
-                  Do you want to complete the workout anyway? Incomplete sets will be saved as empty.
+                <p className="text-gray-400 text-[10px] md:text-xs">
+                  Complete anyway? Incomplete sets will be saved as empty.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
               <button
                 onClick={() => setShowIncompleteWarning(false)}
-                className="flex-1 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-medium text-sm transition-all"
+                className="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-medium text-xs md:text-sm transition-all"
               >
                 Go Back
               </button>
@@ -609,7 +609,7 @@ export default function WorkoutExecutionPage() {
                   setShowIncompleteWarning(false);
                   completeWorkout();
                 }}
-                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg font-bold text-sm transition-all"
+                className="flex-1 px-3 md:px-4 py-2 md:py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white rounded-lg font-bold text-xs md:text-sm transition-all"
               >
                 Continue Anyway
               </button>
