@@ -195,7 +195,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
       </div>
 
       {/* Stats Cards - Compact on mobile */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         {/* Latest Result */}
         <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
           <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Latest Result</div>
