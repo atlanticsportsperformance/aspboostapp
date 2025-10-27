@@ -300,7 +300,13 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
         <div
           className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold transition-all duration-300 ${getZoneColor(compositeScore)} ${getZoneGlow(compositeScore)}`}
           style={{
-            textShadow: '0px 3px 15px rgba(0,0,0,1), 0px 0px 12px rgba(0,0,0,0.95), 0px 6px 24px rgba(0,0,0,0.9), 0px 0px 6px rgba(0,0,0,0.85)'
+            textShadow: '0px 3px 15px rgba(0,0,0,1), 0px 0px 12px rgba(0,0,0,0.95), 0px 6px 24px rgba(0,0,0,0.9), 0px 0px 6px rgba(0,0,0,0.85)',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+            textRendering: 'optimizeLegibility',
+            fontFeatureSettings: '"kern" 1',
+            backfaceVisibility: 'hidden',
+            transform: 'translateZ(0)',
           }}
         >
           {Math.round(compositeScore)}
@@ -308,7 +314,10 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
         <div
           className="text-[10px] sm:text-xs text-gray-400 mt-1 sm:mt-2 font-medium"
           style={{
-            textShadow: '0px 2px 10px rgba(0,0,0,1), 0px 0px 8px rgba(0,0,0,0.95), 0px 0px 4px rgba(0,0,0,0.85)'
+            textShadow: '0px 2px 10px rgba(0,0,0,1), 0px 0px 8px rgba(0,0,0,0.95), 0px 0px 4px rgba(0,0,0,0.85)',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+            textRendering: 'optimizeLegibility',
           }}
         >
           Force Profile
