@@ -219,6 +219,33 @@ export async function POST(
         if (success) {
           syncedCount++;
 
+          // Update athlete bodyweight from CMJ test
+          if (test.testType === 'CMJ') {
+            try {
+              const { data: cmjTest } = await serviceSupabase
+                .from('cmj_tests')
+                .select('body_weight_trial_value')
+                .eq('test_id', test.testId)
+                .eq('athlete_id', athleteId)
+                .single();
+
+              if (cmjTest && cmjTest.body_weight_trial_value) {
+                // Convert kg to lbs (1 kg = 2.20462 lbs)
+                const weightLbs = cmjTest.body_weight_trial_value * 2.20462;
+
+                await serviceSupabase
+                  .from('athletes')
+                  .update({ weight_lbs: Math.round(weightLbs * 10) / 10 }) // Round to 1 decimal
+                  .eq('id', athleteId);
+
+                console.log(`✅ Updated athlete bodyweight to ${weightLbs.toFixed(1)} lbs from CMJ test`);
+              }
+            } catch (bwError) {
+              console.error('Error updating bodyweight from CMJ:', bwError);
+              // Don't fail the sync if bodyweight update fails
+            }
+          }
+
           // Save percentile history for this test
           try {
             console.log(`📊 Calculating percentiles for ${test.testType} test ${test.testId}...`);

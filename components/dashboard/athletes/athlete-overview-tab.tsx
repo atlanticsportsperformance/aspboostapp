@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import EditAthleteProfileModal from './edit-athlete-profile-modal';
+import { BodyweightHistoryModal } from './bodyweight-history-modal';
 
 interface OverviewTabProps {
   athleteData: any;
@@ -32,6 +33,7 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
   const [showAddToGroupModal, setShowAddToGroupModal] = useState(false);
   const [groupMemberships, setGroupMemberships] = useState<any[]>([]);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showBodyweightHistory, setShowBodyweightHistory] = useState(false);
 
   useEffect(() => {
     fetchOverviewData();
@@ -560,9 +562,20 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Weight</p>
-                  <p className="text-sm text-white font-semibold">
-                    {athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : '-'}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-white font-semibold">
+                      {athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : '-'}
+                    </p>
+                    <button
+                      onClick={() => setShowBodyweightHistory(true)}
+                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                      title="View bodyweight history"
+                    >
+                      <svg className="w-4 h-4 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Hand</p>
@@ -728,6 +741,13 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
         }}
         athleteData={athleteData}
       />
+
+      {showBodyweightHistory && (
+        <BodyweightHistoryModal
+          athleteId={athlete.id}
+          onClose={() => setShowBodyweightHistory(false)}
+        />
+      )}
     </>
   );
 }
