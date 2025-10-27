@@ -13,6 +13,9 @@ export async function GET(
 ) {
   try {
     const { id: athleteId } = await params;
+    const { searchParams } = new URL(request.url);
+    const testTypeFilter = searchParams.get('test_type'); // Optional filter by test type
+
     const supabase = await createClient();
 
     // Use service role client for percentile history access (bypasses RLS)
@@ -41,12 +44,21 @@ export async function GET(
 
     const playLevel = athlete.play_level;
 
-    // Get all percentile history for this athlete
-    const { data: history, error: historyError } = await serviceSupabase
+    // Build query
+    let query = serviceSupabase
       .from('athlete_percentile_history')
       .select('*')
-      .eq('athlete_id', athleteId)
-      .order('test_date', { ascending: true });
+      .eq('athlete_id', athleteId);
+
+    // Filter by test type if provided
+    if (testTypeFilter) {
+      query = query.eq('test_type', testTypeFilter);
+    }
+
+    query = query.order('test_date', { ascending: true });
+
+    // Get all percentile history for this athlete
+    const { data: history, error: historyError } = await query;
 
     if (historyError) {
       console.error('Error fetching percentile history:', historyError);
@@ -56,7 +68,36 @@ export async function GET(
       );
     }
 
-    // Group by test type
+    // If test_type filter is provided, flatten metrics for individual test view
+    if (testTypeFilter && history) {
+      const flattenedMetrics: any[] = [];
+
+      for (const entry of history) {
+        // entry.metric_name, entry.value, entry.percentile_play_level, entry.percentile_overall
+        flattenedMetrics.push({
+          metric_name: entry.metric_name,
+          display_name: entry.metric_name, // Can enhance this later with proper display names
+          test_date: entry.test_date,
+          value: entry.value,
+          percentile_play_level: entry.percentile_play_level,
+          percentile_overall: entry.percentile_overall,
+          test_id: entry.test_id,
+        });
+      }
+
+      return NextResponse.json({
+        athlete: {
+          id: athleteId,
+          name: `${athlete.first_name} ${athlete.last_name}`,
+          play_level: playLevel,
+        },
+        test_type: testTypeFilter,
+        metrics: flattenedMetrics,
+        total_tests: flattenedMetrics.length,
+      });
+    }
+
+    // Otherwise, group by test type for overview
     const groupedByTestType: Record<string, any[]> = {
       CMJ: [],
       SJ: [],
@@ -66,7 +107,6 @@ export async function GET(
     };
 
     // Process each history entry
-    // NEW: Each row now has BOTH percentiles in separate columns
     for (const entry of history || []) {
       const testType = entry.test_type;
 
@@ -77,11 +117,10 @@ export async function GET(
       groupedByTestType[testType].push({
         test_id: entry.test_id,
         test_date: entry.test_date,
-        play_level: entry.play_level, // Athlete's actual play level
-        metrics: entry.metrics, // JSONB with both percentile_play_level and percentile_overall per metric
-        composite_score_play_level: entry.composite_score_play_level, // Percentile vs athlete's play level
-        composite_score_overall: entry.composite_score_overall, // Percentile vs Overall
-        created_at: entry.created_at,
+        metric_name: entry.metric_name,
+        value: entry.value,
+        percentile_play_level: entry.percentile_play_level,
+        percentile_overall: entry.percentile_overall,
       });
     }
 

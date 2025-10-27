@@ -3,11 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import ForceOverviewSection from './force-profile/force-overview-section';
-import CMJSection from './force-profile/cmj-section';
-import SJSection from './force-profile/sj-section';
-import HJSection from './force-profile/hj-section';
-import PPUSection from './force-profile/ppu-section';
-import IMTPSection from './force-profile/imtp-section';
+import IndividualTestSection from './force-profile/individual-test-section';
 import SyncHistorySection from './force-profile/sync-history-section';
 
 interface ForceProfileTabProps {
@@ -19,6 +15,7 @@ type ViewMode = 'composite' | 'cmj' | 'sj' | 'hj' | 'ppu' | 'imtp' | 'history';
 export default function ForceProfileTab({ athleteId }: ForceProfileTabProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('composite');
   const [valdProfileId, setValdProfileId] = useState<string | null>(null);
+  const [playLevel, setPlayLevel] = useState<string>('');
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
@@ -29,11 +26,12 @@ export default function ForceProfileTab({ athleteId }: ForceProfileTabProps) {
     const supabase = createClient();
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('vald_profile_id')
+      .select('vald_profile_id, play_level')
       .eq('id', athleteId)
       .single();
 
     setValdProfileId(athlete?.vald_profile_id || null);
+    setPlayLevel(athlete?.play_level || 'NCAA D1');
   }
 
   async function handleSync() {
@@ -167,11 +165,11 @@ export default function ForceProfileTab({ athleteId }: ForceProfileTabProps) {
 
       {/* Content Sections */}
       {viewMode === 'composite' && <ForceOverviewSection athleteId={athleteId} />}
-      {viewMode === 'cmj' && <CMJSection athleteId={athleteId} />}
-      {viewMode === 'sj' && <SJSection athleteId={athleteId} />}
-      {viewMode === 'hj' && <HJSection athleteId={athleteId} />}
-      {viewMode === 'ppu' && <PPUSection athleteId={athleteId} />}
-      {viewMode === 'imtp' && <IMTPSection athleteId={athleteId} />}
+      {viewMode === 'cmj' && <IndividualTestSection athleteId={athleteId} testType="CMJ" playLevel={playLevel} />}
+      {viewMode === 'sj' && <IndividualTestSection athleteId={athleteId} testType="SJ" playLevel={playLevel} />}
+      {viewMode === 'hj' && <IndividualTestSection athleteId={athleteId} testType="HJ" playLevel={playLevel} />}
+      {viewMode === 'ppu' && <IndividualTestSection athleteId={athleteId} testType="PPU" playLevel={playLevel} />}
+      {viewMode === 'imtp' && <IndividualTestSection athleteId={athleteId} testType="IMTP" playLevel={playLevel} />}
       {viewMode === 'history' && <SyncHistorySection athleteId={athleteId} />}
     </div>
   );
