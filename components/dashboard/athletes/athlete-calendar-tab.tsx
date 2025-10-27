@@ -76,6 +76,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedWorkout, setCopiedWorkout] = useState<{ instanceId: string; workoutName: string } | null>(null);
   const [renderVersion, setRenderVersion] = useState(0); // Force re-render counter
+  const [showFabMenu, setShowFabMenu] = useState(false);
 
   const supabase = createClient();
 
@@ -654,13 +655,12 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
             </button>
             <button
               onClick={() => setShowImportPlan(true)}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
+              className="hidden md:flex px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium items-center gap-1.5 md:gap-2 touch-manipulation"
             >
               <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="hidden sm:inline">Import Plan</span>
-              <span className="sm:hidden">Import</span>
+              <span>Import Plan</span>
             </button>
             {!isFullscreenView && (
               <button
@@ -754,6 +754,50 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
             <span className="text-neutral-300">S&C</span>
           </div>
         </div>
+
+        {/* Floating Action Button (Mobile Only) */}
+        {!isFullscreenView && (
+          <div className="md:hidden fixed bottom-6 right-6 z-40">
+            {/* FAB Menu Items */}
+            {showFabMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 bg-black/30 -z-10"
+                  onClick={() => setShowFabMenu(false)}
+                />
+
+                {/* Menu Items */}
+                <div className="absolute bottom-16 right-0 flex flex-col gap-3 mb-2">
+                  <button
+                    onClick={() => {
+                      setShowImportPlan(true);
+                      setShowFabMenu(false);
+                    }}
+                    className="flex items-center gap-3 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-3 rounded-full shadow-lg transition-all animate-in slide-in-from-bottom-2 duration-200"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="font-medium">Import Plan</span>
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Main FAB Button */}
+            <button
+              onClick={() => setShowFabMenu(!showFabMenu)}
+              className={`w-14 h-14 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black rounded-full shadow-2xl shadow-[#9BDDFF]/40 flex items-center justify-center transition-all duration-300 ${
+                showFabMenu ? 'rotate-45' : 'rotate-0'
+              }`}
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Drag Overlay */}
         <DragOverlay>
