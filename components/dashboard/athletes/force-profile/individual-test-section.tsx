@@ -240,7 +240,7 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
       {/* Test History Chart */}
       <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-6 backdrop-blur-xl shadow-lg shadow-black/20">
         <div className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-4">Test History — {latestTest.display_name}</div>
-        <div className="h-64 md:h-80">
+        <div className="h-96 md:h-80">
           <TestHistoryChart
             data={selectedMetricData.map(test => ({
               date: test.test_date,
