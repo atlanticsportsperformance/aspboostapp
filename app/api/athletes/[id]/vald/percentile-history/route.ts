@@ -85,8 +85,9 @@ export async function GET(
         });
       }
 
-      // Calculate 75th percentile VALUE for each metric (not percentage)
+      // Calculate 75th percentile VALUE and standard deviation for each metric
       const eliteThresholds: Record<string, number> = {};
+      const eliteStdDev: Record<string, number> = {};
       const metricGroups: Record<string, number[]> = {};
 
       // Group all values by metric
@@ -97,7 +98,7 @@ export async function GET(
         metricGroups[entry.metric_name].push(entry.value);
       }
 
-      // Calculate 75th percentile for each metric
+      // Calculate 75th percentile and standard deviation for each metric
       for (const [metricName, values] of Object.entries(metricGroups)) {
         // Get all values for this metric across ALL athletes in play level
         const { data: allValues } = await serviceSupabase
@@ -111,6 +112,11 @@ export async function GET(
           const sortedValues = allValues.map(v => v.value).sort((a, b) => a - b);
           const p75Index = Math.floor(sortedValues.length * 0.75);
           eliteThresholds[metricName] = sortedValues[p75Index];
+
+          // Calculate standard deviation of all values
+          const mean = sortedValues.reduce((sum, val) => sum + val, 0) / sortedValues.length;
+          const variance = sortedValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / sortedValues.length;
+          eliteStdDev[metricName] = Math.sqrt(variance);
         }
       }
 
@@ -123,6 +129,7 @@ export async function GET(
         test_type: testTypeFilter,
         metrics: flattenedMetrics,
         elite_thresholds: eliteThresholds,
+        elite_std_dev: eliteStdDev,
         total_tests: flattenedMetrics.length,
       });
     }

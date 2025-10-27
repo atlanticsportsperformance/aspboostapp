@@ -12,6 +12,7 @@ interface TestHistoryChartProps {
   data: TestDataPoint[];
   metricName: string;
   eliteThreshold?: number; // 75th percentile value
+  eliteStdDev?: number; // Standard deviation
 }
 
 interface TooltipData {
@@ -22,7 +23,7 @@ interface TooltipData {
   percentile: number;
 }
 
-export default function TestHistoryChart({ data, metricName, eliteThreshold }: TestHistoryChartProps) {
+export default function TestHistoryChart({ data, metricName, eliteThreshold, eliteStdDev }: TestHistoryChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
 
@@ -117,6 +118,38 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold }: T
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText('75th %ile', width - padding.right + 5, thresholdY);
+
+      // Draw +1 SD and -1 SD lines if standard deviation is provided
+      if (eliteStdDev !== undefined) {
+        // Upper bound (75th percentile + 1 SD)
+        const upperY = getY(eliteThreshold + eliteStdDev);
+        ctx.strokeStyle = 'rgba(255, 165, 0, 0.35)'; // Light orange
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]); // Dotted pattern
+        ctx.beginPath();
+        ctx.moveTo(padding.left, upperY);
+        ctx.lineTo(width - padding.right, upperY);
+        ctx.stroke();
+
+        // Lower bound (75th percentile - 1 SD)
+        const lowerY = getY(eliteThreshold - eliteStdDev);
+        ctx.strokeStyle = 'rgba(255, 165, 0, 0.35)'; // Light orange
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]); // Dotted pattern
+        ctx.beginPath();
+        ctx.moveTo(padding.left, lowerY);
+        ctx.lineTo(width - padding.right, lowerY);
+        ctx.stroke();
+
+        ctx.setLineDash([]); // Reset dash pattern
+
+        // Labels for SD lines
+        ctx.fillStyle = 'rgba(255, 165, 0, 0.7)';
+        ctx.font = '10px Inter, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('+1 SD', width - padding.right + 5, upperY);
+        ctx.fillText('-1 SD', width - padding.right + 5, lowerY);
+      }
     }
 
     // Draw bars
@@ -198,7 +231,7 @@ export default function TestHistoryChart({ data, metricName, eliteThreshold }: T
       ctx.fillText(dateStr, x, padding.top + chartHeight + 10);
     });
 
-  }, [data, eliteThreshold]);
+  }, [data, eliteThreshold, eliteStdDev]);
 
   // Handle mouse movement for hover tooltips
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
