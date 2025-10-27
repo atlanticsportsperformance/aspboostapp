@@ -268,10 +268,10 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
       if (distance < 15) {
         foundPoint = true;
         setHoveredPoint(index);
-        console.log('Radar hover:', { clientX: e.clientX, clientY: e.clientY, pageX: e.pageX, pageY: e.pageY, distance });
+        // Use relative mouse position within the canvas for positioning
         setTooltip({
-          x: e.clientX,
-          y: e.clientY,
+          x: mouseX,
+          y: mouseY,
           displayName: point.displayName,
           percentile: point.current.percentile,
           value: point.current.value,
@@ -348,11 +348,10 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
       {/* Interactive Tooltip */}
       {tooltip && (
         <div
-          className="fixed z-50 pointer-events-none"
+          className="absolute z-50 pointer-events-none"
           style={{
-            left: tooltip.x + 10,
-            top: tooltip.y + 10,
-            transform: 'translate(0, 0)',
+            left: `${tooltip.x + 10}px`,
+            top: `${tooltip.y + 10}px`,
           }}
         >
           <div className="bg-black/90 backdrop-blur-xl border border-white/20 rounded-xl p-3 shadow-2xl shadow-black/50 animate-in fade-in duration-200">
