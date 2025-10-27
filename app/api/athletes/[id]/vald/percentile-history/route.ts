@@ -98,25 +98,41 @@ export async function GET(
         metricGroups[entry.metric_name].push(entry.value);
       }
 
-      // Calculate 75th percentile and standard deviation for each metric
+      // Calculate 75th percentile and standard deviation for each metric (filtered by play level)
       for (const [metricName, values] of Object.entries(metricGroups)) {
-        // Get all values for this metric across ALL athletes in play level
-        const { data: allValues } = await serviceSupabase
+        // Get all athlete_ids with this metric
+        const { data: allRecords } = await serviceSupabase
           .from('athlete_percentile_history')
-          .select('value')
+          .select('value, athlete_id')
           .eq('test_type', testTypeFilter)
           .eq('metric_name', metricName)
           .not('value', 'is', null);
 
-        if (allValues && allValues.length > 0) {
-          const sortedValues = allValues.map(v => v.value).sort((a, b) => a - b);
-          const p75Index = Math.floor(sortedValues.length * 0.75);
-          eliteThresholds[metricName] = sortedValues[p75Index];
+        if (allRecords && allRecords.length > 0) {
+          // Get play levels for all athletes
+          const athleteIds = Array.from(new Set(allRecords.map((r: any) => r.athlete_id)));
+          const { data: athletes } = await serviceSupabase
+            .from('athletes')
+            .select('id, play_level')
+            .in('id', athleteIds);
 
-          // Calculate standard deviation of all values
-          const mean = sortedValues.reduce((sum, val) => sum + val, 0) / sortedValues.length;
-          const variance = sortedValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / sortedValues.length;
-          eliteStdDev[metricName] = Math.sqrt(variance);
+          const athletePlayLevelMap = new Map(athletes?.map((a: any) => [a.id, a.play_level]));
+
+          // Filter to same play level as current athlete
+          const playLevelValues = allRecords
+            .filter((r: any) => athletePlayLevelMap.get(r.athlete_id) === playLevel)
+            .map((r: any) => r.value);
+
+          if (playLevelValues.length > 0) {
+            const sortedValues = playLevelValues.sort((a, b) => a - b);
+            const p75Index = Math.floor(sortedValues.length * 0.75);
+            eliteThresholds[metricName] = sortedValues[p75Index];
+
+            // Calculate standard deviation of play level values
+            const mean = sortedValues.reduce((sum, val) => sum + val, 0) / sortedValues.length;
+            const variance = sortedValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / sortedValues.length;
+            eliteStdDev[metricName] = Math.sqrt(variance);
+          }
         }
       }
 
