@@ -1,0 +1,208 @@
+-- ============================================================================
+-- AUTO-CONTRIBUTION TRIGGER SYSTEM (WITH METRIC VALUES)
+-- ============================================================================
+-- Purpose: Automatically add athletes to percentile_contributions after 2 complete test sessions
+-- This version populates ALL metric values, not just metadata
+-- ============================================================================
+
+-- ============================================================================
+-- STEP 1: Create the trigger function with metric population
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION check_and_add_percentile_contribution()
+RETURNS TRIGGER AS $$
+DECLARE
+  complete_sessions_count INT;
+  session_date DATE;
+  athlete_play_level TEXT;
+  current_test_type TEXT;
+BEGIN
+  -- Only proceed if athlete_id exists
+  IF NEW.athlete_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Get the athlete's play level
+  SELECT play_level INTO athlete_play_level
+  FROM athletes
+  WHERE id = NEW.athlete_id;
+
+  IF athlete_play_level IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Get the session date (calendar day) of this test
+  session_date := DATE(NEW.recorded_utc);
+
+  -- Count how many COMPLETE sessions this athlete has
+  -- A complete session = all 5 tests on the same day
+  SELECT COUNT(DISTINCT session_day) INTO complete_sessions_count
+  FROM (
+    -- Find days where athlete has all 5 test types
+    SELECT DATE(recorded_utc) as session_day
+    FROM (
+      SELECT recorded_utc, 'CMJ' as test_type FROM cmj_tests WHERE athlete_id = NEW.athlete_id
+      UNION ALL
+      SELECT recorded_utc, 'SJ' FROM sj_tests WHERE athlete_id = NEW.athlete_id
+      UNION ALL
+      SELECT recorded_utc, 'HJ' FROM hj_tests WHERE athlete_id = NEW.athlete_id
+      UNION ALL
+      SELECT recorded_utc, 'PPU' FROM ppu_tests WHERE athlete_id = NEW.athlete_id
+      UNION ALL
+      SELECT recorded_utc, 'IMTP' FROM imtp_tests WHERE athlete_id = NEW.athlete_id
+    ) all_tests
+    GROUP BY DATE(recorded_utc)
+    HAVING COUNT(DISTINCT test_type) = 5
+  ) complete_days;
+
+  -- If athlete has 2+ complete sessions, add them to contributions WITH METRICS
+  IF complete_sessions_count >= 2 THEN
+    -- Get the test type from the trigger's table name
+    CASE TG_TABLE_NAME
+      WHEN 'cmj_tests' THEN current_test_type := 'CMJ';
+      WHEN 'sj_tests' THEN current_test_type := 'SJ';
+      WHEN 'hj_tests' THEN current_test_type := 'HJ';
+      WHEN 'ppu_tests' THEN current_test_type := 'PPU';
+      WHEN 'imtp_tests' THEN current_test_type := 'IMTP';
+      ELSE current_test_type := NULL;
+    END CASE;
+
+    IF current_test_type IS NOT NULL THEN
+      -- Insert based on test type with ALL metric values
+      CASE current_test_type
+        WHEN 'CMJ' THEN
+          INSERT INTO athlete_percentile_contributions (
+            athlete_id, test_type, playing_level, test_id, test_date,
+            jump_height_trial_value, stiffness_trial_value, peak_takeoff_power_trial_value,
+            bodymass_relative_takeoff_power_trial_value, eccentric_braking_rfd_trial_value,
+            eccentric_duration_trial_value, concentric_duration_trial_value,
+            rsi_modified_trial_value, countermovement_depth_trial_value,
+            concentric_peak_force_trial_value, eccentric_peak_force_trial_value,
+            eccentric_minimum_force_trial_value, stiffness_asymm_value,
+            eccentric_deceleration_impulse_asymm_value, contraction_impulse_asymm_value_cmj,
+            concentric_impulse_asymm_value_cmj
+          )
+          VALUES (
+            NEW.athlete_id, 'CMJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
+            NEW.jump_height_trial_value, NEW.stiffness_trial_value, NEW.peak_takeoff_power_trial_value,
+            NEW.bodymass_relative_takeoff_power_trial_value, NEW.eccentric_braking_rfd_trial_value,
+            NEW.eccentric_duration_trial_value, NEW.concentric_duration_trial_value,
+            NEW.rsi_modified_trial_value, NEW.countermovement_depth_trial_value,
+            NEW.concentric_peak_force_trial_value, NEW.eccentric_peak_force_trial_value,
+            NEW.eccentric_minimum_force_trial_value, NEW.stiffness_asymm_value,
+            NEW.eccentric_deceleration_impulse_asymm_value, NEW.contraction_impulse_asymm_value,
+            NEW.concentric_impulse_asymm_value
+          )
+          ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
+
+        WHEN 'SJ' THEN
+          INSERT INTO athlete_percentile_contributions (
+            athlete_id, test_type, playing_level, test_id, test_date,
+            sj_jump_height_trial_value, sj_peak_takeoff_power_trial_value,
+            sj_bodymass_relative_takeoff_power_trial_value,
+            sj_contraction_impulse_asymm_value, sj_concentric_impulse_asymm_value
+          )
+          VALUES (
+            NEW.athlete_id, 'SJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
+            NEW.jump_height_trial_value, NEW.peak_takeoff_power_trial_value,
+            NEW.bodymass_relative_takeoff_power_trial_value,
+            NEW.contraction_impulse_asymm_value, NEW.concentric_impulse_asymm_value
+          )
+          ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
+
+        WHEN 'HJ' THEN
+          INSERT INTO athlete_percentile_contributions (
+            athlete_id, test_type, playing_level, test_id, test_date,
+            hop_mean_stiffness_trial_value, hop_mean_jump_height_trial_value,
+            hop_mean_rsi_trial_value, hop_mean_contact_time_trial_value
+          )
+          VALUES (
+            NEW.athlete_id, 'HJ', athlete_play_level, NEW.test_id, NEW.recorded_utc,
+            NEW.mean_stiffness_trial_value, NEW.mean_jump_height_trial_value,
+            NEW.mean_rsi_trial_value, NEW.mean_contact_time_trial_value
+          )
+          ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
+
+        WHEN 'PPU' THEN
+          INSERT INTO athlete_percentile_contributions (
+            athlete_id, test_type, playing_level, test_id, test_date,
+            ppu_peak_takeoff_force_trial_value, ppu_peak_eccentric_force_trial_value,
+            ppu_peak_takeoff_force_asymm_value, ppu_peak_eccentric_force_asymm_value
+          )
+          VALUES (
+            NEW.athlete_id, 'PPU', athlete_play_level, NEW.test_id, NEW.recorded_utc,
+            NEW.peak_takeoff_force_trial_value, NEW.peak_eccentric_force_trial_value,
+            NEW.peak_takeoff_force_asymm_value, NEW.peak_eccentric_force_asymm_value
+          )
+          ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
+
+        WHEN 'IMTP' THEN
+          INSERT INTO athlete_percentile_contributions (
+            athlete_id, test_type, playing_level, test_id, test_date,
+            peak_vertical_force_trial_value, net_peak_vertical_force_trial_value,
+            relative_strength_trial_value, force_at_100_trial_value,
+            force_at_150_trial_value, force_at_200_trial_value
+          )
+          VALUES (
+            NEW.athlete_id, 'IMTP', athlete_play_level, NEW.test_id, NEW.recorded_utc,
+            NEW.peak_vertical_force_trial_value, NEW.net_peak_vertical_force_trial_value,
+            NEW.relative_strength_trial_value, NEW.force_at_100_trial_value,
+            NEW.force_at_150_trial_value, NEW.force_at_200_trial_value
+          )
+          ON CONFLICT (athlete_id, test_type, playing_level) DO NOTHING;
+      END CASE;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- STEP 2: Drop old triggers if they exist
+-- ============================================================================
+
+DROP TRIGGER IF EXISTS auto_add_contribution_cmj ON cmj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_sj ON sj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_hj ON hj_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_ppu ON ppu_tests;
+DROP TRIGGER IF EXISTS auto_add_contribution_imtp ON imtp_tests;
+
+-- ============================================================================
+-- STEP 3: Create triggers on all 5 test tables
+-- ============================================================================
+
+CREATE TRIGGER auto_add_contribution_cmj
+  AFTER INSERT ON cmj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_sj
+  AFTER INSERT ON sj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_hj
+  AFTER INSERT ON hj_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_ppu
+  AFTER INSERT ON ppu_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+CREATE TRIGGER auto_add_contribution_imtp
+  AFTER INSERT ON imtp_tests
+  FOR EACH ROW
+  EXECUTE FUNCTION check_and_add_percentile_contribution();
+
+-- ============================================================================
+-- STEP 4: Add indexes for performance
+-- ============================================================================
+
+CREATE INDEX IF NOT EXISTS idx_cmj_tests_recorded_utc ON cmj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_sj_tests_recorded_utc ON sj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_hj_tests_recorded_utc ON hj_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_ppu_tests_recorded_utc ON ppu_tests(athlete_id, recorded_utc);
+CREATE INDEX IF NOT EXISTS idx_imtp_tests_recorded_utc ON imtp_tests(athlete_id, recorded_utc);
