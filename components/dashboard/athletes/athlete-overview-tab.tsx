@@ -34,11 +34,38 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
   const [groupMemberships, setGroupMemberships] = useState<any[]>([]);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showBodyweightHistory, setShowBodyweightHistory] = useState(false);
+  const [latestWeight, setLatestWeight] = useState<number | null>(null);
 
   useEffect(() => {
     fetchOverviewData();
     fetchGroupMemberships();
+    fetchLatestWeight();
   }, [athlete.id]);
+
+  async function fetchLatestWeight() {
+    // If athlete already has weight, use that
+    if (athlete.weight_lbs) {
+      setLatestWeight(athlete.weight_lbs);
+      return;
+    }
+
+    // Otherwise, fetch from most recent CMJ test
+    const supabase = createClient();
+    const { data } = await supabase
+      .from('cmj_tests')
+      .select('body_weight_trial_value')
+      .eq('athlete_id', athlete.id)
+      .not('body_weight_trial_value', 'is', null)
+      .order('recorded_utc', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (data && data.body_weight_trial_value) {
+      // Convert kg to lbs
+      const weightLbs = Math.round(data.body_weight_trial_value * 2.20462 * 10) / 10;
+      setLatestWeight(weightLbs);
+    }
+  }
 
   async function handleDeleteAllContent() {
     if (!confirm('⚠️ WARNING: This will permanently delete ALL workouts, routines, workout instances, and plan assignments for this athlete. This cannot be undone.\n\nAre you absolutely sure?')) {
@@ -347,9 +374,10 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
     return 'bg-gray-500/20 border-gray-500/50';
   };
 
-  const fullName = profile
-    ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
-    : `Athlete #${athlete.id.slice(0, 8)}`;
+  const fullName =
+    `${athlete.first_name || ''} ${athlete.last_name || ''}`.trim() ||
+    (profile ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : '') ||
+    `Athlete #${athlete.id.slice(0, 8)}`;
 
   const age = formatAge(athlete.date_of_birth);
 
@@ -564,7 +592,7 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
                   <p className="text-xs text-gray-500">Weight</p>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-white font-semibold">
-                      {athlete.weight_lbs ? `${athlete.weight_lbs} lbs` : '-'}
+                      {latestWeight ? `${latestWeight} lbs` : '-'}
                     </p>
                     <button
                       onClick={() => setShowBodyweightHistory(true)}
