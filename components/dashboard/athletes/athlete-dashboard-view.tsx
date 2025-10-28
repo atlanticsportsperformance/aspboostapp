@@ -73,11 +73,13 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   useEffect(() => {
     // Only fetch force profile on initial load
     fetchForceProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [athleteId]);
 
   useEffect(() => {
     // Fetch workout instances when month changes (no loading screen)
     fetchWorkoutInstances();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [athleteId, currentDate]);
 
   async function fetchWorkoutInstances() {
