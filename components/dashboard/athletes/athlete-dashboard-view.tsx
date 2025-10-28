@@ -408,8 +408,8 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
               {/* Main Content - Circle Left, Metrics Right */}
               <div className="flex-1 flex items-start gap-6">
                 {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
-                <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group">
-                  <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block' }}>
+                <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group overflow-hidden rounded-full" style={{ width: '176px', height: '176px' }}>
+                  <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block', background: 'transparent' }}>
                       {/* Background circle - clean track */}
                       <circle
                         cx="88"
