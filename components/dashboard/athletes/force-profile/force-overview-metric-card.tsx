@@ -93,9 +93,9 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
     >
       {/* Header with HUGE percentile number */}
       <div className="flex items-start justify-between mb-1.5 md:mb-2">
-        <div className="flex items-baseline gap-1.5 max-w-[140px]">
+        <div className="max-w-[120px]">
           <h3 className="text-white/90 font-semibold text-xs md:text-sm leading-tight">{displayName}</h3>
-          <p className="text-[8px] text-gray-500 leading-tight whitespace-nowrap">— {getMetricDescription(displayName)}</p>
+          <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{getMetricDescription(displayName)}</p>
         </div>
         <div className="flex flex-col items-end">
           <div className="flex items-baseline gap-0.5">
