@@ -56,7 +56,7 @@ export default function AthleteForceProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading force profile...</p>
@@ -70,7 +70,7 @@ export default function AthleteForceProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black">
+    <div className="min-h-screen bg-black">
       {/* Mobile Header */}
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center gap-3 px-4 py-4">

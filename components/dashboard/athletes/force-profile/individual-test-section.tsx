@@ -140,8 +140,14 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
           ))}
         </div>
 
-        <div className="flex items-center justify-center h-64 bg-white/5 rounded-2xl border border-white/10">
-          <div className="text-gray-400">No data available for this time range</div>
+        <div className="relative flex items-center justify-center h-64 bg-black rounded-2xl border border-white/10" style={{
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+        }}>
+          {/* Glossy shine overlay */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+          }} />
+          <div className="text-gray-400 relative z-10">No data available for this time range</div>
         </div>
       </div>
     );
@@ -197,18 +203,30 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
       {/* Stats Cards - Compact on mobile */}
       <div className="grid grid-cols-3 gap-2 md:gap-3">
         {/* Latest Result */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
-          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Latest Result</div>
-          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1">{latestTest.value.toFixed(1)}</div>
-          <div className="text-[10px] md:text-xs text-gray-500">
+        <div className="relative bg-black rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl" style={{
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+        }}>
+          {/* Glossy shine overlay */}
+          <div className="absolute inset-0 rounded-xl md:rounded-2xl pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+          }} />
+          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2 relative z-10">Latest Result</div>
+          <div className="text-2xl md:text-3xl font-bold text-white mb-0.5 md:mb-1 relative z-10">{latestTest.value.toFixed(1)}</div>
+          <div className="text-[10px] md:text-xs text-gray-500 relative z-10">
             {new Date(latestTest.test_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </div>
         </div>
 
         {/* Percentile Rank */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
-          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Percentile Rank</div>
-          <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 ${
+        <div className="relative bg-black rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl" style={{
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+        }}>
+          {/* Glossy shine overlay */}
+          <div className="absolute inset-0 rounded-xl md:rounded-2xl pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+          }} />
+          <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2 relative z-10">Percentile Rank</div>
+          <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 relative z-10 ${
             latestTest.percentile_play_level >= 75 ? 'text-green-400' :
             latestTest.percentile_play_level >= 50 ? 'text-[#9BDDFF]' :
             latestTest.percentile_play_level >= 25 ? 'text-yellow-400' :
@@ -216,19 +234,25 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
           }`}>
             {Math.round(latestTest.percentile_play_level)}th
           </div>
-          <div className="text-[10px] md:text-xs text-gray-500">vs {playLevel} athletes</div>
+          <div className="text-[10px] md:text-xs text-gray-500 relative z-10">vs {playLevel} athletes</div>
         </div>
 
         {/* Change */}
         {previousTest && (
-          <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl">
-            <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2">Change from Previous</div>
-            <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 ${
+          <div className="relative bg-black rounded-xl md:rounded-2xl border border-white/10 p-2.5 md:p-4 backdrop-blur-xl" style={{
+            boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+          }}>
+            {/* Glossy shine overlay */}
+            <div className="absolute inset-0 rounded-xl md:rounded-2xl pointer-events-none" style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+            }} />
+            <div className="text-[10px] md:text-xs text-gray-400 mb-1 md:mb-2 relative z-10">Change from Previous</div>
+            <div className={`text-2xl md:text-3xl font-bold mb-0.5 md:mb-1 relative z-10 ${
               percentileChange > 0 ? 'text-green-400' : percentileChange < 0 ? 'text-red-400' : 'text-gray-400'
             }`}>
               {percentileChange > 0 ? '+' : ''}{percentileChange.toFixed(0)}
             </div>
-            <div className={`text-[10px] md:text-xs ${
+            <div className={`text-[10px] md:text-xs relative z-10 ${
               valueChange > 0 ? 'text-green-500' : valueChange < 0 ? 'text-red-500' : 'text-gray-500'
             }`}>
               {valueChange > 0 ? '+' : ''}{valueChange.toFixed(1)}% value change
@@ -238,9 +262,15 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
       </div>
 
       {/* Test History Chart */}
-      <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-6 backdrop-blur-xl shadow-lg shadow-black/20">
-        <div className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-4">Test History — {latestTest.display_name}</div>
-        <div className="h-96 md:h-80">
+      <div className="relative bg-black rounded-xl md:rounded-2xl border border-white/10 p-3 md:p-6 backdrop-blur-xl shadow-lg shadow-black/20" style={{
+        boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+      }}>
+        {/* Glossy shine overlay */}
+        <div className="absolute inset-0 rounded-xl md:rounded-2xl pointer-events-none" style={{
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+        }} />
+        <div className="text-xs md:text-sm font-semibold text-white mb-2 md:mb-4 relative z-10">Test History — {latestTest.display_name}</div>
+        <div className="h-96 md:h-80 relative z-10">
           <TestHistoryChart
             data={selectedMetricData.map(test => ({
               date: test.test_date,

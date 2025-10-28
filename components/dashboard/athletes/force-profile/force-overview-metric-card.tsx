@@ -74,13 +74,13 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
   return (
     <div
       onClick={onClick}
-      className={`group bg-gradient-to-br ${bgGradient} rounded-2xl p-3 md:p-4 border ${borderColor}
+      className={`group bg-gradient-to-br ${bgGradient} rounded-2xl p-2.5 md:p-3 border ${borderColor}
                   backdrop-blur-xl transition-all duration-300 ease-out ${onClick ? 'cursor-pointer' : ''}
                   ${onClick ? 'hover:scale-[1.02] hover:-translate-y-1' : ''} hover:shadow-2xl ${glowColor}
                   shadow-lg shadow-black/20`}
     >
       {/* Header with HUGE percentile number */}
-      <div className="flex items-start justify-between mb-2 md:mb-3">
+      <div className="flex items-start justify-between mb-1.5 md:mb-2">
         <h3 className="text-white/90 font-semibold text-xs md:text-sm leading-tight max-w-[120px]">{displayName}</h3>
         <div className="flex flex-col items-end">
           <div className="flex items-baseline gap-0.5">
@@ -101,7 +101,7 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
       </div>
 
       {/* Current Test Bar with rounded caps and glow */}
-      <div className="mb-2 md:mb-3">
+      <div className="mb-1.5 md:mb-2">
         <div className="flex items-center justify-between mb-1 md:mb-1.5">
           <span className="text-[10px] text-white/60 font-medium">
             {new Date(current.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
@@ -123,7 +123,7 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
 
       {/* Previous Test Bar (if exists) */}
       {previous && (
-        <div className="mb-2 md:mb-3">
+        <div className="mb-1.5 md:mb-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] text-white/40">
               {new Date(previous.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
@@ -142,7 +142,7 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
       )}
 
       {/* Value Display */}
-      <div className="mt-2 md:mt-3 pt-2 md:pt-3 border-t border-white/10">
+      <div className="mt-1.5 md:mt-2 pt-1.5 md:pt-2 border-t border-white/10">
         <div className="text-[10px] text-white/50 font-medium">Raw Value</div>
         <div className="text-xs md:text-sm text-white/90 font-mono font-semibold mt-0.5">{current.value.toFixed(1)}</div>
       </div>

@@ -127,8 +127,14 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
       {/* Main Layout: Radar + Cards */}
       <div className={`grid gap-4 ${isFullscreen ? 'grid-cols-[1.2fr_1fr] h-[calc(100vh-180px)]' : 'grid-cols-1 lg:grid-cols-[1.2fr_1fr] max-h-[calc(100vh-300px)]'}`}>
         {/* Left: Radar Chart - Much taller to utilize vertical space */}
-        <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-3 flex flex-col relative backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500 min-h-[500px] lg:min-h-[600px]">
-          <div className="flex-1 min-h-[450px]">
+        <div className="relative bg-black rounded-2xl border border-white/10 p-3 flex flex-col backdrop-blur-xl shadow-2xl shadow-black/20 animate-in fade-in slide-in-from-left duration-500 min-h-[500px] lg:min-h-[600px]" style={{
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+        }}>
+          {/* Glossy shine overlay */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+          }} />
+          <div className="flex-1 min-h-[450px] relative z-10">
             <ForceOverviewRadar
               data={radarData}
               compositeScore={compositeScore.current.percentile}
@@ -136,7 +142,7 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
           </div>
 
           {/* Legend - Compact */}
-          <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-white/10">
+          <div className="flex items-center justify-center gap-4 mt-2 pt-2 border-t border-white/10 relative z-10">
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-full bg-gray-200"></div>
               <span className="text-[10px] text-gray-400">Current</span>
@@ -178,8 +184,14 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
 
       {/* Composite Score Footer - only show if dates are actually different */}
       {compositeScore.previous && compositeScore.previous.date !== compositeScore.current.date && (
-        <div className="mt-4 bg-gradient-to-br from-white/[0.07] to-white/[0.02] rounded-2xl border border-white/10 p-4 backdrop-blur-xl shadow-lg shadow-black/20 animate-in fade-in slide-in-from-bottom duration-500 hidden md:block">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="mt-4 relative bg-black rounded-2xl border border-white/10 p-4 backdrop-blur-xl shadow-lg shadow-black/20 animate-in fade-in slide-in-from-bottom duration-500 hidden md:block" style={{
+          boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+        }}>
+          {/* Glossy shine overlay */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+          }} />
+          <div className="flex items-center justify-between flex-wrap gap-4 relative z-10">
             <div>
               <div className="text-sm text-white/80 font-semibold">Composite Score Change</div>
               <div className="text-xs text-gray-500 mt-1 font-medium">

@@ -92,7 +92,7 @@ export default function IndividualTestPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
           <p className="mt-4 text-gray-400">Loading test data...</p>
@@ -108,7 +108,7 @@ export default function IndividualTestPage() {
   const testInfo = TEST_DESCRIPTIONS[testTypeParam.toLowerCase()];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black pb-24">
+    <div className="min-h-screen bg-black pb-24">
       {/* Mobile Header */}
       <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10">
         <div className="flex items-center gap-3 px-4 py-4">
@@ -159,9 +159,15 @@ export default function IndividualTestPage() {
           </div>
 
           {/* Percentile Context */}
-          <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] backdrop-blur-xl border border-white/10 rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-3">Understanding Your Percentile</h3>
-            <div className="space-y-3">
+          <div className="relative bg-black backdrop-blur-xl border border-white/10 rounded-2xl p-6" style={{
+            boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+          }}>
+            {/* Glossy shine overlay */}
+            <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+            }} />
+            <h3 className="text-lg font-bold text-white mb-3 relative z-10">Understanding Your Percentile</h3>
+            <div className="space-y-3 relative z-10">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl bg-green-500/20 border border-green-500/30 flex items-center justify-center flex-shrink-0">
                   <span className="text-green-400 font-bold text-lg">75+</span>
