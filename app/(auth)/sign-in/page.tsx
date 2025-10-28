@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { signIn } from '@/lib/auth/helpers';
 
-export default function SignInPage() {
+function SignInForm() {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
@@ -228,5 +228,19 @@ export default function SignInPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-[#0A0A0A]">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#9BDDFF] border-r-transparent"></div>
+        </div>
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   );
 }
