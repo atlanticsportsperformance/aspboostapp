@@ -403,10 +403,10 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                 background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
               }} />
 
-              <h2 className="text-2xl font-bold text-white mb-6 relative z-10">Force Profile</h2>
+              <h2 className="text-2xl font-bold text-white mb-3 relative z-10">Force Profile</h2>
 
               {/* Main Content - Circle Left, Metrics Right */}
-              <div className="flex-1 flex items-center gap-6">
+              <div className="flex-1 flex items-start gap-6">
                 {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
                 <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group">
                   <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block' }}>
@@ -525,7 +525,7 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                 </Link>
 
                 {/* RIGHT: Best & Worst Metrics - 3D Sliders */}
-                <div className="flex-1 flex flex-col justify-center gap-6">
+                <div className="flex-1 flex flex-col justify-start gap-4 pt-2">
                   {/* Best Metric */}
                   {forceProfile.best_metric && (
                     <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
