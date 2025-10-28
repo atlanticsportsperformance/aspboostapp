@@ -406,21 +406,13 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                 </div>
               </div>
 
-              {/* Key Metrics */}
-              <div className="grid grid-cols-3 gap-2 mt-4">
-                <div className="bg-black/40 rounded-lg p-2 text-center">
-                  <div className="text-xs text-gray-400">CMJ RSI</div>
-                  <div className="text-lg font-bold text-white">{Math.round(forceProfile.cmj_rsi_percentile)}</div>
-                </div>
-                <div className="bg-black/40 rounded-lg p-2 text-center">
-                  <div className="text-xs text-gray-400">SJ Force</div>
-                  <div className="text-lg font-bold text-white">{Math.round(forceProfile.sj_peak_force_percentile)}</div>
-                </div>
-                <div className="bg-black/40 rounded-lg p-2 text-center">
-                  <div className="text-xs text-gray-400">HJ Power</div>
-                  <div className="text-lg font-bold text-white">{Math.round(forceProfile.hj_peak_power_percentile)}</div>
-                </div>
-              </div>
+              {/* Tap to view details */}
+              <Link
+                href={`/dashboard/athletes/${athleteId}?tab=force-profile`}
+                className="mt-4 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/20"
+              >
+                View Full Force Profile →
+              </Link>
             </div>
           ) : (
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex items-center justify-center">
