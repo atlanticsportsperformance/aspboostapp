@@ -100,14 +100,15 @@ export async function POST(
     }
 
     // 6. Get latest test date for incremental sync
-    // WORKAROUND: Go back 60 days instead of using latest test date
+    // WORKAROUND: Go back 180 days instead of using latest test date
     // This is because VALD's ModifiedFromUtc filters by when test was analyzed, not recorded
     // So tests can be recorded earlier but analyzed later, causing them to be skipped
-    const sixtyDaysAgo = new Date();
-    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-    const modifiedFromUtc = sixtyDaysAgo.toISOString();
+    const daysBack = 180;
+    const lookbackDate = new Date();
+    lookbackDate.setDate(lookbackDate.getDate() - daysBack);
+    const modifiedFromUtc = lookbackDate.toISOString();
 
-    console.log(`Syncing tests for athlete ${athleteId} from ${modifiedFromUtc} (60 days back)...`);
+    console.log(`Syncing tests for athlete ${athleteId} from ${modifiedFromUtc} (${daysBack} days back)...`);
 
     // 7. Fetch new tests from VALD
     const valdApi = new SimpleVALDForceDecksAPI();
