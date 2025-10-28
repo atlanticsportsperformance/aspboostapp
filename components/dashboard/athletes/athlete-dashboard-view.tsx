@@ -34,8 +34,8 @@ interface WorkoutInstance {
 interface ForceProfileData {
   composite_score: number;
   percentile_rank: number;
-  best_metric: { name: string; percentile: number } | null;
-  worst_metric: { name: string; percentile: number } | null;
+  best_metric: { name: string; percentile: number; value: number } | null;
+  worst_metric: { name: string; percentile: number; value: number } | null;
 }
 
 type ViewMode = 'month' | 'day';
@@ -71,17 +71,14 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   const supabase = createClient();
 
   useEffect(() => {
-    fetchData();
-  }, [athleteId, currentDate]);
+    // Only fetch force profile on initial load
+    fetchForceProfile();
+  }, [athleteId]);
 
-  async function fetchData() {
-    setLoading(true);
-    await Promise.all([
-      fetchWorkoutInstances(),
-      fetchForceProfile()
-    ]);
-    setLoading(false);
-  }
+  useEffect(() => {
+    // Fetch workout instances when month changes (no loading screen)
+    fetchWorkoutInstances();
+  }, [athleteId, currentDate]);
 
   async function fetchWorkoutInstances() {
     // Get first and last day of current month
@@ -153,12 +150,12 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
       { test_type: 'IMTP', metric_name: 'Relative Strength', displayName: 'IMTP Relative' },
     ];
 
-    const percentiles: Array<{ name: string; percentile: number }> = [];
+    const percentiles: Array<{ name: string; percentile: number; value: number }> = [];
 
     for (const metric of metrics) {
       const { data: metricData } = await supabase
         .from('athlete_percentile_history')
-        .select('percentile_play_level')
+        .select('percentile_play_level, value')
         .eq('athlete_id', athleteId)
         .eq('test_type', metric.test_type)
         .eq('metric_name', metric.metric_name)
@@ -170,7 +167,8 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
       if (metricData?.percentile_play_level) {
         percentiles.push({
           name: metric.displayName,
-          percentile: Math.round(metricData.percentile_play_level)
+          percentile: Math.round(metricData.percentile_play_level),
+          value: metricData.value || 0
         });
       }
     }
@@ -544,7 +542,19 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                           <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
                         </div>
                       </div>
-                      <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.best_metric.name}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-sm text-white font-medium">{forceProfile.best_metric.name}</p>
+                        <p className="text-sm text-green-400 font-bold">
+                          {forceProfile.best_metric.value.toFixed(1)}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {forceProfile.best_metric.name.includes('Power/BM') ? 'W/kg' :
+                             forceProfile.best_metric.name.includes('Power') ? 'W' :
+                             forceProfile.best_metric.name.includes('Force') ? 'N' :
+                             forceProfile.best_metric.name.includes('RSI') ? '' :
+                             forceProfile.best_metric.name.includes('Relative') ? '' : ''}
+                          </span>
+                        </p>
+                      </div>
                     </div>
                   )}
 
@@ -574,7 +584,19 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                           <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
                         </div>
                       </div>
-                      <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.worst_metric.name}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <p className="text-sm text-white font-medium">{forceProfile.worst_metric.name}</p>
+                        <p className="text-sm text-red-400 font-bold">
+                          {forceProfile.worst_metric.value.toFixed(1)}
+                          <span className="text-xs text-gray-400 ml-1">
+                            {forceProfile.worst_metric.name.includes('Power/BM') ? 'W/kg' :
+                             forceProfile.worst_metric.name.includes('Power') ? 'W' :
+                             forceProfile.worst_metric.name.includes('Force') ? 'N' :
+                             forceProfile.worst_metric.name.includes('RSI') ? '' :
+                             forceProfile.worst_metric.name.includes('Relative') ? '' : ''}
+                          </span>
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
