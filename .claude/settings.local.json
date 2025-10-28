@@ -40,7 +40,8 @@
       "Bash(node -e:*)",
       "Bash(then cat vercel.json)",
       "Bash(then cat .vercel/project.json)",
-      "Bash(else echo \"No Vercel config found\")"
+      "Bash(else echo \"No Vercel config found\")",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

@@ -8,7 +8,7 @@ interface Plan {
   id: string;
   name: string;
   description: string | null;
-  duration_weeks: number;
+  program_length_weeks: number;
   workouts_count?: number;
 }
 
@@ -55,14 +55,13 @@ export function AssignPlanToGroupModal({
   }, [searchTerm, plans]);
 
   async function fetchPlans() {
-    // Fetch all plans with workout counts
+    // Fetch all training plans with workout counts
     const { data: plansData, error } = await supabase
-      .from('plans')
+      .from('training_plans')
       .select(`
         *,
         program_days(id)
       `)
-      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -92,7 +91,7 @@ export function AssignPlanToGroupModal({
     try {
       // Step 1: Fetch the plan with all program days and workouts
       const { data: plan, error: planError } = await supabase
-        .from('plans')
+        .from('training_plans')
         .select(`
           *,
           program_days (
@@ -283,7 +282,7 @@ export function AssignPlanToGroupModal({
                         <h3 className="font-semibold text-white truncate">{plan.name}</h3>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="text-xs text-gray-400">
-                            {plan.duration_weeks} weeks
+                            {plan.program_length_weeks} weeks
                           </span>
                           {plan.workouts_count! > 0 && (
                             <>

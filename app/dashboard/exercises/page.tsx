@@ -20,6 +20,12 @@ interface Exercise {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
+  creator?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 const CATEGORIES = [
@@ -77,7 +83,14 @@ export default function ExercisesPage() {
 
     const { data, error } = await supabase
       .from('exercises')
-      .select('*')
+      .select(`
+        *,
+        creator:created_by (
+          first_name,
+          last_name,
+          email
+        )
+      `)
       .eq('is_active', true)
       .order('name');
 
@@ -387,6 +400,7 @@ export default function ExercisesPage() {
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Name</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Category</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Tags</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Created By</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400">Created</th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-gray-400"></th>
             </tr>
@@ -438,6 +452,20 @@ export default function ExercisesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    {exercise.creator ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                          {exercise.creator.first_name?.[0]}{exercise.creator.last_name?.[0]}
+                        </div>
+                        <div className="text-sm text-neutral-300">
+                          {exercise.creator.first_name} {exercise.creator.last_name}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-neutral-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="text-sm text-gray-400">
                       {new Date(exercise.created_at).toLocaleDateString('en-US', {
                         month: 'short',
@@ -471,7 +499,7 @@ export default function ExercisesPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
+                <td colSpan={8} className="px-6 py-12 text-center">
                   <div className="text-gray-400">
                     {searchQuery ? 'No exercises found matching your search' : 'No exercises yet. Create your first exercise!'}
                   </div>

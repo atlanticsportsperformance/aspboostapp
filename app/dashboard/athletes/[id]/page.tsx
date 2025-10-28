@@ -11,6 +11,7 @@ import CalendarTab from '@/components/dashboard/athletes/athlete-calendar-tab';
 import PerformanceTab from '@/components/dashboard/athletes/athlete-performance-tab';
 import ForceProfileTab from '@/components/dashboard/athletes/athlete-force-profile-tab';
 import ManageTagsModal from '@/components/dashboard/athletes/manage-tags-modal';
+import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
 
 interface Profile {
   id: string;
@@ -78,6 +79,7 @@ export default function AthleteDetailPage() {
   const [showManageTagsModal, setShowManageTagsModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isAthleteView, setIsAthleteView] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -95,6 +97,16 @@ export default function AthleteDetailPage() {
       console.log('=== ATHLETE DETAIL PAGE LOADING ===');
       console.log('Athlete ID:', athleteId);
 
+      // Check if logged-in user is viewing their own athlete profile
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('app_role')
+        .eq('id', user?.id)
+        .single();
+
+      console.log('User profile:', userProfile);
+
       // Step 1: Get athlete
       const { data: athlete, error: athleteError } = await supabase
         .from('athletes')
@@ -108,6 +120,12 @@ export default function AthleteDetailPage() {
         console.error('Athlete not found:', athleteError);
         router.push('/dashboard/athletes');
         return;
+      }
+
+      // Check if this is athlete viewing their own profile
+      if (userProfile?.app_role === 'athlete' && athlete.user_id === user?.id) {
+        setIsAthleteView(true);
+        console.log('🏃 Athlete viewing their own profile - switching to athlete dashboard');
       }
 
       // Step 2: Get profile if user_id exists
@@ -243,6 +261,11 @@ export default function AthleteDetailPage() {
   const fullName = athlete.first_name && athlete.last_name
     ? `${athlete.first_name} ${athlete.last_name}`.trim()
     : `Athlete #${athlete.id.slice(0, 8)}`;
+
+  // If athlete is viewing their own profile, show the athlete dashboard
+  if (isAthleteView) {
+    return <AthleteDashboardView athleteId={athleteId} fullName={fullName} />;
+  }
 
   return (
     <div className="min-h-screen pb-20 lg:pb-8">

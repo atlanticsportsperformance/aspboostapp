@@ -50,6 +50,36 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // If user is signed in, check if they're an inactive athlete
+  if (user && isProtectedPath) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('app_role')
+      .eq('id', user.id)
+      .single();
+
+    // If athlete, check active status
+    if (profile?.app_role === 'athlete') {
+      const { data: athlete } = await supabase
+        .from('athletes')
+        .select('is_active')
+        .eq('user_id', user.id)
+        .single();
+
+      // Block inactive athletes
+      if (athlete && !athlete.is_active) {
+        // Sign them out
+        await supabase.auth.signOut();
+
+        // Redirect to sign-in with error message
+        const url = request.nextUrl.clone();
+        url.pathname = '/sign-in';
+        url.searchParams.set('error', 'account_inactive');
+        return NextResponse.redirect(url);
+      }
+    }
+  }
+
   // If user is signed in and trying to access auth pages, redirect to appropriate dashboard
   if (user && request.nextUrl.pathname.startsWith('/sign-')) {
     const url = request.nextUrl.clone();

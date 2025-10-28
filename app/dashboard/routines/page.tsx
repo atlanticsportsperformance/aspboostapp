@@ -23,6 +23,12 @@ interface Routine {
   tags?: string[];
   category?: 'hitting' | 'throwing' | 'strength_conditioning';
   created_at: string;
+  created_by: string | null;
+  creator?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
   routine_exercises: {
     id: string;
     exercise_id: string | null;
@@ -50,10 +56,15 @@ export default function RoutinesPage() {
   async function fetchRoutines() {
     console.log('Fetching standalone routines...');
 
-    const { data, error } = await supabase
+    const { data, error} = await supabase
       .from('routines')
       .select(`
         *,
+        creator:created_by (
+          first_name,
+          last_name,
+          email
+        ),
         routine_exercises (
           id,
           exercise_id,
@@ -78,12 +89,16 @@ export default function RoutinesPage() {
   }
 
   async function handleCreateRoutine() {
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('routines')
       .insert({
         name: 'New Routine',
         scheme: 'straight',
         is_standalone: true,
+        created_by: user?.id || null,  // Set creator
         order_index: 0
       })
       .select()
@@ -226,7 +241,7 @@ export default function RoutinesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">Routine Library</h1>
+          <h1 className="text-3xl font-bold text-white">Routine Library</h1>
           <p className="text-gray-400 text-sm mt-1">
             Create reusable routines to import into workouts or assign directly to calendar
           </p>
@@ -313,10 +328,11 @@ export default function RoutinesPage() {
           {/* List Header */}
           <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
             <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-              <div className="col-span-4">Routine Name</div>
+              <div className="col-span-3">Routine Name</div>
               <div className="col-span-2">Category</div>
               <div className="col-span-2">Scheme</div>
-              <div className="col-span-2">Exercises</div>
+              <div className="col-span-1">Exercises</div>
+              <div className="col-span-2">Created By</div>
               <div className="col-span-2 text-right">Actions</div>
             </div>
           </div>
@@ -334,7 +350,7 @@ export default function RoutinesPage() {
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Routine Name */}
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
                         {routine.name}
                       </div>
@@ -356,8 +372,24 @@ export default function RoutinesPage() {
                     </div>
 
                     {/* Exercises */}
-                    <div className="col-span-2 text-sm text-neutral-400">
-                      {exerciseCount} Exercise{exerciseCount !== 1 ? 's' : ''}
+                    <div className="col-span-1 text-sm text-neutral-400">
+                      {exerciseCount}
+                    </div>
+
+                    {/* Created By */}
+                    <div className="col-span-2">
+                      {routine.creator ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                            {routine.creator.first_name?.[0]}{routine.creator.last_name?.[0]}
+                          </div>
+                          <div className="text-sm text-neutral-300">
+                            {routine.creator.first_name} {routine.creator.last_name}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-neutral-600">—</span>
+                      )}
                     </div>
 
                     {/* Actions */}

@@ -29,17 +29,19 @@ export default function EditAthleteProfileModal({
   const [secondaryPosition, setSecondaryPosition] = useState('');
   const [gradYear, setGradYear] = useState('');
   const [playLevel, setPlayLevel] = useState<'Youth' | 'High School' | 'College' | 'Pro'>('High School');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     if (isOpen && athlete) {
       // Populate form with current data
       setEmail(profile?.email || athlete.email || '');
-      setPhone(profile?.phone || '');
+      setPhone(athlete.phone || profile?.phone || '');
       setBirthDate(athlete.date_of_birth ? athlete.date_of_birth.split('T')[0] : '');
       setPrimaryPosition(athlete.primary_position || '');
       setSecondaryPosition(athlete.secondary_position || '');
       setGradYear(athlete.grad_year?.toString() || '');
       setPlayLevel(athlete.play_level || 'High School');
+      setNotes(athlete.notes || '');
     }
   }, [isOpen, athlete, profile]);
 
@@ -66,30 +68,19 @@ export default function EditAthleteProfileModal({
         .from('athletes')
         .update({
           email,
+          phone: phone || null,
           date_of_birth: birthDate || null,
           primary_position: primaryPosition || null,
           secondary_position: secondaryPosition || null,
           grad_year: gradYear ? parseInt(gradYear) : null,
           play_level: playLevel,
+          notes: notes || null,
         })
         .eq('id', athlete.id);
 
       if (athleteError) {
         console.error('Athlete update error:', athleteError);
         throw new Error(athleteError.message || JSON.stringify(athleteError));
-      }
-
-      // Update profile if it exists (for phone)
-      if (profile && phone) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ phone })
-          .eq('id', profile.id);
-
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-          throw new Error(profileError.message || JSON.stringify(profileError));
-        }
       }
 
       alert('✅ Profile updated successfully!');
@@ -248,6 +239,23 @@ export default function EditAthleteProfileModal({
                     <option value="Pro" className="bg-[#0A0A0A]">Pro</option>
                   </select>
                 </div>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div>
+              <h3 className="text-white font-semibold text-lg mb-4">Notes</h3>
+              <div>
+                <label className="block text-gray-400 text-sm font-medium mb-2">
+                  Athlete Notes
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={5}
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent resize-none"
+                  placeholder="Add any notes about this athlete (training preferences, injuries, goals, etc.)"
+                />
               </div>
             </div>
           </div>

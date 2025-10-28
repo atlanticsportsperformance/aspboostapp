@@ -60,8 +60,8 @@ export async function POST(
       );
     }
 
-    // 4. Verify athlete is in same org as user
-    if (athlete.org_id !== profile.org_id) {
+    // 4. Verify athlete is in same org as user (super_admin can access all orgs)
+    if (profile.app_role !== 'super_admin' && athlete.org_id !== profile.org_id) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

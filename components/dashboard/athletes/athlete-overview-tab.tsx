@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
 import EditAthleteProfileModal from './edit-athlete-profile-modal';
 import { BodyweightHistoryModal } from './bodyweight-history-modal';
+import AthleteCoachesSection from './athlete-coaches-section';
+import AthleteAccountSection from './athlete-account-section';
 
 interface OverviewTabProps {
   athleteData: any;
@@ -35,6 +37,16 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showBodyweightHistory, setShowBodyweightHistory] = useState(false);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
+
+  // Inline editing states
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesValue, setNotesValue] = useState(athlete.notes || '');
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactEmail, setContactEmail] = useState(athlete.email || profile?.email || '');
+  const [contactPhone, setContactPhone] = useState(athlete.phone || profile?.phone || '');
+  const [contactBirthDate, setContactBirthDate] = useState(athlete.date_of_birth || '');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [savingContact, setSavingContact] = useState(false);
 
   useEffect(() => {
     fetchOverviewData();
@@ -318,6 +330,52 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
     fetchGroupMemberships();
   }
 
+  async function handleSaveNotes() {
+    setSavingNotes(true);
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('athletes')
+      .update({ notes: notesValue || null })
+      .eq('id', athlete.id);
+
+    if (error) {
+      console.error('Error saving notes:', error);
+      alert('Failed to save notes');
+    } else {
+      athlete.notes = notesValue;
+      setEditingNotes(false);
+    }
+    setSavingNotes(false);
+  }
+
+  async function handleSaveContact() {
+    setSavingContact(true);
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from('athletes')
+      .update({
+        email: contactEmail || null,
+        phone: contactPhone || null,
+        date_of_birth: contactBirthDate || null,
+      })
+      .eq('id', athlete.id);
+
+    if (error) {
+      console.error('Error saving contact:', error);
+      alert('Failed to save contact info');
+    } else {
+      athlete.email = contactEmail;
+      athlete.phone = contactPhone;
+      athlete.date_of_birth = contactBirthDate;
+      setEditingContact(false);
+      // Trigger re-render by updating parent component
+      window.location.reload();
+    }
+    setSavingContact(false);
+  }
+
   const formatAge = (dateOfBirth: string | null) => {
     if (!dateOfBirth) return null;
     const today = new Date();
@@ -481,18 +539,17 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
           </button>
         </div>
 
-        {/* Flex Container - Stack on Mobile, Row on Desktop */}
-        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-
-          {/* Left Side: Profile Info */}
-          <div className="flex-shrink-0 lg:w-1/3">
-            <div className="text-center lg:text-left">
-              <div className="h-20 w-20 lg:h-24 lg:w-24 mx-auto lg:mx-0 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl lg:text-3xl mb-3">
-                {profile?.first_name?.[0] || 'A'}
-                {profile?.last_name?.[0] || ''}
-              </div>
-              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2">{fullName}</h3>
-              <div className="flex flex-wrap justify-center lg:justify-start gap-1.5 mb-3">
+        {/* Header Row: Avatar + Name + Physical Stats + Notes */}
+        <div className="flex items-start gap-6 mb-6 pb-6 border-b border-white/10">
+          {/* Left: Avatar + Name + Badges */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-3xl flex-shrink-0">
+              {profile?.first_name?.[0] || 'A'}
+              {profile?.last_name?.[0] || ''}
+            </div>
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-2">{fullName}</h3>
+              <div className="flex flex-wrap gap-1.5">
                 {athlete.primary_position && (
                   <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs font-medium">
                     {athlete.primary_position}
@@ -515,130 +572,324 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Tags - Compact for mobile */}
-            <div className="mt-3 pt-3 border-t border-white/10">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-semibold text-[#9BDDFF]">Tags</p>
-                {onManageTags && (
-                  <button
-                    onClick={onManageTags}
-                    className="px-2 py-1 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-xs font-medium rounded transition-colors border border-[#9BDDFF]/20 flex items-center gap-1"
-                  >
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                    </svg>
-                    Manage
-                  </button>
-                )}
+          {/* Divider */}
+          <div className="w-px h-20 bg-white/10 flex-shrink-0"></div>
+
+          {/* Physical Stats */}
+          <div className="flex-shrink-0">
+            <p className="text-xs text-gray-400 mb-2 font-semibold">PHYSICAL</p>
+            <div className="flex gap-6">
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Height</p>
+                <p className="text-sm text-white font-semibold">
+                  {formatHeight(athlete.height_inches) || '-'}
+                </p>
               </div>
-              {athleteTags.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
-                  {athleteTags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-2 py-0.5 rounded text-xs font-medium bg-white/10 text-gray-300"
+              <div>
+                <p className="text-xs text-gray-500 mb-0.5">Weight</p>
+                <div className="flex items-center gap-1">
+                  <p className="text-sm text-white font-semibold">
+                    {latestWeight ? `${latestWeight} lbs` : '-'}
+                  </p>
+                  {latestWeight && (
+                    <button
+                      onClick={() => setShowBodyweightHistory(true)}
+                      className="p-0.5 hover:bg-white/10 rounded transition-colors"
+                      title="View bodyweight history"
                     >
-                      {tag.tag_name}
-                    </span>
-                  ))}
+                      <svg className="w-3 h-3 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <p className="text-xs text-gray-500">No tags yet</p>
+              </div>
+              {athlete.dominant_hand && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Hand</p>
+                  <p className="text-sm text-white font-semibold capitalize">
+                    {athlete.dominant_hand}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Right Side: Contact & Details - Grid on Both Mobile and Desktop */}
-          <div className="flex-1 space-y-4">
-            {/* Contact Info */}
-            <div>
-              <p className="text-xs text-gray-400 mb-2 font-semibold">CONTACT</p>
-              <div className="space-y-2">
-                {profile?.email && (
-                  <div className="flex items-center gap-2">
-                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {/* Divider */}
+          <div className="w-px h-20 bg-white/10 flex-shrink-0"></div>
+
+          {/* Notes Section */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-xs text-gray-400 font-semibold">NOTES</p>
+              {!editingNotes ? (
+                <button
+                  onClick={() => {
+                    setNotesValue(athlete.notes || '');
+                    setEditingNotes(true);
+                  }}
+                  className="text-xs text-[#9BDDFF] hover:text-[#7BC5F0] transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={() => setEditingNotes(false)}
+                    disabled={savingNotes}
+                    className="text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveNotes}
+                    disabled={savingNotes}
+                    className="text-xs text-[#9BDDFF] hover:text-[#7BC5F0] transition-colors font-medium"
+                  >
+                    {savingNotes ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              )}
+            </div>
+            {!editingNotes ? (
+              <p className="text-sm text-white whitespace-pre-wrap line-clamp-3">
+                {athlete.notes || <span className="text-gray-500 italic">No notes added yet. Click Edit to add notes.</span>}
+              </p>
+            ) : (
+              <textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                rows={3}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent resize-none"
+                placeholder="Add notes about this athlete..."
+                autoFocus
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Info Grid: 3 Columns with Dividers */}
+        <div className="flex flex-col md:flex-row gap-6 mb-6">
+          {/* Contact Info */}
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-gray-400 font-semibold">CONTACT</p>
+              {!editingContact ? (
+                <button
+                  onClick={() => {
+                    setContactEmail(athlete.email || profile?.email || '');
+                    setContactPhone(athlete.phone || profile?.phone || '');
+                    setContactBirthDate(athlete.date_of_birth ? athlete.date_of_birth.split('T')[0] : '');
+                    setEditingContact(true);
+                  }}
+                  className="text-xs text-[#9BDDFF] hover:text-[#7BC5F0] transition-colors flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Edit
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setEditingContact(false)}
+                    disabled={savingContact}
+                    className="text-xs text-gray-400 hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveContact}
+                    disabled={savingContact}
+                    className="text-xs text-[#9BDDFF] hover:text-[#7BC5F0] transition-colors font-medium"
+                  >
+                    {savingContact ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!editingContact ? (
+              <div className="space-y-2.5">
+                {(athlete.email || profile?.email) && (
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
-                    <a href={`mailto:${profile.email}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors truncate">
-                      {profile.email}
+                    <a href={`mailto:${athlete.email || profile?.email}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors break-all">
+                      {athlete.email || profile?.email}
                     </a>
                   </div>
                 )}
-                {profile?.phone && (
+                {(athlete.phone || profile?.phone) && (
                   <div className="flex items-center gap-2">
                     <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
-                    <a href={`tel:${profile.phone}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors">
-                      {profile.phone}
+                    <a href={`tel:${athlete.phone || profile?.phone}`} className="text-sm text-white hover:text-[#9BDDFF] transition-colors">
+                      {athlete.phone || profile?.phone}
                     </a>
                   </div>
                 )}
-              </div>
-            </div>
-
-            {/* Physical Details - Compact Grid */}
-            <div>
-              <p className="text-xs text-gray-400 mb-2 font-semibold">PHYSICAL</p>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-2">
-                <div>
-                  <p className="text-xs text-gray-500">Height</p>
-                  <p className="text-sm text-white font-semibold">
-                    {formatHeight(athlete.height_inches) || '-'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Weight</p>
+                {athlete.date_of_birth && (
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-white font-semibold">
-                      {latestWeight ? `${latestWeight} lbs` : '-'}
-                    </p>
-                    <button
-                      onClick={() => setShowBodyweightHistory(true)}
-                      className="p-1 hover:bg-white/10 rounded transition-colors"
-                      title="View bodyweight history"
-                    >
-                      <svg className="w-4 h-4 text-[#9BDDFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500">Hand</p>
-                  <p className="text-sm text-white font-semibold capitalize">
-                    {athlete.dominant_hand || '-'}
-                  </p>
-                </div>
-                {athlete.secondary_position && (
-                  <div>
-                    <p className="text-xs text-gray-500">2nd Pos</p>
-                    <p className="text-sm text-white font-semibold">
-                      {athlete.secondary_position}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Guardian Contacts if any */}
-            {contacts.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-400 mb-2 font-semibold">GUARDIANS</p>
-                <div className="space-y-1.5">
-                  {contacts.map((contact) => (
-                    <div key={contact.id} className="text-sm">
-                      <p className="text-white font-medium">{contact.first_name} {contact.last_name}</p>
-                      {contact.email && (
-                        <a href={`mailto:${contact.email}`} className="text-xs text-gray-400 hover:text-[#9BDDFF]">
-                          {contact.email}
-                        </a>
+                    <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div className="text-sm">
+                      <span className="text-white">
+                        {new Date(athlete.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                      {age && (
+                        <span className="text-gray-400 ml-2">({age} years old)</span>
                       )}
                     </div>
-                  ))}
+                  </div>
+                )}
+                {(!athlete.email && !profile?.email && !athlete.phone && !profile?.phone && !athlete.date_of_birth) && (
+                  <p className="text-sm text-gray-500">No contact info</p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#9BDDFF]"
+                    placeholder="athlete@email.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#9BDDFF]"
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Birth Date</label>
+                  <input
+                    type="date"
+                    value={contactBirthDate}
+                    onChange={(e) => setContactBirthDate(e.target.value)}
+                    className="w-full px-2 py-1.5 bg-white/5 border border-white/10 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#9BDDFF]"
+                  />
                 </div>
               </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="hidden md:block w-px bg-white/10"></div>
+
+          {/* Coaches */}
+          <div className="flex-1">
+            <AthleteCoachesSection athleteId={athlete.id} />
+          </div>
+
+          {/* Divider */}
+          <div className="hidden md:block w-px bg-white/10"></div>
+
+          {/* Additional Info */}
+          <div className="flex-1">
+            <p className="text-xs text-gray-400 mb-3 font-semibold">ADDITIONAL INFO</p>
+            <div className="space-y-2.5">
+              {athlete.secondary_position && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Secondary Position</p>
+                  <p className="text-sm text-white font-semibold">
+                    {athlete.secondary_position}
+                  </p>
+                </div>
+              )}
+              {athlete.grad_year && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Graduation Year</p>
+                  <p className="text-sm text-white font-semibold">
+                    {athlete.grad_year}
+                  </p>
+                </div>
+              )}
+              {athlete.play_level && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Play Level</p>
+                  <p className="text-sm text-white font-semibold">
+                    {athlete.play_level}
+                  </p>
+                </div>
+              )}
+              {(!athlete.secondary_position && !athlete.grad_year && !athlete.play_level) && (
+                <p className="text-sm text-gray-500">No additional info</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Row: Tags + Guardians */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-white/10">
+          {/* Tags */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-400">TAGS</p>
+              {onManageTags && (
+                <button
+                  onClick={onManageTags}
+                  className="px-2 py-1 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-xs font-medium rounded transition-colors border border-[#9BDDFF]/20 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                  </svg>
+                  Manage
+                </button>
+              )}
+            </div>
+            {athleteTags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {athleteTags.map((tag, idx) => (
+                  <span
+                    key={idx}
+                    className="px-2.5 py-1 rounded text-xs font-medium bg-white/10 text-gray-300 border border-white/10"
+                  >
+                    {tag.tag_name}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No tags assigned</p>
+            )}
+          </div>
+
+          {/* Guardians */}
+          <div>
+            <p className="text-xs text-gray-400 mb-3 font-semibold">GUARDIANS</p>
+            {contacts.length > 0 ? (
+              <div className="space-y-2.5">
+                {contacts.map((contact) => (
+                  <div key={contact.id} className="bg-white/5 rounded-lg p-2.5 border border-white/10">
+                    <p className="text-sm text-white font-medium mb-0.5">
+                      {contact.first_name} {contact.last_name}
+                    </p>
+                    {contact.email && (
+                      <a href={`mailto:${contact.email}`} className="text-xs text-gray-400 hover:text-[#9BDDFF] transition-colors break-all">
+                        {contact.email}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No guardians listed</p>
             )}
           </div>
         </div>
@@ -686,6 +937,16 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
               <p className="text-gray-400 text-xs lg:text-sm">No group assignments</p>
             )}
           </div>
+
+        {/* Login Account Management */}
+        <AthleteAccountSection
+          athlete={athlete}
+          onUpdate={() => {
+            // Refresh athlete data if needed
+            window.location.reload();
+          }}
+          onDeleteAthlete={onDeleteAthlete}
+        />
 
         {/* Recent Activity Feed */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
@@ -739,25 +1000,6 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
         />
       )}
       </div>
-
-      {/* Danger Zone - Delete Athlete */}
-      {onDeleteAthlete && (
-        <div className="mt-8 bg-red-500/5 border border-red-500/20 rounded-xl p-6">
-          <h3 className="text-lg font-bold text-red-400 mb-2">Danger Zone</h3>
-          <p className="text-sm text-gray-400 mb-4">
-            Deleting this athlete will permanently remove all their data including workouts, progress tracking, and records. This action cannot be undone.
-          </p>
-          <button
-            onClick={onDeleteAthlete}
-            className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-medium rounded-lg transition-colors border border-red-500/20 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete Athlete
-          </button>
-        </div>
-      )}
 
       {/* Edit Profile Modal */}
       <EditAthleteProfileModal

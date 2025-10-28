@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import { AddStaffDialog } from '@/components/dashboard/staff/add-staff-dialog';
 
 interface Profile {
   id: string;
@@ -23,6 +25,7 @@ interface StaffMember {
 
 const roleColors = {
   owner: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  super_admin: 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-400/40',
   admin: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   coach: 'bg-green-500/20 text-green-400 border-green-500/30',
   intern: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
@@ -35,77 +38,80 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive' | 'coaches' | 'admins'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    async function fetchStaff() {
-      const supabase = createClient();
+  async function fetchStaff() {
+    const supabase = createClient();
 
-      console.log('=== STAFF PAGE LOADING ===');
+    console.log('=== STAFF PAGE LOADING ===');
 
-      // Step 1: Get all staff
-      const { data: staffData, error: staffError } = await supabase
-        .from('staff')
-        .select('*')
-        .order('created_at', { ascending: false });
+    // Step 1: Get all staff
+    const { data: staffData, error: staffError } = await supabase
+      .from('staff')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      console.log('1. STAFF QUERY:', {
-        count: staffData?.length,
-        data: staffData,
-        error: staffError
-      });
+    console.log('1. STAFF QUERY:', {
+      count: staffData?.length,
+      data: staffData,
+      error: staffError
+    });
 
-      if (staffError) {
-        console.error('Staff query error:', staffError);
-        setLoading(false);
-        return;
-      }
-
-      if (!staffData || staffData.length === 0) {
-        console.warn('⚠️ No staff found in database');
-        setStaff([]);
-        setFilteredStaff([]);
-        setLoading(false);
-        return;
-      }
-
-      // Step 2: Get all user_ids from staff
-      const userIds = staffData.map(s => s.user_id);
-      console.log('2. Fetching profiles for user IDs:', userIds);
-
-      // Step 3: Get profiles for those user_ids
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', userIds);
-
-      console.log('3. PROFILES QUERY:', {
-        count: profilesData?.length,
-        data: profilesData,
-        error: profilesError
-      });
-
-      if (profilesError) {
-        console.error('Profiles query error:', profilesError);
-      }
-
-      // Step 4: Merge staff with profiles
-      const staffWithProfiles = staffData.map(s => ({
-        ...s,
-        profile: profilesData?.find(p => p.id === s.user_id)
-      }));
-
-      console.log('4. MERGED STAFF WITH PROFILES:', staffWithProfiles);
-      console.log('Sample staff member:', staffWithProfiles[0]);
-
-      setStaff(staffWithProfiles);
-      setFilteredStaff(staffWithProfiles);
+    if (staffError) {
+      console.error('Staff query error:', staffError);
       setLoading(false);
+      return;
     }
 
+    if (!staffData || staffData.length === 0) {
+      console.warn('⚠️ No staff found in database');
+      setStaff([]);
+      setFilteredStaff([]);
+      setLoading(false);
+      return;
+    }
+
+    // Step 2: Get all user_ids from staff
+    const userIds = staffData.map(s => s.user_id);
+    console.log('2. Fetching profiles for user IDs:', userIds);
+
+    // Step 3: Get profiles for those user_ids
+    const { data: profilesData, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', userIds);
+
+    console.log('3. PROFILES QUERY:', {
+      count: profilesData?.length,
+      data: profilesData,
+      error: profilesError
+    });
+
+    if (profilesError) {
+      console.error('Profiles query error:', profilesError);
+    }
+
+    // Step 4: Merge staff with profiles
+    const staffWithProfiles = staffData.map(s => ({
+      ...s,
+      profile: profilesData?.find(p => p.id === s.user_id)
+    }));
+
+    console.log('4. MERGED STAFF WITH PROFILES:', staffWithProfiles);
+    console.log('Sample staff member:', staffWithProfiles[0]);
+
+    setStaff(staffWithProfiles);
+    setFilteredStaff(staffWithProfiles);
+    setLoading(false);
+  }
+
+  useEffect(() => {
     fetchStaff();
   }, []);
 
@@ -121,7 +127,11 @@ export default function StaffPage() {
     } else if (activeFilter === 'coaches') {
       filtered = filtered.filter(s => s.role === 'coach' && s.is_active);
     } else if (activeFilter === 'admins') {
-      filtered = filtered.filter(s => (s.role === 'admin' || s.role === 'owner') && s.is_active);
+      filtered = filtered.filter(s => {
+        const isAdminRole = s.role === 'admin' || s.role === 'owner';
+        const isSuperAdmin = s.profile?.app_role === 'super_admin';
+        return (isAdminRole || isSuperAdmin) && s.is_active;
+      });
     }
 
     // Apply search
@@ -145,7 +155,11 @@ export default function StaffPage() {
   const totalStaff = staff.length;
   const totalActive = activeStaff.length;
   const totalCoaches = activeStaff.filter(s => s.role === 'coach').length;
-  const totalAdmins = activeStaff.filter(s => s.role === 'admin' || s.role === 'owner').length;
+  const totalAdmins = activeStaff.filter(s => {
+    const isAdminRole = s.role === 'admin' || s.role === 'owner';
+    const isSuperAdmin = s.profile?.app_role === 'super_admin';
+    return isAdminRole || isSuperAdmin;
+  }).length;
 
   console.log('STATS:', { totalStaff, totalActive, totalCoaches, totalAdmins });
 
@@ -170,7 +184,7 @@ export default function StaffPage() {
         </div>
         {/* Desktop Add Button */}
         <button
-          onClick={() => alert('Add Staff modal - Coming soon')}
+          onClick={() => setShowAddDialog(true)}
           className="hidden sm:inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black font-semibold rounded-lg transition-all duration-200"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -287,13 +301,12 @@ export default function StaffPage() {
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Role</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Phone</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Status</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredStaff.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12">
+                  <td colSpan={5} className="text-center py-12">
                     <p className="text-gray-400">No staff members found matching your filters</p>
                   </td>
                 </tr>
@@ -302,11 +315,17 @@ export default function StaffPage() {
                   const fullName = member.profile
                     ? `${member.profile.first_name || ''} ${member.profile.last_name || ''}`.trim()
                     : `Staff #${member.id.slice(0, 8)}`;
-                  const roleColor = roleColors[member.role as keyof typeof roleColors] || roleColors.intern;
+
+                  // Determine display role and color
+                  const isSuperAdmin = member.profile?.app_role === 'super_admin';
+                  const displayRole = isSuperAdmin ? 'super_admin' : member.role;
+                  const roleLabel = isSuperAdmin ? 'Super Admin' : member.role.charAt(0).toUpperCase() + member.role.slice(1);
+                  const roleColor = roleColors[displayRole as keyof typeof roleColors] || roleColors.intern;
 
                   return (
                     <tr
                       key={member.id}
+                      onClick={() => router.push(`/dashboard/staff/${member.id}`)}
                       className="border-b border-white/10 hover:bg-white/5 cursor-pointer transition-colors duration-150"
                     >
                       <td className="px-6 py-4">
@@ -323,7 +342,7 @@ export default function StaffPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-3 py-1 rounded-md text-sm font-medium border ${roleColor}`}>
-                          {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                          {roleLabel}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -337,17 +356,6 @@ export default function StaffPage() {
                         }`}>
                           {member.is_active ? 'Active' : 'Inactive'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            alert('Edit staff modal - Coming soon');
-                          }}
-                          className="px-3 py-1.5 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors text-sm font-medium"
-                        >
-                          Edit
-                        </button>
                       </td>
                     </tr>
                   );
@@ -369,11 +377,17 @@ export default function StaffPage() {
             const fullName = member.profile
               ? `${member.profile.first_name || ''} ${member.profile.last_name || ''}`.trim()
               : `Staff #${member.id.slice(0, 8)}`;
-            const roleColor = roleColors[member.role as keyof typeof roleColors] || roleColors.intern;
+
+            // Determine display role and color
+            const isSuperAdmin = member.profile?.app_role === 'super_admin';
+            const displayRole = isSuperAdmin ? 'super_admin' : member.role;
+            const roleLabel = isSuperAdmin ? 'Super Admin' : member.role.charAt(0).toUpperCase() + member.role.slice(1);
+            const roleColor = roleColors[displayRole as keyof typeof roleColors] || roleColors.intern;
 
             return (
               <div
                 key={member.id}
+                onClick={() => router.push(`/dashboard/staff/${member.id}`)}
                 className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition-colors cursor-pointer"
               >
                 <div className="flex items-start gap-3 mb-2">
@@ -387,7 +401,7 @@ export default function StaffPage() {
                         {fullName}
                       </h3>
                       <span className={`px-2.5 py-0.5 rounded text-xs font-medium border ${roleColor}`}>
-                        {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                        {roleLabel}
                       </span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{member.profile?.email || '-'}</p>
@@ -421,13 +435,24 @@ export default function StaffPage() {
 
       {/* Mobile Floating Add Button */}
       <button
-        onClick={() => alert('Add Staff modal - Coming soon')}
+        onClick={() => setShowAddDialog(true)}
         className="sm:hidden fixed bottom-6 right-4 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center"
       >
         <svg className="w-7 h-7 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
         </svg>
       </button>
+
+      {/* Add Staff Dialog */}
+      {showAddDialog && (
+        <AddStaffDialog
+          onClose={() => setShowAddDialog(false)}
+          onSuccess={async () => {
+            setShowAddDialog(false);
+            await fetchStaff();
+          }}
+        />
+      )}
     </div>
   );
 }

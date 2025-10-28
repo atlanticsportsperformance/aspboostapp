@@ -196,8 +196,12 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
         .eq('id', exercise.id);
       error = result.error;
     } else {
-      // Create new
-      const result = await supabase.from('exercises').insert(exerciseData);
+      // Create new - get current user and set created_by
+      const { data: { user } } = await supabase.auth.getUser();
+      const result = await supabase.from('exercises').insert({
+        ...exerciseData,
+        created_by: user?.id || null
+      });
       error = result.error;
     }
 

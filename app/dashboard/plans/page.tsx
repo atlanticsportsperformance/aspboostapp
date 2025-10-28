@@ -14,6 +14,12 @@ interface TrainingPlan {
   end_date: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
+  creator?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 export default function PlansPage() {
@@ -33,7 +39,14 @@ export default function PlansPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('training_plans')
-      .select('*')
+      .select(`
+        *,
+        creator:created_by (
+          first_name,
+          last_name,
+          email
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -74,6 +87,7 @@ export default function PlansPage() {
       .insert({
         name: newPlanName.trim(),
         organization_id: staffData.org_id,
+        created_by: user.id,
         description: null,
         start_date: null,
         end_date: null
@@ -171,9 +185,10 @@ export default function PlansPage() {
             {/* List Header */}
             <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
               <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                <div className="col-span-5">Plan Name</div>
+                <div className="col-span-4">Plan Name</div>
+                <div className="col-span-2">Created By</div>
                 <div className="col-span-2">Created</div>
-                <div className="col-span-3">Description</div>
+                <div className="col-span-2">Description</div>
                 <div className="col-span-2 text-right">Actions</div>
               </div>
             </div>
@@ -187,15 +202,29 @@ export default function PlansPage() {
                   className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-5">
+                    <div className="col-span-4">
                       <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
                         {plan.name}
                       </div>
                     </div>
+                    <div className="col-span-2">
+                      {plan.creator ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                            {plan.creator.first_name?.[0]}{plan.creator.last_name?.[0]}
+                          </div>
+                          <div className="text-sm text-neutral-300">
+                            {plan.creator.first_name} {plan.creator.last_name}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-neutral-600">—</span>
+                      )}
+                    </div>
                     <div className="col-span-2 text-sm text-neutral-400">
                       {new Date(plan.created_at).toLocaleDateString()}
                     </div>
-                    <div className="col-span-3 text-sm text-neutral-500 truncate">
+                    <div className="col-span-2 text-sm text-neutral-500 truncate">
                       {plan.description || '—'}
                     </div>
                     <div className="col-span-2 flex items-center justify-end gap-2">

@@ -22,6 +22,12 @@ interface Workout {
   tags?: string[];
   category?: 'hitting' | 'throwing' | 'strength_conditioning';
   created_at: string;
+  created_by: string | null;
+  creator?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
   routines: {
     id: string;
     routine_exercises: { id: string }[];
@@ -51,6 +57,11 @@ export default function WorkoutsPage() {
       .from('workouts')
       .select(`
         *,
+        creator:created_by (
+          first_name,
+          last_name,
+          email
+        ),
         routines (
           id,
           routine_exercises (id)
@@ -75,6 +86,9 @@ export default function WorkoutsPage() {
   async function handleCreateWorkout() {
     console.log('=== CREATING TEMPLATE WORKOUT ===');
 
+    // Get current user
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data, error } = await supabase
       .from('workouts')
       .insert({
@@ -83,6 +97,7 @@ export default function WorkoutsPage() {
         is_template: true,              // ✅ TEMPLATE (for library)
         plan_id: null,                  // ✅ NOT in a plan
         athlete_id: null,               // ✅ NOT for an athlete
+        created_by: user?.id || null,   // ✅ Set creator
         placeholder_definitions: { placeholders: [] }
       })
       .select()
@@ -269,7 +284,7 @@ export default function WorkoutsPage() {
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Workout Library</h1>
+        <h1 className="text-3xl font-bold text-white">Workout Library</h1>
         <div className="flex gap-3">
           <button
             onClick={() => setManagerOpen(true)}
@@ -339,11 +354,12 @@ export default function WorkoutsPage() {
           {/* List Header */}
           <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
             <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-              <div className="col-span-4">Workout Name</div>
+              <div className="col-span-3">Workout Name</div>
               <div className="col-span-2">Category</div>
               <div className="col-span-2">Details</div>
               <div className="col-span-2">Tags</div>
-              <div className="col-span-2 text-right">Actions</div>
+              <div className="col-span-2">Created By</div>
+              <div className="col-span-1 text-right">Actions</div>
             </div>
           </div>
 
@@ -364,7 +380,7 @@ export default function WorkoutsPage() {
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Workout Name */}
-                    <div className="col-span-4">
+                    <div className="col-span-3">
                       <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
                         {workout.name}
                       </div>
@@ -409,8 +425,24 @@ export default function WorkoutsPage() {
                       )}
                     </div>
 
+                    {/* Created By */}
+                    <div className="col-span-2">
+                      {workout.creator ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                            {workout.creator.first_name?.[0]}{workout.creator.last_name?.[0]}
+                          </div>
+                          <div className="text-sm text-neutral-300">
+                            {workout.creator.first_name} {workout.creator.last_name}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-neutral-600">—</span>
+                      )}
+                    </div>
+
                     {/* Actions */}
-                    <div className="col-span-2 flex items-center justify-end gap-2">
+                    <div className="col-span-1 flex items-center justify-end gap-2">
                       <button
                         onClick={(e) => {
                           e.preventDefault();

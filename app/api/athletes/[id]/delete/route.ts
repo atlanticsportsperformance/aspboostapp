@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function DELETE(
   request: NextRequest,
@@ -42,10 +43,10 @@ export async function DELETE(
     // Await params before accessing properties
     const { id: athleteId } = await params;
 
-    // Verify athlete exists
+    // Verify athlete exists and get user_id if linked to auth
     const { data: athlete, error: athleteError } = await supabase
       .from('athletes')
-      .select('id, first_name, last_name, vald_profile_id')
+      .select('id, first_name, last_name, vald_profile_id, user_id')
       .eq('id', athleteId)
       .single();
 
@@ -126,12 +127,52 @@ export async function DELETE(
 
     console.log(`✅ Successfully deleted athlete: ${athlete.first_name} ${athlete.last_name}`);
 
+    // Delete auth user if exists
+    if (athlete.user_id) {
+      try {
+        const adminClient = createAdminClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          {
+            auth: {
+              autoRefreshToken: false,
+              persistSession: false
+            }
+          }
+        );
+
+        // Delete from profiles table FIRST (must come before auth user deletion)
+        const { error: profileDeleteError } = await adminClient
+          .from('profiles')
+          .delete()
+          .eq('id', athlete.user_id);
+
+        if (profileDeleteError) {
+          console.error('⚠️  Error deleting profile:', profileDeleteError);
+        } else {
+          console.log(`✅ Deleted profile for: ${athlete.user_id}`);
+        }
+
+        // Then delete the auth user
+        const { error: deleteAuthError } = await adminClient.auth.admin.deleteUser(athlete.user_id);
+
+        if (deleteAuthError) {
+          console.error('⚠️  Error deleting auth user:', deleteAuthError);
+        } else {
+          console.log(`✅ Deleted auth user: ${athlete.user_id}`);
+        }
+      } catch (authDeleteError) {
+        // Log but don't fail the request - athlete is already deleted
+        console.error('⚠️  Error during auth cleanup:', authDeleteError);
+      }
+    }
+
     // Note: We don't delete from VALD API as that would remove historical test data
     // The VALD profile remains in VALD system for data integrity
 
     return NextResponse.json({
       success: true,
-      message: `Successfully deleted athlete: ${athlete.first_name} ${athlete.last_name}`,
+      message: `Successfully deleted athlete: ${athlete.first_name} ${athlete.last_name}${athlete.user_id ? ' and login account' : ''}`,
       athleteId: athleteId,
     });
 

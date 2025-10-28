@@ -9,7 +9,12 @@ const navLinks = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
   { href: '/dashboard/staff', label: 'Staff', icon: '👥' },
-  { href: '/dashboard/groups', label: 'Groups', icon: '👥' },
+  { href: '/dashboard/groups', label: 'Groups', icon: '👫' },
+];
+
+const adminLinks = [
+  { href: '/dashboard/coaches', label: 'Coaches Dashboard', icon: '🎯', superAdminOnly: true },
+  { href: '/dashboard/admin', label: 'Settings', icon: '⚙️', superAdminOnly: true },
 ];
 
 const programmingLinks = [
@@ -114,6 +119,13 @@ export default function DashboardLayout({
     return <>{children}</>;
   }
 
+  // If athlete, skip the navigation entirely
+  const isAthlete = profile?.app_role === 'athlete';
+
+  if (isAthlete) {
+    return <>{children}</>;
+  }
+
   return (
     <div className="min-h-screen bg-[#0A0A0A] flex flex-col lg:flex-row">
       {/* Mobile Top Header */}
@@ -195,6 +207,7 @@ export default function DashboardLayout({
             );
           })}
 
+
           {/* Programming Section - Collapsible */}
           <div className="pt-4">
             <button
@@ -242,6 +255,36 @@ export default function DashboardLayout({
 
         {/* User Profile */}
         <div className="p-4 border-t border-white/10 space-y-3">
+          {/* Admin Links (for super_admin) */}
+          {profile?.app_role === 'super_admin' && (
+            <>
+              <Link
+                href="/dashboard/coaches"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                  mounted && pathname === '/dashboard/coaches'
+                    ? 'bg-white/5 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span className="text-lg">🎯</span>
+                <span className="text-sm font-medium">Coaches Dashboard</span>
+              </Link>
+              <Link
+                href="/dashboard/admin"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                  mounted && pathname === '/dashboard/admin'
+                    ? 'bg-white/5 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <span className="text-lg">⚙️</span>
+                <span className="text-sm font-medium">Settings</span>
+              </Link>
+            </>
+          )}
+
           <div className="flex items-center space-x-3">
             <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
               <span className="text-white font-semibold text-sm">{initials}</span>
