@@ -474,6 +474,27 @@ export default function WorkoutExecutionPage() {
               <p className="text-sm text-gray-400">{allExercises.length} exercises • {routines.length} {routines.length === 1 ? 'block' : 'blocks'}</p>
             </div>
 
+            {/* Workout Notes - Show if present */}
+            {(workout.notes || workout.description) && (
+              <div className="max-w-2xl mx-auto mb-6">
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-bold text-yellow-400 mb-1">Workout Notes</h3>
+                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                        {workout.notes || workout.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Workout Preview - Blocks with Exercises */}
             <div className="space-y-4 max-w-2xl mx-auto">
               {routines.map((routine, routineIdx) => {
