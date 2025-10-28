@@ -34,11 +34,8 @@ interface WorkoutInstance {
 interface ForceProfileData {
   composite_score: number;
   percentile_rank: number;
-  cmj_rsi_percentile: number;
-  sj_peak_force_percentile: number;
-  hj_peak_power_percentile: number;
-  ppu_peak_force_percentile: number;
-  imtp_peak_force_percentile: number;
+  best_metric: { name: string; percentile: number } | null;
+  worst_metric: { name: string; percentile: number } | null;
 }
 
 type ViewMode = 'month' | 'day';
@@ -133,27 +130,62 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
       return;
     }
 
-    // Fetch latest FORCE_PROFILE from athlete_percentile_history (filtered by current play level)
-    const { data } = await supabase
+    // Fetch latest FORCE_PROFILE composite
+    const { data: composite } = await supabase
       .from('athlete_percentile_history')
       .select('percentile_play_level, test_date')
       .eq('athlete_id', athleteId)
       .eq('test_type', 'FORCE_PROFILE')
-      .eq('play_level', athlete.play_level) // Filter by current play level
+      .eq('play_level', athlete.play_level)
       .order('test_date', { ascending: false })
       .limit(1)
       .single();
 
-    if (data) {
+    if (!composite) return;
+
+    // Fetch the 6 individual metrics to find best and worst
+    const metrics = [
+      { test_type: 'SJ', metric_name: 'Peak Power (W)', displayName: 'SJ Power' },
+      { test_type: 'SJ', metric_name: 'Peak Power / BM (W/kg)', displayName: 'SJ Power/BM' },
+      { test_type: 'HJ', metric_name: 'Reactive Strength Index', displayName: 'HJ RSI' },
+      { test_type: 'PPU', metric_name: 'Peak Takeoff Force (N)', displayName: 'PPU Force' },
+      { test_type: 'IMTP', metric_name: 'Net Peak Force (N)', displayName: 'IMTP Net Force' },
+      { test_type: 'IMTP', metric_name: 'Relative Strength', displayName: 'IMTP Relative' },
+    ];
+
+    const percentiles: Array<{ name: string; percentile: number }> = [];
+
+    for (const metric of metrics) {
+      const { data: metricData } = await supabase
+        .from('athlete_percentile_history')
+        .select('percentile_play_level')
+        .eq('athlete_id', athleteId)
+        .eq('test_type', metric.test_type)
+        .eq('metric_name', metric.metric_name)
+        .eq('play_level', athlete.play_level)
+        .order('test_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (metricData?.percentile_play_level) {
+        percentiles.push({
+          name: metric.displayName,
+          percentile: Math.round(metricData.percentile_play_level)
+        });
+      }
+    }
+
+    // Find best and worst
+    if (percentiles.length > 0) {
+      const sorted = percentiles.sort((a, b) => b.percentile - a.percentile);
+      const best = sorted[0];
+      const worst = sorted[sorted.length - 1];
+
       setForceProfile({
-        composite_score: Math.round(data.percentile_play_level || 0),
-        percentile_rank: Math.round(data.percentile_play_level || 0),
-        // Individual metrics not needed for dashboard card, just show composite
-        cmj_rsi_percentile: 0,
-        sj_peak_force_percentile: 0,
-        hj_peak_power_percentile: 0,
-        ppu_peak_force_percentile: 0,
-        imtp_peak_force_percentile: 0
+        composite_score: Math.round(composite.percentile_play_level || 0),
+        percentile_rank: Math.round(composite.percentile_play_level || 0),
+        best_metric: best,
+        worst_metric: worst
       });
     }
   }
@@ -356,62 +388,106 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
         <div className="h-full px-4 pb-4 pt-1 overflow-y-auto max-w-4xl mx-auto">
           {valdProfileId && forceProfile ? (
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-white">Force Profile</h2>
-                <Link
-                  href={`/dashboard/athletes/${athleteId}?tab=force-profile`}
-                  className="text-sm text-[#9BDDFF] hover:text-[#7BC5F0] transition-colors"
-                >
-                  View Details →
-                </Link>
-              </div>
+              <h2 className="text-2xl font-bold text-white mb-6">Force Profile</h2>
 
-              <div className="flex-1 flex items-center justify-center">
-                {/* Composite Score Circle */}
-                <div className="relative">
-                  <svg className="transform -rotate-90" width="200" height="200">
-                    {/* Background circle */}
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="90"
-                      stroke="rgba(255,255,255,0.1)"
-                      strokeWidth="12"
-                      fill="none"
-                    />
-                    {/* Progress circle */}
-                    <circle
-                      cx="100"
-                      cy="100"
-                      r="90"
-                      stroke="url(#gradient)"
-                      strokeWidth="12"
-                      fill="none"
-                      strokeLinecap="round"
-                      strokeDasharray={`${2 * Math.PI * 90}`}
-                      strokeDashoffset={`${2 * Math.PI * 90 * (1 - forceProfile.percentile_rank / 100)}`}
-                      className="transition-all duration-1000"
-                    />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#9BDDFF" />
-                        <stop offset="100%" stopColor="#7BC5F0" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <div className="text-5xl font-bold text-white">{Math.round(forceProfile.percentile_rank)}</div>
-                    <div className="text-sm text-gray-400">Percentile</div>
+              {/* Main Content - Circle Left, Metrics Right */}
+              <div className="flex-1 flex items-center gap-6">
+                {/* LEFT: Composite Score Circle - Color Coded */}
+                <div className="flex-shrink-0">
+                  <div className="relative">
+                    <svg className="transform -rotate-90" width="160" height="160">
+                      {/* Background circle */}
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        stroke="rgba(255,255,255,0.1)"
+                        strokeWidth="10"
+                        fill="none"
+                      />
+                      {/* Progress circle - color coded by zone */}
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        stroke={
+                          forceProfile.percentile_rank >= 75 ? '#10b981' : // green - ELITE
+                          forceProfile.percentile_rank >= 50 ? '#9BDDFF' : // blue - OPTIMIZE
+                          forceProfile.percentile_rank >= 25 ? '#fbbf24' : // yellow - SHARPEN
+                          '#ef4444' // red - BUILD
+                        }
+                        strokeWidth="10"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 70}`}
+                        strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
+                        className="transition-all duration-1000"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <div className={`text-4xl font-bold ${
+                        forceProfile.percentile_rank >= 75 ? 'text-green-400' :
+                        forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
+                        forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>{forceProfile.percentile_rank}</div>
+                      <div className="text-xs text-gray-400 uppercase tracking-wide">
+                        {forceProfile.percentile_rank >= 75 ? 'ELITE' :
+                         forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
+                         forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
+                         'BUILD'}
+                      </div>
+                    </div>
                   </div>
+                </div>
+
+                {/* RIGHT: Best & Worst Metrics */}
+                <div className="flex-1 flex flex-col justify-center gap-4">
+                  {/* Best Metric */}
+                  {forceProfile.best_metric && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Strongest</span>
+                        <span className="text-sm font-bold text-green-400">{forceProfile.best_metric.percentile}th</span>
+                      </div>
+                      <div className="h-3 bg-black/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-1000"
+                          style={{ width: `${forceProfile.best_metric.percentile}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-white mt-1 font-medium">{forceProfile.best_metric.name}</p>
+                    </div>
+                  )}
+
+                  {/* Worst Metric */}
+                  {forceProfile.worst_metric && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-400 uppercase tracking-wide">Focus Area</span>
+                        <span className="text-sm font-bold text-red-400">{forceProfile.worst_metric.percentile}th</span>
+                      </div>
+                      <div className="h-3 bg-black/40 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-1000"
+                          style={{ width: `${forceProfile.worst_metric.percentile}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-white mt-1 font-medium">{forceProfile.worst_metric.name}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Tap to view details */}
+              {/* Go Deeper Button */}
               <Link
-                href={`/dashboard/athletes/${athleteId}?tab=force-profile`}
-                className="mt-4 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/20"
+                href={`/athlete-dashboard/force-profile`}
+                className="mt-6 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/20 flex items-center justify-center gap-2"
               >
-                View Full Force Profile →
+                <span>Explore Deeper</span>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </Link>
             </div>
           ) : (
