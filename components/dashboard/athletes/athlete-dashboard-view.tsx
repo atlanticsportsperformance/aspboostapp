@@ -115,10 +115,10 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   }
 
   async function fetchForceProfile() {
-    // Get athlete's VALD profile ID
+    // Get athlete's VALD profile ID and play level
     const { data: athlete } = await supabase
       .from('athletes')
-      .select('vald_profile_id')
+      .select('vald_profile_id, play_level')
       .eq('id', athleteId)
       .single();
 
@@ -129,24 +129,31 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
 
     setValdProfileId(athlete.vald_profile_id);
 
-    // Fetch latest force profile data
+    if (!athlete.play_level) {
+      return;
+    }
+
+    // Fetch latest FORCE_PROFILE from athlete_percentile_history (filtered by current play level)
     const { data } = await supabase
-      .from('athlete_percentile_contributions')
-      .select('*')
+      .from('athlete_percentile_history')
+      .select('percentile_play_level, test_date')
       .eq('athlete_id', athleteId)
-      .order('calculated_at', { ascending: false })
+      .eq('test_type', 'FORCE_PROFILE')
+      .eq('play_level', athlete.play_level) // Filter by current play level
+      .order('test_date', { ascending: false })
       .limit(1)
       .single();
 
     if (data) {
       setForceProfile({
-        composite_score: data.composite_score || 0,
-        percentile_rank: data.percentile_rank || 0,
-        cmj_rsi_percentile: data.cmj_rsi_percentile || 0,
-        sj_peak_force_percentile: data.sj_peak_force_percentile || 0,
-        hj_peak_power_percentile: data.hj_peak_power_percentile || 0,
-        ppu_peak_force_percentile: data.ppu_peak_force_percentile || 0,
-        imtp_peak_force_percentile: data.imtp_peak_force_percentile || 0
+        composite_score: Math.round(data.percentile_play_level || 0),
+        percentile_rank: Math.round(data.percentile_play_level || 0),
+        // Individual metrics not needed for dashboard card, just show composite
+        cmj_rsi_percentile: 0,
+        sj_peak_force_percentile: 0,
+        hj_peak_power_percentile: 0,
+        ppu_peak_force_percentile: 0,
+        imtp_peak_force_percentile: 0
       });
     }
   }
