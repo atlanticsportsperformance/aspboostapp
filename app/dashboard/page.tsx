@@ -27,18 +27,11 @@ export default function DashboardPage() {
         .eq('id', user.id)
         .single();
 
-      // 🚨 REDIRECT ATHLETES TO THEIR OWN DASHBOARD
+      // 🚨 REDIRECT ATHLETES TO THEIR OWN DASHBOARD - Keep loading TRUE so they never see coach dashboard
       if (userProfile?.app_role === 'athlete') {
-        const { data: athleteData } = await supabase
-          .from('athletes')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (athleteData) {
-          router.push(`/dashboard/athletes/${athleteData.id}`);
-          return;
-        }
+        // Don't set loading to false - keep black screen during redirect
+        router.push('/athlete-dashboard');
+        return;
       }
 
       const { data: staffData } = await supabase
