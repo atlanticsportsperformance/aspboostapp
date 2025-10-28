@@ -166,6 +166,13 @@ export default function WorkoutExecutionPage() {
           setExpandedExerciseId(restoredExerciseId);
         }
 
+        // Calculate elapsed time since workout started
+        const elapsedSeconds = Math.floor(
+          (new Date().getTime() - new Date(savedState.startedAt).getTime()) / 1000
+        );
+        console.log('⏱️ Restoring timer:', elapsedSeconds, 'seconds elapsed');
+        setTimer(elapsedSeconds);
+
         // AUTO-START workout if resuming (skip "Start Workout" button)
         // Small delay to ensure React state updates propagate
         setTimeout(async () => {
