@@ -400,9 +400,8 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
               {/* Main Content - Circle Left, Metrics Right */}
               <div className="flex-1 flex items-center gap-6">
                 {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
-                <div className="flex-shrink-0">
-                  <div className="relative w-44 h-44 flex items-center justify-center">
-                    <svg className="transform -rotate-90" width="176" height="176" viewBox="0 0 176 176">
+                <div className="flex-shrink-0 relative">
+                  <svg className="transform -rotate-90" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block' }}>
                       {/* Background circle - clean track */}
                       <circle
                         cx="88"
@@ -490,30 +489,29 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                         strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
                       />
-                    </svg>
+                  </svg>
 
-                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-                      <div className={`text-5xl font-bold ${
-                        forceProfile.percentile_rank >= 75 ? 'text-green-400' :
-                        forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
-                        forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`} style={{
-                        textShadow: `0 0 20px ${
-                          forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.8)' :
-                          forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.8)' :
-                          forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.8)' :
-                          'rgba(239,68,68,0.8)'
-                        }, 0 2px 4px rgba(0,0,0,0.8)`,
-                      }}>{forceProfile.percentile_rank}</div>
-                      <div className="text-xs text-gray-200 uppercase tracking-widest font-bold mt-1" style={{
-                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
-                      }}>
-                        {forceProfile.percentile_rank >= 75 ? 'ELITE' :
-                         forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
-                         forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
-                         'BUILD'}
-                      </div>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <div className={`text-5xl font-bold ${
+                      forceProfile.percentile_rank >= 75 ? 'text-green-400' :
+                      forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
+                      forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`} style={{
+                      textShadow: `0 0 20px ${
+                        forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.8)' :
+                        forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.8)' :
+                        forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.8)' :
+                        'rgba(239,68,68,0.8)'
+                      }, 0 2px 4px rgba(0,0,0,0.8)`,
+                    }}>{forceProfile.percentile_rank}</div>
+                    <div className="text-xs text-gray-200 uppercase tracking-widest font-bold mt-1" style={{
+                      textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                    }}>
+                      {forceProfile.percentile_rank >= 75 ? 'ELITE' :
+                       forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
+                       forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
+                       'BUILD'}
                     </div>
                   </div>
                 </div>
