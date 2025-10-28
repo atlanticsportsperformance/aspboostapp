@@ -538,8 +538,10 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                             boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
                           }}
                         >
-                          {/* Glossy shine overlay */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-transparent to-black/20" />
+                          {/* Glossy shine overlay from left */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
+                          {/* Top shine for 3D effect */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
                         </div>
                       </div>
                       <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.best_metric.name}</p>
@@ -566,8 +568,10 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                             boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
                           }}
                         >
-                          {/* Glossy shine overlay */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-transparent to-black/20" />
+                          {/* Glossy shine overlay from left */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
+                          {/* Top shine for 3D effect */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
                         </div>
                       </div>
                       <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.worst_metric.name}</p>
