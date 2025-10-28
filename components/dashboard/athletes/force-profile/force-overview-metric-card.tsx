@@ -31,9 +31,9 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
     if (lower.includes('sj') && lower.includes('power')) return 'Explosive strength';
     if (lower.includes('hj') && lower.includes('rsi')) return 'Reactive power';
     if (lower.includes('ppu') && lower.includes('force')) return 'Plyo push power';
-    if (lower.includes('imtp') && lower.includes('force')) return 'Max strength';
+    if (lower.includes('imtp') && lower.includes('force')) return 'Raw strength';
     if (lower.includes('cmj') && lower.includes('power')) return 'Dynamic power';
-    if (lower.includes('relative')) return 'Power per kg';
+    if (lower.includes('relative')) return 'Raw strength/BW';
     return 'Force metric';
   };
 
