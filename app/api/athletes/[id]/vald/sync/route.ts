@@ -100,10 +100,11 @@ export async function POST(
     }
 
     // 6. Get latest test date for incremental sync
-    // WORKAROUND: Go back 180 days instead of using latest test date
+    // WORKAROUND: Use query parameter to control lookback window (default 180 days)
     // This is because VALD's ModifiedFromUtc filters by when test was analyzed, not recorded
     // So tests can be recorded earlier but analyzed later, causing them to be skipped
-    const daysBack = 180;
+    const { searchParams } = new URL(request.url);
+    const daysBack = parseInt(searchParams.get('daysBack') || '180', 10);
     const lookbackDate = new Date();
     lookbackDate.setDate(lookbackDate.getDate() - daysBack);
     const modifiedFromUtc = lookbackDate.toISOString();
