@@ -773,6 +773,7 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                     date.getMonth() === selectedDate.getMonth() &&
                     date.getFullYear() === selectedDate.getFullYear();
                   const today = isToday(date);
+                  const dayWorkouts = getWorkoutsForDate(date);
 
                   return (
                     <button
@@ -794,6 +795,19 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                       }`}>
                         {date.getDate()}
                       </div>
+                      {dayWorkouts.length > 0 && (
+                        <div className="flex gap-1 justify-center mt-1">
+                          {dayWorkouts.map((workout, i) => {
+                            const category = workout.workouts?.category || 'strength_conditioning';
+                            return (
+                              <div
+                                key={i}
+                                className={`w-1.5 h-1.5 rounded-full ${CATEGORY_COLORS[category].dot}`}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
                     </button>
                   );
                 })}
