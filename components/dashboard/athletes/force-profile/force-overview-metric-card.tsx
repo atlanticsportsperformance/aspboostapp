@@ -25,6 +25,18 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
     );
   }
 
+  // Get brief description for metric
+  const getMetricDescription = (name: string): string => {
+    const lower = name.toLowerCase();
+    if (lower.includes('sj') && lower.includes('power')) return 'Explosive strength';
+    if (lower.includes('hj') && lower.includes('rsi')) return 'Reactive power';
+    if (lower.includes('ppu') && lower.includes('force')) return 'Upper body pull';
+    if (lower.includes('imtp') && lower.includes('force')) return 'Max strength';
+    if (lower.includes('cmj') && lower.includes('power')) return 'Dynamic power';
+    if (lower.includes('relative')) return 'Power per kg';
+    return 'Force metric';
+  };
+
   // Get gradient color based on percentile zone
   const getGradientClass = (percentile: number): string => {
     if (percentile >= 75) return 'from-green-500 to-emerald-600'; // ELITE
@@ -81,7 +93,10 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
     >
       {/* Header with HUGE percentile number */}
       <div className="flex items-start justify-between mb-1.5 md:mb-2">
-        <h3 className="text-white/90 font-semibold text-xs md:text-sm leading-tight max-w-[120px]">{displayName}</h3>
+        <div className="max-w-[120px]">
+          <h3 className="text-white/90 font-semibold text-xs md:text-sm leading-tight">{displayName}</h3>
+          <p className="text-[9px] text-gray-500 mt-0.5 leading-tight">{getMetricDescription(displayName)}</p>
+        </div>
         <div className="flex flex-col items-end">
           <div className="flex items-baseline gap-0.5">
             <span className={`text-3xl md:text-4xl font-bold ${textColor} transition-all duration-300 group-hover:scale-110`}>
