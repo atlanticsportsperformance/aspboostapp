@@ -57,13 +57,14 @@ export async function GET(
     const radarData: MetricData[] = [];
 
     for (const metric of metrics) {
-      // Get the 2 most recent tests for this metric
+      // Get the 2 most recent tests for this metric AT THE CURRENT PLAY LEVEL
       const { data: tests, error } = await supabase
         .from('athlete_percentile_history')
         .select('test_date, value, percentile_play_level, percentile_overall')
         .eq('athlete_id', athleteId)
         .eq('test_type', metric.test_type)
         .eq('metric_name', metric.metric_name)
+        .eq('play_level', athlete.play_level) // IMPORTANT: Filter by current play level
         .order('test_date', { ascending: false })
         .limit(2);
 
@@ -92,12 +93,13 @@ export async function GET(
       });
     }
 
-    // Get Force Profile composite score (most recent 2)
+    // Get Force Profile composite score (most recent 2 AT THE CURRENT PLAY LEVEL)
     const { data: forceProfiles } = await supabase
       .from('athlete_percentile_history')
       .select('test_date, percentile_play_level, percentile_overall')
       .eq('athlete_id', athleteId)
       .eq('test_type', 'FORCE_PROFILE')
+      .eq('play_level', athlete.play_level) // IMPORTANT: Filter by current play level
       .order('test_date', { ascending: false })
       .limit(2);
 
