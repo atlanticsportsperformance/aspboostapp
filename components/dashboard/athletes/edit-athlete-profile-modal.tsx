@@ -31,6 +31,10 @@ export default function EditAthleteProfileModal({
   const [playLevel, setPlayLevel] = useState<'Youth' | 'High School' | 'College' | 'Pro'>('High School');
   const [notes, setNotes] = useState('');
 
+  // Track original play level and VALD data status
+  const [originalPlayLevel, setOriginalPlayLevel] = useState<string>('');
+  const [hasValdData, setHasValdData] = useState(false);
+
   useEffect(() => {
     if (isOpen && athlete) {
       // Populate form with current data
@@ -41,14 +45,58 @@ export default function EditAthleteProfileModal({
       setSecondaryPosition(athlete.secondary_position || '');
       setGradYear(athlete.grad_year?.toString() || '');
       setPlayLevel(athlete.play_level || 'High School');
+      setOriginalPlayLevel(athlete.play_level || 'High School');
       setNotes(athlete.notes || '');
+
+      // Check if athlete has VALD data synced
+      checkValdData();
     }
   }, [isOpen, athlete, profile]);
+
+  const checkValdData = async () => {
+    if (!athlete?.id) return;
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('vald_tests')
+        .select('id')
+        .eq('athlete_id', athlete.id)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        setHasValdData(true);
+      } else {
+        setHasValdData(false);
+      }
+    } catch (err) {
+      console.error('Error checking VALD data:', err);
+      setHasValdData(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check if play level changed and athlete has VALD data
+    const playLevelChanged = playLevel !== originalPlayLevel;
+    if (playLevelChanged && hasValdData) {
+      const confirmed = window.confirm(
+        `⚠️ Play Level Change Detected\n\n` +
+        `This athlete has force plate data synced.\n\n` +
+        `Changing from "${originalPlayLevel}" to "${playLevel}" will recalculate their Force Profile composite score using ${playLevel} percentile thresholds.\n\n` +
+        `The radar chart and individual metric rankings will update immediately.\n\n` +
+        `Historical test data will remain unchanged.\n\n` +
+        `Continue?`
+      );
+
+      if (!confirmed) {
+        return; // User cancelled
+      }
+    }
+
     setLoading(true);
     setError(null);
 
@@ -83,7 +131,45 @@ export default function EditAthleteProfileModal({
         throw new Error(athleteError.message || JSON.stringify(athleteError));
       }
 
-      alert('✅ Profile updated successfully!');
+      // If play level changed and has VALD data, trigger Force Profile recalculation
+      if (playLevelChanged && hasValdData) {
+        console.log(`[EditAthleteProfile] Play level changed from ${originalPlayLevel} to ${playLevel}, triggering Force Profile recalculation...`);
+
+        try {
+          const recalcResponse = await fetch(`/api/athletes/${athlete.id}/vald/recalculate-force-profile`, {
+            method: 'POST',
+          });
+
+          const recalcData = await recalcResponse.json();
+
+          if (recalcResponse.ok) {
+            console.log('[EditAthleteProfile] Force Profile recalculated:', recalcData);
+            alert(
+              `✅ Profile updated successfully!\n\n` +
+              `Force Profile recalculated with ${playLevel} percentile thresholds.\n` +
+              `Processed ${recalcData.tests_processed} test(s).\n` +
+              `New composite score: ${recalcData.composite_score || 'N/A'}th percentile`
+            );
+          } else {
+            console.warn('[EditAthleteProfile] Force Profile recalculation failed:', recalcData);
+            alert(
+              `✅ Profile updated successfully!\n\n` +
+              `⚠️ Force Profile recalculation failed: ${recalcData.error || 'Unknown error'}\n\n` +
+              `You can manually sync VALD data to update percentiles.`
+            );
+          }
+        } catch (recalcErr) {
+          console.error('[EditAthleteProfile] Error recalculating Force Profile:', recalcErr);
+          alert(
+            `✅ Profile updated successfully!\n\n` +
+            `⚠️ Could not recalculate Force Profile automatically.\n\n` +
+            `Please manually sync VALD data to update percentiles.`
+          );
+        }
+      } else {
+        alert('✅ Profile updated successfully!');
+      }
+
       onSuccess();
       onClose();
     } catch (err) {
