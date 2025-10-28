@@ -156,29 +156,36 @@ export default function WorkoutExecutionPage() {
             notes: log.notes
           }));
         });
+
+        console.log('📦 Restoring inputs:', restoredInputs);
         setExerciseInputs(restoredInputs);
 
         // Restore expanded exercise (current exercise user was on)
         const allExercises = sorted.flatMap((r: any) => r.routine_exercises || []);
         if (savedState.currentExerciseIndex >= 0 && savedState.currentExerciseIndex < allExercises.length) {
-          setExpandedExerciseId(allExercises[savedState.currentExerciseIndex].id);
+          const restoredExerciseId = allExercises[savedState.currentExerciseIndex].id;
+          console.log('📍 Restoring exercise position:', restoredExerciseId);
+          setExpandedExerciseId(restoredExerciseId);
         }
 
         // AUTO-START workout if resuming (skip "Start Workout" button)
-        if (inst.status === 'not_started' || inst.status === 'scheduled') {
-          console.log('🚀 Auto-starting workout from saved state');
-          await supabase
-            .from('workout_instances')
-            .update({ status: 'in_progress', started_at: savedState.startedAt })
-            .eq('id', instanceId);
+        // Small delay to ensure React state updates propagate
+        setTimeout(async () => {
+          if (inst.status === 'not_started' || inst.status === 'scheduled') {
+            console.log('🚀 Auto-starting workout from saved state');
+            await supabase
+              .from('workout_instances')
+              .update({ status: 'in_progress', started_at: savedState.startedAt })
+              .eq('id', instanceId);
 
-          setInstance({ ...inst, status: 'in_progress', started_at: savedState.startedAt });
-          setTimerActive(true);
-        } else if (inst.status === 'in_progress') {
-          // Already in progress, just keep timer going
-          setInstance({ ...inst, status: 'in_progress' });
-          setTimerActive(true);
-        }
+            setInstance({ ...inst, status: 'in_progress', started_at: savedState.startedAt });
+            setTimerActive(true);
+          } else if (inst.status === 'in_progress') {
+            // Already in progress, just keep timer going
+            setInstance({ ...inst, status: 'in_progress' });
+            setTimerActive(true);
+          }
+        }, 100); // 100ms delay for state to propagate
       } else {
         // Auto-expand first incomplete exercise (default behavior)
         if (!expandedExerciseId) {
