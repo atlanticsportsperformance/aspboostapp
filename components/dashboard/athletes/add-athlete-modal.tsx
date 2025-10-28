@@ -24,7 +24,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
   const [primaryPosition, setPrimaryPosition] = useState('');
   const [secondaryPosition, setSecondaryPosition] = useState('');
   const [gradYear, setGradYear] = useState('');
-  const [playLevel, setPlayLevel] = useState<'Youth' | 'High School' | 'College' | 'Pro'>('High School');
+  const [playLevel, setPlayLevel] = useState<'Youth' | 'High School' | 'College' | 'Pro' | ''>('');
 
   // Account Status
   const [isActive, setIsActive] = useState(true);
