@@ -125,16 +125,45 @@ export default function WorkoutExecutionPage() {
 
       setRoutines(sorted);
 
-      // Auto-expand first incomplete exercise
-      if (!expandedExerciseId) {
-        const firstIncomplete = sorted
-          .flatMap((r: any) => r.routine_exercises || [])
-          .find((ex: any) => {
-            const exLogs = (logData || []).filter((l: any) => l.routine_exercise_id === ex.id);
-            return exLogs.length < (ex.sets || 1);
-          });
-        if (firstIncomplete) {
-          setExpandedExerciseId(firstIncomplete.id);
+      // 🔄 RESTORE SAVED WORKOUT STATE IF EXISTS
+      const savedState = loadWorkoutState();
+      if (savedState && savedState.workoutInstanceId === instanceId) {
+        console.log('🔄 Restoring saved workout state');
+
+        // Restore exercise inputs from saved state
+        const restoredInputs: Record<string, Array<any>> = {};
+        savedState.exercises.forEach(exercise => {
+          restoredInputs[exercise.id] = exercise.setLogs.map(log => ({
+            reps: log.reps,
+            weight: log.weight,
+            notes: log.notes
+          }));
+        });
+        setExerciseInputs(restoredInputs);
+
+        // Restore expanded exercise (current exercise user was on)
+        const allExercises = sorted.flatMap((r: any) => r.routine_exercises || []);
+        if (savedState.currentExerciseIndex >= 0 && savedState.currentExerciseIndex < allExercises.length) {
+          setExpandedExerciseId(allExercises[savedState.currentExerciseIndex].id);
+        }
+
+        // If workout was in progress, keep it in progress
+        if (inst.status === 'scheduled') {
+          setInstance({ ...inst, status: 'in_progress' });
+          setTimerActive(true);
+        }
+      } else {
+        // Auto-expand first incomplete exercise (default behavior)
+        if (!expandedExerciseId) {
+          const firstIncomplete = sorted
+            .flatMap((r: any) => r.routine_exercises || [])
+            .find((ex: any) => {
+              const exLogs = (logData || []).filter((l: any) => l.routine_exercise_id === ex.id);
+              return exLogs.length < (ex.sets || 1);
+            });
+          if (firstIncomplete) {
+            setExpandedExerciseId(firstIncomplete.id);
+          }
         }
       }
     }
