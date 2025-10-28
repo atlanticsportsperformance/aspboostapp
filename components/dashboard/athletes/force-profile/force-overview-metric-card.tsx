@@ -102,7 +102,7 @@ export default function ForceOverviewMetricCard({ displayName, current, previous
 
       {/* Current Test Bar with rounded caps and glow */}
       <div className="mb-1.5 md:mb-2">
-        <div className="flex items-center justify-between mb-1 md:mb-1.5">
+        <div className="flex items-center justify-between mb-0.5">
           <span className="text-[10px] text-white/60 font-medium">
             {new Date(current.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' })}
           </span>

@@ -316,10 +316,10 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
         onMouseLeave={handleMouseLeave}
       />
 
-      {/* Center composite score with glow - responsive sizing */}
-      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+      {/* Top right composite score with glow - responsive sizing */}
+      <div className="absolute top-4 right-4 text-right pointer-events-none">
         <div
-          className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold transition-all duration-300 ${getZoneColor(compositeScore)} ${getZoneGlow(compositeScore)}`}
+          className={`text-4xl sm:text-5xl md:text-6xl font-bold transition-all duration-300 ${getZoneColor(compositeScore)} ${getZoneGlow(compositeScore)}`}
           style={{
             textShadow: '0px 3px 15px rgba(0,0,0,1), 0px 0px 12px rgba(0,0,0,0.95), 0px 6px 24px rgba(0,0,0,0.9), 0px 0px 6px rgba(0,0,0,0.85)',
             WebkitFontSmoothing: 'antialiased',
@@ -333,7 +333,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
           {Math.round(compositeScore)}
         </div>
         <div
-          className="text-[10px] sm:text-xs text-gray-400 mt-1 sm:mt-2 font-medium"
+          className="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium"
           style={{
             textShadow: '0px 2px 10px rgba(0,0,0,1), 0px 0px 8px rgba(0,0,0,0.95), 0px 0px 4px rgba(0,0,0,0.85)',
             WebkitFontSmoothing: 'antialiased',
@@ -341,7 +341,7 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
             textRendering: 'optimizeLegibility',
           }}
         >
-          Force Profile
+          Composite Score
         </div>
       </div>
 
