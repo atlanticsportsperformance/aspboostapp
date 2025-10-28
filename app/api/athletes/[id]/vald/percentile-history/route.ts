@@ -45,11 +45,12 @@ export async function GET(
 
     const playLevel = athlete.play_level;
 
-    // Build query
+    // Build query - IMPORTANT: Filter by current play level to show only relevant percentiles
     let query = serviceSupabase
       .from('athlete_percentile_history')
       .select('*')
-      .eq('athlete_id', athleteId);
+      .eq('athlete_id', athleteId)
+      .eq('play_level', playLevel); // Only show percentiles for current play level
 
     // Filter by test type if provided
     if (testTypeFilter) {
