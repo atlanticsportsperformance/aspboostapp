@@ -147,7 +147,7 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
               <div className="w-3 h-3 rounded-full bg-gray-200"></div>
               <span className="text-[10px] text-gray-400">Current</span>
             </div>
-            {compositeScore.previous && (
+            {(compositeScore.previous || radarData.some(m => m.previous)) && (
               <div className="flex items-center gap-1.5">
                 <svg className="w-4 h-1" viewBox="0 0 16 4">
                   <line x1="0" y1="2" x2="16" y2="2" stroke="#9CA3AF" strokeWidth="2" strokeDasharray="3,3" />
