@@ -401,47 +401,47 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
               <div className="flex-1 flex items-center gap-6">
                 {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
                 <div className="flex-shrink-0">
-                  <div className="relative w-40 h-40">
-                    <svg className="transform -rotate-90" width="160" height="160">
+                  <div className="relative w-44 h-44 flex items-center justify-center">
+                    <svg className="transform -rotate-90" width="176" height="176" viewBox="0 0 176 176">
                       {/* Background circle - clean track */}
                       <circle
-                        cx="80"
-                        cy="80"
-                        r="70"
+                        cx="88"
+                        cy="88"
+                        r="75"
                         stroke="rgba(255, 255, 255, 0.1)"
-                        strokeWidth="10"
+                        strokeWidth="12"
                         fill="none"
                       />
 
-                      {/* Progress circle - gradient emerging from black */}
+                      {/* Progress circle - gradient emerging from black around the circle */}
                       <defs>
-                        <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                        <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="0%" y2="100%">
                           {forceProfile.percentile_rank >= 75 ? (
                             <>
                               <stop offset="0%" stopColor="#000000" />
-                              <stop offset="40%" stopColor="#10b981" />
-                              <stop offset="70%" stopColor="#34d399" />
+                              <stop offset="30%" stopColor="#10b981" />
+                              <stop offset="60%" stopColor="#34d399" />
                               <stop offset="100%" stopColor="#6ee7b7" />
                             </>
                           ) : forceProfile.percentile_rank >= 50 ? (
                             <>
                               <stop offset="0%" stopColor="#000000" />
-                              <stop offset="40%" stopColor="#7BC5F0" />
-                              <stop offset="70%" stopColor="#9BDDFF" />
+                              <stop offset="30%" stopColor="#7BC5F0" />
+                              <stop offset="60%" stopColor="#9BDDFF" />
                               <stop offset="100%" stopColor="#B0E5FF" />
                             </>
                           ) : forceProfile.percentile_rank >= 25 ? (
                             <>
                               <stop offset="0%" stopColor="#000000" />
-                              <stop offset="40%" stopColor="#f59e0b" />
-                              <stop offset="70%" stopColor="#fbbf24" />
+                              <stop offset="30%" stopColor="#f59e0b" />
+                              <stop offset="60%" stopColor="#fbbf24" />
                               <stop offset="100%" stopColor="#fcd34d" />
                             </>
                           ) : (
                             <>
                               <stop offset="0%" stopColor="#000000" />
-                              <stop offset="40%" stopColor="#dc2626" />
-                              <stop offset="70%" stopColor="#ef4444" />
+                              <stop offset="30%" stopColor="#dc2626" />
+                              <stop offset="60%" stopColor="#ef4444" />
                               <stop offset="100%" stopColor="#f87171" />
                             </>
                           )}
@@ -457,15 +457,15 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                       </defs>
 
                       <circle
-                        cx="80"
-                        cy="80"
-                        r="70"
+                        cx="88"
+                        cy="88"
+                        r="75"
                         stroke={`url(#gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'})`}
-                        strokeWidth="10"
+                        strokeWidth="12"
                         fill="none"
                         strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 70}`}
-                        strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
+                        strokeDasharray={`${2 * Math.PI * 75}`}
+                        strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
                         style={{
                           filter: `drop-shadow(0 0 16px ${
@@ -479,15 +479,15 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
 
                       {/* Glossy shine overlay on progress */}
                       <circle
-                        cx="80"
-                        cy="80"
-                        r="70"
+                        cx="88"
+                        cy="88"
+                        r="75"
                         stroke="url(#shine)"
-                        strokeWidth="9"
+                        strokeWidth="10"
                         fill="none"
                         strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 70}`}
-                        strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
+                        strokeDasharray={`${2 * Math.PI * 75}`}
+                        strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
                       />
                     </svg>
