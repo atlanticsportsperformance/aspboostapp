@@ -37,7 +37,23 @@ export default function WorkoutExecutionPage() {
 
   // Auto-save workout state whenever inputs change
   useEffect(() => {
-    if (!workout || !instance || Object.keys(exerciseInputs).length === 0) return;
+    // Only save if workout data is loaded and workout is in progress
+    if (!workout || !instance || !routines || routines.length === 0) {
+      console.log('⏸️ Not saving - workout data not ready');
+      return;
+    }
+
+    // Only save if workout has been started
+    if (instance.status !== 'in_progress') {
+      console.log('⏸️ Not saving - workout not started yet');
+      return;
+    }
+
+    console.log('💾 Saving workout state...', {
+      instanceId,
+      exerciseInputsCount: Object.keys(exerciseInputs).length,
+      expandedExerciseId
+    });
 
     const workoutState: WorkoutState = {
       workoutInstanceId: instanceId,
@@ -69,6 +85,7 @@ export default function WorkoutExecutionPage() {
     };
 
     saveWorkoutState(workoutState);
+    console.log('✅ Workout state saved');
   }, [exerciseInputs, expandedExerciseId, workout, instance, routines, athleteId, instanceId]);
 
   useEffect(() => {
@@ -147,8 +164,18 @@ export default function WorkoutExecutionPage() {
           setExpandedExerciseId(allExercises[savedState.currentExerciseIndex].id);
         }
 
-        // If workout was in progress, keep it in progress
-        if (inst.status === 'scheduled') {
+        // AUTO-START workout if resuming (skip "Start Workout" button)
+        if (inst.status === 'not_started' || inst.status === 'scheduled') {
+          console.log('🚀 Auto-starting workout from saved state');
+          await supabase
+            .from('workout_instances')
+            .update({ status: 'in_progress', started_at: savedState.startedAt })
+            .eq('id', instanceId);
+
+          setInstance({ ...inst, status: 'in_progress', started_at: savedState.startedAt });
+          setTimerActive(true);
+        } else if (inst.status === 'in_progress') {
+          // Already in progress, just keep timer going
           setInstance({ ...inst, status: 'in_progress' });
           setTimerActive(true);
         }
