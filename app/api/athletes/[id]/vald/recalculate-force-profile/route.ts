@@ -55,29 +55,41 @@ export async function POST(
     console.log(`[recalculate-force-profile] Athlete: ${athlete.first_name} ${athlete.last_name}`);
     console.log(`[recalculate-force-profile] Current play level: ${athlete.play_level}`);
 
-    // 2. Get most recent test of each type for Force Profile calculation
-    const testTypes = ['SJ', 'HJ', 'PPU', 'IMTP'] as const;
+    // 2. Get most recent test of each type (including CMJ for percentile history)
+    const testConfigs = [
+      { type: 'CMJ' as const, table: 'cmj_tests' },
+      { type: 'SJ' as const, table: 'sj_tests' },
+      { type: 'HJ' as const, table: 'hj_tests' },
+      { type: 'PPU' as const, table: 'ppu_tests' },
+      { type: 'IMTP' as const, table: 'imtp_tests' },
+    ];
     const recentTests: any[] = [];
 
-    for (const testType of testTypes) {
+    for (const config of testConfigs) {
       const { data: tests, error: testError } = await supabase
-        .from('vald_tests')
+        .from(config.table)
         .select('*')
         .eq('athlete_id', athleteId)
-        .eq('test_type', testType)
-        .order('test_date', { ascending: false })
+        .order('recorded_utc', { ascending: false })
         .limit(1);
 
       if (testError) {
-        console.error(`[recalculate-force-profile] Error fetching ${testType} test:`, testError);
+        console.error(`[recalculate-force-profile] Error fetching ${config.type} test:`, testError);
         continue;
       }
 
       if (tests && tests.length > 0) {
-        recentTests.push(tests[0]);
-        console.log(`[recalculate-force-profile] Found ${testType} test from ${new Date(tests[0].test_date).toLocaleDateString()}`);
+        // Add test_type and normalize field names for compatibility
+        const test = {
+          ...tests[0],
+          test_type: config.type,
+          vald_test_id: tests[0].test_id,
+          test_date: tests[0].recorded_utc
+        };
+        recentTests.push(test);
+        console.log(`[recalculate-force-profile] Found ${config.type} test from ${new Date(tests[0].recorded_utc).toLocaleDateString()}`);
       } else {
-        console.log(`[recalculate-force-profile] No ${testType} test found - skipping`);
+        console.log(`[recalculate-force-profile] No ${config.type} test found - skipping`);
       }
     }
 
