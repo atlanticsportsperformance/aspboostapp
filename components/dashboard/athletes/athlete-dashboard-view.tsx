@@ -387,8 +387,15 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
       >
         <div className="h-full px-4 pb-4 pt-1 overflow-y-auto max-w-4xl mx-auto">
           {valdProfileId && forceProfile ? (
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex flex-col">
-              <h2 className="text-2xl font-bold text-white mb-6">Force Profile</h2>
+            <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col" style={{
+              boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+            }}>
+              {/* Glossy shine overlay */}
+              <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+              }} />
+
+              <h2 className="text-2xl font-bold text-white mb-6 relative z-10">Force Profile</h2>
 
               {/* Main Content - Circle Left, Metrics Right */}
               <div className="flex-1 flex items-center gap-6">
@@ -406,40 +413,46 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                         fill="none"
                       />
 
-                      {/* Progress circle - gradient with shine */}
+                      {/* Progress circle - gradient emerging from black */}
                       <defs>
                         <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="100%" y2="100%">
                           {forceProfile.percentile_rank >= 75 ? (
                             <>
-                              <stop offset="0%" stopColor="#10b981" />
-                              <stop offset="50%" stopColor="#34d399" />
+                              <stop offset="0%" stopColor="#000000" />
+                              <stop offset="40%" stopColor="#10b981" />
+                              <stop offset="70%" stopColor="#34d399" />
                               <stop offset="100%" stopColor="#6ee7b7" />
                             </>
                           ) : forceProfile.percentile_rank >= 50 ? (
                             <>
-                              <stop offset="0%" stopColor="#7BC5F0" />
-                              <stop offset="50%" stopColor="#9BDDFF" />
+                              <stop offset="0%" stopColor="#000000" />
+                              <stop offset="40%" stopColor="#7BC5F0" />
+                              <stop offset="70%" stopColor="#9BDDFF" />
                               <stop offset="100%" stopColor="#B0E5FF" />
                             </>
                           ) : forceProfile.percentile_rank >= 25 ? (
                             <>
-                              <stop offset="0%" stopColor="#f59e0b" />
-                              <stop offset="50%" stopColor="#fbbf24" />
+                              <stop offset="0%" stopColor="#000000" />
+                              <stop offset="40%" stopColor="#f59e0b" />
+                              <stop offset="70%" stopColor="#fbbf24" />
                               <stop offset="100%" stopColor="#fcd34d" />
                             </>
                           ) : (
                             <>
-                              <stop offset="0%" stopColor="#dc2626" />
-                              <stop offset="50%" stopColor="#ef4444" />
+                              <stop offset="0%" stopColor="#000000" />
+                              <stop offset="40%" stopColor="#dc2626" />
+                              <stop offset="70%" stopColor="#ef4444" />
                               <stop offset="100%" stopColor="#f87171" />
                             </>
                           )}
                         </linearGradient>
 
-                        {/* Shine overlay */}
+                        {/* Glossy shine overlay */}
                         <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
-                          <stop offset="50%" stopColor="rgba(255,255,255,0)" />
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+                          <stop offset="30%" stopColor="rgba(255,255,255,0.2)" />
+                          <stop offset="60%" stopColor="rgba(255,255,255,0)" />
+                          <stop offset="100%" stopColor="rgba(0,0,0,0.3)" />
                         </linearGradient>
                       </defs>
 
@@ -455,34 +468,47 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                         strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
                         style={{
-                          filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.3))',
+                          filter: `drop-shadow(0 0 16px ${
+                            forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.7)' :
+                            forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.7)' :
+                            forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.7)' :
+                            'rgba(239,68,68,0.7)'
+                          })`,
                         }}
                       />
 
-                      {/* Shine overlay on progress - subtle highlight */}
+                      {/* Glossy shine overlay on progress */}
                       <circle
                         cx="80"
                         cy="80"
                         r="70"
                         stroke="url(#shine)"
-                        strokeWidth="6"
+                        strokeWidth="9"
                         fill="none"
                         strokeLinecap="round"
                         strokeDasharray={`${2 * Math.PI * 70}`}
                         strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
-                        opacity="0.8"
                       />
                     </svg>
 
                     <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
-                      <div className={`text-4xl font-bold bg-gradient-to-br bg-clip-text text-transparent ${
-                        forceProfile.percentile_rank >= 75 ? 'from-green-300 to-green-500' :
-                        forceProfile.percentile_rank >= 50 ? 'from-[#B0E5FF] to-[#7BC5F0]' :
-                        forceProfile.percentile_rank >= 25 ? 'from-yellow-300 to-yellow-500' :
-                        'from-red-300 to-red-500'
-                      } drop-shadow-lg`}>{forceProfile.percentile_rank}</div>
-                      <div className="text-xs text-gray-300 uppercase tracking-wider font-semibold mt-1">
+                      <div className={`text-5xl font-bold ${
+                        forceProfile.percentile_rank >= 75 ? 'text-green-400' :
+                        forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
+                        forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`} style={{
+                        textShadow: `0 0 20px ${
+                          forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.8)' :
+                          forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.8)' :
+                          forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.8)' :
+                          'rgba(239,68,68,0.8)'
+                        }, 0 2px 4px rgba(0,0,0,0.8)`,
+                      }}>{forceProfile.percentile_rank}</div>
+                      <div className="text-xs text-gray-200 uppercase tracking-widest font-bold mt-1" style={{
+                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                      }}>
                         {forceProfile.percentile_rank >= 75 ? 'ELITE' :
                          forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
                          forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
@@ -505,17 +531,17 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                         {/* Inner shadow for depth */}
                         <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
 
-                        {/* Progress bar with glow */}
+                        {/* Progress bar emerging from black */}
                         <div
                           className="h-full rounded-full relative transition-all duration-1000"
                           style={{
                             width: `${forceProfile.best_metric.percentile}%`,
-                            background: 'linear-gradient(135deg, #10b981 0%, #34d399 50%, #6ee7b7 100%)',
-                            boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                            background: 'linear-gradient(90deg, #000000 0%, #10b981 40%, #34d399 70%, #6ee7b7 100%)',
+                            boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
                           }}
                         >
-                          {/* Shine overlay */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+                          {/* Glossy shine overlay */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-transparent to-black/20" />
                         </div>
                       </div>
                       <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.best_metric.name}</p>
@@ -533,17 +559,17 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                         {/* Inner shadow for depth */}
                         <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
 
-                        {/* Progress bar with glow */}
+                        {/* Progress bar emerging from black */}
                         <div
                           className="h-full rounded-full relative transition-all duration-1000"
                           style={{
                             width: `${forceProfile.worst_metric.percentile}%`,
-                            background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)',
-                            boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                            background: 'linear-gradient(90deg, #000000 0%, #dc2626 40%, #ef4444 70%, #f87171 100%)',
+                            boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
                           }}
                         >
-                          {/* Shine overlay */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+                          {/* Glossy shine overlay */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-transparent to-black/20" />
                         </div>
                       </div>
                       <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.worst_metric.name}</p>
@@ -552,16 +578,6 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                 </div>
               </div>
 
-              {/* View Full Analysis Button */}
-              <Link
-                href={`/athlete-dashboard/force-profile`}
-                className="mt-6 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/30 hover:shadow-[#9BDDFF]/50 flex items-center justify-center gap-2"
-              >
-                <span>View Full Analysis</span>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
             </div>
           ) : (
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex items-center justify-center">
