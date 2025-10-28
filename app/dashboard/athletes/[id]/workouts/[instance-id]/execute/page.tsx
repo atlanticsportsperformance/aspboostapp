@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { saveWorkoutState, loadWorkoutState, clearWorkoutState, type WorkoutState } from '@/lib/workout-persistence';
 
 export default function WorkoutExecutionPage() {
   const params = useParams();
@@ -33,6 +34,42 @@ export default function WorkoutExecutionPage() {
       fetchData();
     }
   }, [instanceId]);
+
+  // Auto-save workout state whenever inputs change
+  useEffect(() => {
+    if (!workout || !instance || Object.keys(exerciseInputs).length === 0) return;
+
+    const workoutState: WorkoutState = {
+      workoutInstanceId: instanceId,
+      athleteId,
+      athleteName: instance.athlete_name || 'Athlete',
+      workoutName: workout.name || 'Workout',
+      startedAt: instance.started_at || new Date().toISOString(),
+      currentExerciseIndex: routines.flatMap(r => r.routine_exercises || []).findIndex(ex => ex.id === expandedExerciseId),
+      exercises: routines.flatMap((routine: any) =>
+        (routine.routine_exercises || []).map((ex: any) => ({
+          id: ex.id,
+          name: ex.exercises?.name || 'Exercise',
+          sets: ex.sets || 3,
+          reps: ex.reps || '',
+          weight: ex.weight || '',
+          notes: ex.notes || '',
+          completedSets: (exerciseInputs[ex.id] || []).filter((input: any) =>
+            input && (input.reps > 0 || input.weight > 0)
+          ).length,
+          setLogs: (exerciseInputs[ex.id] || []).map((input: any, idx: number) => ({
+            setNumber: idx + 1,
+            reps: input?.reps || 0,
+            weight: input?.weight || 0,
+            notes: input?.notes || '',
+            completedAt: new Date().toISOString()
+          }))
+        }))
+      )
+    };
+
+    saveWorkoutState(workoutState);
+  }, [exerciseInputs, expandedExerciseId, workout, instance, routines, athleteId, instanceId]);
 
   useEffect(() => {
     let interval: any;
@@ -260,6 +297,10 @@ export default function WorkoutExecutionPage() {
       .eq('id', instanceId);
 
     setTimerActive(false);
+
+    // Clear saved workout state since workout is complete
+    clearWorkoutState();
+
     router.push(`/dashboard/athletes/${athleteId}`);
   }
 

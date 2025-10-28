@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { hasActiveWorkout, getActiveWorkoutInfo, loadWorkoutState } from '@/lib/workout-persistence';
+import ResumeWorkoutModal from './resume-workout-modal';
 
 interface AthleteDashboardViewProps {
   athleteId: string;
@@ -67,8 +69,27 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   const [loading, setLoading] = useState(true);
   const [valdProfileId, setValdProfileId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeWorkoutInfo, setResumeWorkoutInfo] = useState<any>(null);
 
   const supabase = createClient();
+
+  // Check for active workout on mount
+  useEffect(() => {
+    if (hasActiveWorkout()) {
+      const info = getActiveWorkoutInfo();
+      const state = loadWorkoutState();
+      if (info && state) {
+        setResumeWorkoutInfo({
+          workoutInstanceId: state.workoutInstanceId,
+          athleteId: state.athleteId,
+          workoutName: info.workoutName,
+          startedAt: info.startedAt
+        });
+        setShowResumeModal(true);
+      }
+    }
+  }, []);
 
   // Initial load - fetch everything with loading screen
   useEffect(() => {
@@ -309,7 +330,19 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0A0A] flex flex-col overflow-hidden relative">
+    <>
+      {/* Resume Workout Modal */}
+      {showResumeModal && resumeWorkoutInfo && (
+        <ResumeWorkoutModal
+          workoutInstanceId={resumeWorkoutInfo.workoutInstanceId}
+          athleteId={resumeWorkoutInfo.athleteId}
+          workoutName={resumeWorkoutInfo.workoutName}
+          startedAt={resumeWorkoutInfo.startedAt}
+          onClose={() => setShowResumeModal(false)}
+        />
+      )}
+
+      <div className="min-h-screen bg-[#0A0A0A] flex flex-col overflow-hidden relative">
       <style jsx>{`
         @keyframes slideIn {
           from {
@@ -883,5 +916,6 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
         )}
       </div>
     </div>
+    </>
   );
 }
