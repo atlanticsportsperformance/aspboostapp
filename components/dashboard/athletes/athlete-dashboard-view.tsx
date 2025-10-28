@@ -392,46 +392,97 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
 
               {/* Main Content - Circle Left, Metrics Right */}
               <div className="flex-1 flex items-center gap-6">
-                {/* LEFT: Composite Score Circle - Color Coded */}
+                {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
                 <div className="flex-shrink-0">
-                  <div className="relative">
+                  <div className="relative w-40 h-40">
                     <svg className="transform -rotate-90" width="160" height="160">
-                      {/* Background circle */}
+                      {/* Background circle - clean track */}
                       <circle
                         cx="80"
                         cy="80"
                         r="70"
-                        stroke="rgba(255,255,255,0.1)"
+                        stroke="rgba(255, 255, 255, 0.1)"
                         strokeWidth="10"
                         fill="none"
                       />
-                      {/* Progress circle - color coded by zone */}
+
+                      {/* Progress circle - gradient with shine */}
+                      <defs>
+                        <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                          {forceProfile.percentile_rank >= 75 ? (
+                            <>
+                              <stop offset="0%" stopColor="#10b981" />
+                              <stop offset="50%" stopColor="#34d399" />
+                              <stop offset="100%" stopColor="#6ee7b7" />
+                            </>
+                          ) : forceProfile.percentile_rank >= 50 ? (
+                            <>
+                              <stop offset="0%" stopColor="#7BC5F0" />
+                              <stop offset="50%" stopColor="#9BDDFF" />
+                              <stop offset="100%" stopColor="#B0E5FF" />
+                            </>
+                          ) : forceProfile.percentile_rank >= 25 ? (
+                            <>
+                              <stop offset="0%" stopColor="#f59e0b" />
+                              <stop offset="50%" stopColor="#fbbf24" />
+                              <stop offset="100%" stopColor="#fcd34d" />
+                            </>
+                          ) : (
+                            <>
+                              <stop offset="0%" stopColor="#dc2626" />
+                              <stop offset="50%" stopColor="#ef4444" />
+                              <stop offset="100%" stopColor="#f87171" />
+                            </>
+                          )}
+                        </linearGradient>
+
+                        {/* Shine overlay */}
+                        <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
+                          <stop offset="50%" stopColor="rgba(255,255,255,0)" />
+                        </linearGradient>
+                      </defs>
+
                       <circle
                         cx="80"
                         cy="80"
                         r="70"
-                        stroke={
-                          forceProfile.percentile_rank >= 75 ? '#10b981' : // green - ELITE
-                          forceProfile.percentile_rank >= 50 ? '#9BDDFF' : // blue - OPTIMIZE
-                          forceProfile.percentile_rank >= 25 ? '#fbbf24' : // yellow - SHARPEN
-                          '#ef4444' // red - BUILD
-                        }
+                        stroke={`url(#gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'})`}
                         strokeWidth="10"
                         fill="none"
                         strokeLinecap="round"
                         strokeDasharray={`${2 * Math.PI * 70}`}
                         strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
                         className="transition-all duration-1000"
+                        style={{
+                          filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.3))',
+                        }}
+                      />
+
+                      {/* Shine overlay on progress - subtle highlight */}
+                      <circle
+                        cx="80"
+                        cy="80"
+                        r="70"
+                        stroke="url(#shine)"
+                        strokeWidth="6"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={`${2 * Math.PI * 70}`}
+                        strokeDashoffset={`${2 * Math.PI * 70 * (1 - forceProfile.percentile_rank / 100)}`}
+                        className="transition-all duration-1000"
+                        opacity="0.8"
                       />
                     </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className={`text-4xl font-bold ${
-                        forceProfile.percentile_rank >= 75 ? 'text-green-400' :
-                        forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
-                        forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`}>{forceProfile.percentile_rank}</div>
-                      <div className="text-xs text-gray-400 uppercase tracking-wide">
+
+                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20">
+                      <div className={`text-4xl font-bold bg-gradient-to-br bg-clip-text text-transparent ${
+                        forceProfile.percentile_rank >= 75 ? 'from-green-300 to-green-500' :
+                        forceProfile.percentile_rank >= 50 ? 'from-[#B0E5FF] to-[#7BC5F0]' :
+                        forceProfile.percentile_rank >= 25 ? 'from-yellow-300 to-yellow-500' :
+                        'from-red-300 to-red-500'
+                      } drop-shadow-lg`}>{forceProfile.percentile_rank}</div>
+                      <div className="text-xs text-gray-300 uppercase tracking-wider font-semibold mt-1">
                         {forceProfile.percentile_rank >= 75 ? 'ELITE' :
                          forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
                          forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
@@ -441,22 +492,33 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                   </div>
                 </div>
 
-                {/* RIGHT: Best & Worst Metrics */}
-                <div className="flex-1 flex flex-col justify-center gap-4">
+                {/* RIGHT: Best & Worst Metrics - 3D Sliders */}
+                <div className="flex-1 flex flex-col justify-center gap-6">
                   {/* Best Metric */}
                   {forceProfile.best_metric && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400 uppercase tracking-wide">Strongest</span>
-                        <span className="text-sm font-bold text-green-400">{forceProfile.best_metric.percentile}th</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Strongest</span>
+                        <span className="text-lg font-bold bg-gradient-to-br from-green-300 to-green-500 bg-clip-text text-transparent">{forceProfile.best_metric.percentile}th</span>
                       </div>
-                      <div className="h-3 bg-black/40 rounded-full overflow-hidden">
+                      <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
+                        {/* Inner shadow for depth */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
+
+                        {/* Progress bar with glow */}
                         <div
-                          className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-1000"
-                          style={{ width: `${forceProfile.best_metric.percentile}%` }}
-                        />
+                          className="h-full rounded-full relative transition-all duration-1000"
+                          style={{
+                            width: `${forceProfile.best_metric.percentile}%`,
+                            background: 'linear-gradient(135deg, #10b981 0%, #34d399 50%, #6ee7b7 100%)',
+                            boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                          }}
+                        >
+                          {/* Shine overlay */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+                        </div>
                       </div>
-                      <p className="text-sm text-white mt-1 font-medium">{forceProfile.best_metric.name}</p>
+                      <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.best_metric.name}</p>
                     </div>
                   )}
 
@@ -464,29 +526,40 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                   {forceProfile.worst_metric && (
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400 uppercase tracking-wide">Focus Area</span>
-                        <span className="text-sm font-bold text-red-400">{forceProfile.worst_metric.percentile}th</span>
+                        <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Focus Area</span>
+                        <span className="text-lg font-bold bg-gradient-to-br from-red-300 to-red-500 bg-clip-text text-transparent">{forceProfile.worst_metric.percentile}th</span>
                       </div>
-                      <div className="h-3 bg-black/40 rounded-full overflow-hidden">
+                      <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
+                        {/* Inner shadow for depth */}
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
+
+                        {/* Progress bar with glow */}
                         <div
-                          className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-1000"
-                          style={{ width: `${forceProfile.worst_metric.percentile}%` }}
-                        />
+                          className="h-full rounded-full relative transition-all duration-1000"
+                          style={{
+                            width: `${forceProfile.worst_metric.percentile}%`,
+                            background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%)',
+                            boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.3)',
+                          }}
+                        >
+                          {/* Shine overlay */}
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/30 to-transparent" />
+                        </div>
                       </div>
-                      <p className="text-sm text-white mt-1 font-medium">{forceProfile.worst_metric.name}</p>
+                      <p className="text-sm text-white mt-1.5 font-medium">{forceProfile.worst_metric.name}</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Go Deeper Button */}
+              {/* View Full Analysis Button */}
               <Link
                 href={`/athlete-dashboard/force-profile`}
-                className="mt-6 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/20 flex items-center justify-center gap-2"
+                className="mt-6 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold py-3 px-6 rounded-lg transition-all text-center shadow-lg shadow-[#9BDDFF]/30 hover:shadow-[#9BDDFF]/50 flex items-center justify-center gap-2"
               >
-                <span>Explore Deeper</span>
+                <span>View Full Analysis</span>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             </div>
