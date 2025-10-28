@@ -71,16 +71,17 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   const supabase = createClient();
 
   useEffect(() => {
-    // Only fetch force profile on initial load
-    fetchForceProfile();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [athleteId]);
-
-  useEffect(() => {
-    // Fetch workout instances when month changes (no loading screen)
-    fetchWorkoutInstances();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchData();
   }, [athleteId, currentDate]);
+
+  async function fetchData() {
+    setLoading(true);
+    await Promise.all([
+      fetchWorkoutInstances(),
+      fetchForceProfile()
+    ]);
+    setLoading(false);
+  }
 
   async function fetchWorkoutInstances() {
     // Get first and last day of current month
