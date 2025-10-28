@@ -461,31 +461,104 @@ export default function WorkoutExecutionPage() {
       {/* Content */}
       <div className="px-0 md:px-4 py-3">
         {instance.status === 'not_started' && (
-          <div className="text-center py-16 px-4">
-            <div className="max-w-md mx-auto">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-full flex items-center justify-center border border-green-500/30">
-                <svg className="w-10 h-10 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="py-4 px-3 pb-32">
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-full flex items-center justify-center border border-green-500/30">
+                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-3xl font-bold mb-3">Ready to go?</h2>
-              <p className="text-gray-400 mb-8">Press start when you're ready to begin your workout session.</p>
-              {/* Preview exercise count */}
-              <div className="flex items-center justify-center gap-6 text-sm text-gray-400 mb-8">
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                  <span>{allExercises.length} exercises</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                  </svg>
-                  <span>{routines.length} {routines.length === 1 ? 'block' : 'blocks'}</span>
-                </div>
-              </div>
+              <h2 className="text-2xl font-bold mb-2">Workout Preview</h2>
+              <p className="text-sm text-gray-400">{allExercises.length} exercises • {routines.length} {routines.length === 1 ? 'block' : 'blocks'}</p>
+            </div>
+
+            {/* Workout Preview - Blocks with Exercises */}
+            <div className="space-y-4 max-w-2xl mx-auto">
+              {routines.map((routine, routineIdx) => {
+                const hasBlockTitle = routine.name && routine.name.toLowerCase() !== 'exercise';
+                const exercises = routine.routine_exercises || [];
+
+                return (
+                  <div key={routine.id} className="relative">
+                    {/* Block Card */}
+                    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+                      {/* Block Header */}
+                      {hasBlockTitle && (
+                        <div className="bg-[#9BDDFF]/10 border-b border-[#9BDDFF]/20 px-4 py-3">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-[#9BDDFF] uppercase tracking-wide">
+                              {routine.name}
+                            </h3>
+                            <span className="text-xs text-gray-400">{exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Exercises List */}
+                      <div className="divide-y divide-white/5">
+                        {exercises.map((ex: any, exIdx: number) => {
+                          const exercise = ex.exercises;
+                          if (!exercise) return null;
+
+                          const measurements = exercise.metric_schema?.measurements || [];
+                          const hasCustomMetrics = measurements.length > 0;
+
+                          return (
+                            <div key={ex.id} className="px-4 py-3">
+                              {/* Exercise Name */}
+                              <div className="flex items-start justify-between gap-3 mb-2">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">
+                                    {exIdx + 1}
+                                  </span>
+                                  <h4 className="font-semibold text-white truncate">{exercise.name}</h4>
+                                </div>
+                              </div>
+
+                              {/* Sets x Reps */}
+                              <div className="flex items-center gap-4 text-sm">
+                                <div className="flex items-center gap-1.5 text-gray-300">
+                                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                  </svg>
+                                  <span className="font-medium">
+                                    {ex.sets || 3} × {ex.reps || '—'}
+                                  </span>
+                                </div>
+
+                                {/* Custom Metrics Preview */}
+                                {hasCustomMetrics && (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {measurements.slice(0, 3).map((metric: any) => (
+                                      <span key={metric.id} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                                        {metric.name}
+                                      </span>
+                                    ))}
+                                    {measurements.length > 3 && (
+                                      <span className="text-xs text-gray-500">
+                                        +{measurements.length - 3} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Notes Preview */}
+                              {ex.notes && (
+                                <div className="mt-2 text-xs text-gray-400 italic">
+                                  {ex.notes}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
