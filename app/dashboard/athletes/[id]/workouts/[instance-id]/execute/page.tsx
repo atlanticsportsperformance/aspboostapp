@@ -75,9 +75,7 @@ export default function WorkoutExecutionPage() {
           ).length,
           setLogs: (exerciseInputs[ex.id] || []).map((input: any, idx: number) => ({
             setNumber: idx + 1,
-            reps: input?.reps || 0,
-            weight: input?.weight || 0,
-            notes: input?.notes || '',
+            ...input, // Save ALL fields (including custom measurements)
             completedAt: new Date().toISOString()
           }))
         }))
@@ -150,11 +148,11 @@ export default function WorkoutExecutionPage() {
         // Restore exercise inputs from saved state
         const restoredInputs: Record<string, Array<any>> = {};
         savedState.exercises.forEach(exercise => {
-          restoredInputs[exercise.id] = exercise.setLogs.map(log => ({
-            reps: log.reps,
-            weight: log.weight,
-            notes: log.notes
-          }));
+          restoredInputs[exercise.id] = exercise.setLogs.map(log => {
+            // Restore ALL fields from saved state (including custom measurements)
+            const { setNumber, completedAt, ...inputData } = log;
+            return inputData;
+          });
         });
 
         console.log('📦 Restoring inputs:', restoredInputs);
