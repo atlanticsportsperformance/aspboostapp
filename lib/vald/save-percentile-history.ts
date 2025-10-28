@@ -106,7 +106,7 @@ export async function saveTestPercentileHistory(
 
         console.log(`[saveTestPercentileHistory]   ${metricConfig.displayName}: ${value} → ${playLevel}=${percentile_play_level}th, Overall=${percentile_overall}th`);
 
-        // Check if row exists for this metric
+        // Check if row exists for this EXACT metric + play_level combination
         const { data: existing } = await supabase
           .from('athlete_percentile_history')
           .select('id')
@@ -114,11 +114,12 @@ export async function saveTestPercentileHistory(
           .eq('test_id', testId)
           .eq('test_type', testType)
           .eq('metric_name', metricConfig.displayName)
+          .eq('play_level', playLevel) // IMPORTANT: Only update if same play_level
           .single();
 
         let error;
         if (existing) {
-          // Update existing row
+          // Update existing row (same test, same play level)
           const result = await supabase
             .from('athlete_percentile_history')
             .update({
@@ -132,7 +133,7 @@ export async function saveTestPercentileHistory(
             .eq('id', existing.id);
           error = result.error;
         } else {
-          // Insert new row
+          // Insert new row (either new test OR same test with different play level)
           const result = await supabase
             .from('athlete_percentile_history')
             .insert({
