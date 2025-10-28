@@ -7,18 +7,29 @@
 
 import { SupabaseClient } from '@supabase/supabase-js';
 
+interface CompositeResult {
+  success: boolean;
+  error?: string;
+  composite?: {
+    percentile_play_level: number;
+    percentile_overall: number;
+  };
+}
+
 /**
  * Calculate Overall Force Profile Composite Score and save as a special row
  *
  * @param supabase - Supabase client (service role)
  * @param athleteId - Athlete UUID
  * @param playLevel - Athlete's play level
+ * @param recentTests - Optional recent tests array (not currently used)
  */
 export async function calculateForceProfileComposite(
   supabase: SupabaseClient,
   athleteId: string,
-  playLevel: string
-): Promise<boolean> {
+  playLevel: string,
+  recentTests?: any[]
+): Promise<CompositeResult> {
   try {
     console.log(`\n[calculateForceProfileComposite] Calculating for athlete ${athleteId}`);
 
@@ -42,13 +53,14 @@ export async function calculateForceProfileComposite(
     let mostRecentDate: Date | null = null;
 
     for (const { test_type, metric_name } of metricsToFetch) {
-      // Get most recent row for this specific metric
+      // Get most recent row for this specific metric AT THE CURRENT PLAY LEVEL
       const { data: metricRow } = await supabase
         .from('athlete_percentile_history')
         .select('test_date, percentile_play_level, percentile_overall')
         .eq('athlete_id', athleteId)
         .eq('test_type', test_type)
         .eq('metric_name', metric_name)
+        .eq('play_level', playLevel) // IMPORTANT: Filter by current play level
         .order('test_date', { ascending: false })
         .limit(1)
         .single();
@@ -75,7 +87,7 @@ export async function calculateForceProfileComposite(
     // Only skip if NO metrics found at all
     if (playLevelPercentiles.length === 0 && overallPercentiles.length === 0) {
       console.log('  No composite metrics found for Force Profile calculation');
-      return false;
+      return { success: false, error: 'No composite metrics found' };
     }
 
     // Warn if we don't have all 6 metrics (but still create FORCE_PROFILE with what we have)
@@ -113,13 +125,19 @@ export async function calculateForceProfileComposite(
 
     if (error) {
       console.error(`[calculateForceProfileComposite] Error saving:`, error);
-      return false;
+      return { success: false, error: error.message || 'Failed to save composite' };
     }
 
     console.log(`✅ Saved Force Profile composite row`);
-    return true;
+    return {
+      success: true,
+      composite: {
+        percentile_play_level: avgPlayLevel || 0,
+        percentile_overall: avgOverall || 0,
+      }
+    };
   } catch (err) {
     console.error('[calculateForceProfileComposite] Exception:', err);
-    return false;
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }

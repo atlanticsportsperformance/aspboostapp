@@ -329,7 +329,10 @@ export async function POST(
     if (playLevel) {
       try {
         console.log('\n📊 Calculating Overall Force Profile Composite Score...');
-        await calculateForceProfileComposite(serviceSupabase, athleteId, playLevel);
+        const result = await calculateForceProfileComposite(serviceSupabase, athleteId, playLevel);
+        if (!result.success) {
+          console.error('Force profile composite calculation failed:', result.error);
+        }
       } catch (forceProfileError) {
         console.error('Error calculating force profile composite:', forceProfileError);
         // Don't fail the sync if force profile calculation fails
