@@ -70,18 +70,25 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
 
   const supabase = createClient();
 
+  // Initial load - fetch everything with loading screen
   useEffect(() => {
-    fetchData();
-  }, [athleteId, currentDate]);
+    async function initialLoad() {
+      setLoading(true);
+      await Promise.all([
+        fetchWorkoutInstances(),
+        fetchForceProfile()
+      ]);
+      setLoading(false);
+    }
+    initialLoad();
+  }, [athleteId]);
 
-  async function fetchData() {
-    setLoading(true);
-    await Promise.all([
-      fetchWorkoutInstances(),
-      fetchForceProfile()
-    ]);
-    setLoading(false);
-  }
+  // Month changes - only refetch workouts, no loading screen
+  useEffect(() => {
+    if (!loading) {
+      fetchWorkoutInstances();
+    }
+  }, [currentDate]);
 
   async function fetchWorkoutInstances() {
     // Get first and last day of current month
@@ -401,8 +408,8 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
               {/* Main Content - Circle Left, Metrics Right */}
               <div className="flex-1 flex items-center gap-6">
                 {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
-                <div className="flex-shrink-0 relative">
-                  <svg className="transform -rotate-90" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block' }}>
+                <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group">
+                  <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block' }}>
                       {/* Background circle - clean track */}
                       <circle
                         cx="88"
@@ -515,14 +522,14 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                        'BUILD'}
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* RIGHT: Best & Worst Metrics - 3D Sliders */}
                 <div className="flex-1 flex flex-col justify-center gap-6">
                   {/* Best Metric */}
                   {forceProfile.best_metric && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
+                    <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                      <div className="flex items-center justify-between mb-2 transition-colors">
                         <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Strongest</span>
                         <span className="text-lg font-bold bg-gradient-to-br from-green-300 to-green-500 bg-clip-text text-transparent">{forceProfile.best_metric.percentile}th</span>
                       </div>
@@ -558,13 +565,13 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                           </span>
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   )}
 
                   {/* Worst Metric */}
                   {forceProfile.worst_metric && (
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
+                    <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                      <div className="flex items-center justify-between mb-2 transition-colors">
                         <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Focus Area</span>
                         <span className="text-lg font-bold bg-gradient-to-br from-red-300 to-red-500 bg-clip-text text-transparent">{forceProfile.worst_metric.percentile}th</span>
                       </div>
@@ -600,7 +607,7 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
                           </span>
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   )}
                 </div>
               </div>
