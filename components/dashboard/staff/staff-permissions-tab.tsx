@@ -470,7 +470,7 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
 
           {/* Athlete Permissions */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="text-base font-semibold text-white mb-3">Athletes</h3>
+            <h3 className="text-base font-semibold text-white mb-3">Athlete Management</h3>
             <div className="space-y-1.5">
               <PermissionToggle label="Can Assign Coaches" checked={canAssignCoaches} onChange={setCanAssignCoaches} />
               <PermissionToggle label="Can Edit Athlete Profiles" checked={canEditAthleteProfile} onChange={setCanEditAthleteProfile} />
