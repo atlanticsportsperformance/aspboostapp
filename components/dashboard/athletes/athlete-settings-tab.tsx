@@ -206,48 +206,215 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
 
   return (
     <div className="space-y-4">
+      {/* Two Column Grid Layout for Integrations */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* VALD Force Plates Integration */}
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-semibold text-white">VALD Force Plates</h3>
+            {athlete.vald_profile_id && (
+              <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/40 rounded text-emerald-400 text-xs font-semibold">
+                ✓ Linked
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Link to sync force plate test data
+          </p>
+
+          {/* Current VALD Status */}
+          {athlete.vald_profile_id ? (
+            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg mb-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-emerald-400 font-medium text-xs">Profile Linked</p>
+                  <p className="text-emerald-200 text-xs mt-1 font-mono break-all">{athlete.vald_profile_id}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-3">
+              <div className="flex items-start gap-2">
+                <svg className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div>
+                  <p className="text-amber-400 font-medium text-xs">Not Linked</p>
+                  <p className="text-amber-200 text-xs mt-1">
+                    Search to link existing profile
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search Button */}
+          {!athlete.vald_profile_id && canEditProfile && (
+            <button
+              onClick={handleSearchVALD}
+              disabled={valdSearching || !athlete.first_name || !athlete.last_name}
+              className="w-full px-3 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs mb-3"
+            >
+              {valdSearching ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-black border-r-transparent"></div>
+                  Searching...
+                </span>
+              ) : (
+                `Search VALD`
+              )}
+            </button>
+          )}
+
+          {/* Permission denied message */}
+          {!athlete.vald_profile_id && !canEditProfile && (
+            <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded text-center mb-3">
+              <p className="text-amber-400 text-xs">
+                🔒 No permission to link
+              </p>
+            </div>
+          )}
+
+          {/* Success/Error Message */}
+          {valdMessage && (
+            <div className={`p-2 rounded-lg text-xs mb-3 ${
+              valdMessage.startsWith('✅')
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                : 'bg-red-500/10 border border-red-500/20 text-red-400'
+            }`}>
+              {valdMessage}
+            </div>
+          )}
+
+          {/* Search Results */}
+          {valdMatches.length > 0 && canEditProfile && (
+            <div className="space-y-2">
+              <p className="text-xs text-white font-medium">Select profile to link:</p>
+              <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                {valdMatches.map((profile: any) => (
+                  <button
+                    key={profile.profileId}
+                    type="button"
+                    onClick={() => setSelectedValdProfile(profile.profileId)}
+                    className={`w-full px-3 py-2 rounded-lg text-left transition-colors ${
+                      selectedValdProfile === profile.profileId
+                        ? 'bg-emerald-500/30 border border-emerald-500'
+                        : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-xs font-medium truncate">
+                          {profile.givenName} {profile.familyName}
+                        </p>
+                        {profile.email && (
+                          <p className="text-emerald-300 text-xs mt-0.5 truncate">
+                            {profile.email}
+                          </p>
+                        )}
+                        <p className="text-gray-400 text-xs mt-0.5">
+                          DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {selectedValdProfile === profile.profileId && (
+                        <svg className="w-4 h-4 text-emerald-400 flex-shrink-0 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Link Button */}
+              <button
+                onClick={handleLinkVALD}
+                disabled={!selectedValdProfile || valdLinking}
+                className="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs"
+              >
+                {valdLinking ? 'Linking...' : 'Link Selected Profile'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Blast Motion Integration - Placeholder */}
+        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-base font-semibold text-white">Blast Motion</h3>
+            <span className="px-2 py-0.5 bg-gray-500/20 border border-gray-500/40 rounded text-gray-400 text-xs font-semibold">
+              Coming Soon
+            </span>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Link to sync hitting & swing data
+          </p>
+
+          {/* Placeholder Status */}
+          <div className="p-3 bg-gray-500/10 border border-gray-500/20 rounded-lg mb-3">
+            <div className="flex items-start gap-2">
+              <svg className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="text-gray-400 font-medium text-xs">Not Available</p>
+                <p className="text-gray-500 text-xs mt-1">
+                  Integration in development
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Disabled Button */}
+          <button
+            disabled
+            className="w-full px-3 py-2 bg-gray-600 text-gray-400 rounded-lg cursor-not-allowed opacity-50 font-medium text-xs"
+          >
+            Search Blast Motion
+          </button>
+        </div>
+      </div>
+
       {/* Athlete View Type Selection */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
-        <h3 className="text-lg lg:text-xl font-bold text-white mb-2">Athlete View Type</h3>
-        <p className="text-sm text-gray-400 mb-4">
-          Select the training focus category for this athlete. This helps organize and customize their experience.
+      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+        <h3 className="text-base font-semibold text-white mb-2">Athlete View Type</h3>
+        <p className="text-xs text-gray-400 mb-3">
+          Select the training focus category for this athlete
         </p>
 
         {loading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-4">
             <div className="text-center">
-              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-[#9BDDFF] border-r-transparent"></div>
-              <p className="mt-2 text-gray-400 text-sm">Loading view types...</p>
+              <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-[#9BDDFF] border-r-transparent"></div>
+              <p className="mt-2 text-gray-400 text-xs">Loading...</p>
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-2">
-                View Type
-              </label>
-              <select
-                value={selectedViewTypeId}
-                onChange={(e) => setSelectedViewTypeId(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] [&>option]:bg-[#1a1a1a] [&>option]:text-white"
-              >
-                <option value="">No specific type</option>
-                {viewTypes.map((vt) => (
-                  <option key={vt.id} value={vt.id}>
-                    {vt.name}
-                  </option>
-                ))}
-              </select>
-              {selectedViewTypeId && viewTypes.find(vt => vt.id === selectedViewTypeId)?.description && (
-                <p className="mt-2 text-xs text-gray-500">
-                  {viewTypes.find(vt => vt.id === selectedViewTypeId)?.description}
-                </p>
-              )}
-            </div>
+          <div className="space-y-3">
+            <select
+              value={selectedViewTypeId}
+              onChange={(e) => setSelectedViewTypeId(e.target.value)}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] [&>option]:bg-[#1a1a1a] [&>option]:text-white"
+            >
+              <option value="">No specific type</option>
+              {viewTypes.map((vt) => (
+                <option key={vt.id} value={vt.id}>
+                  {vt.name}
+                </option>
+              ))}
+            </select>
+            {selectedViewTypeId && viewTypes.find(vt => vt.id === selectedViewTypeId)?.description && (
+              <p className="text-xs text-gray-500">
+                {viewTypes.find(vt => vt.id === selectedViewTypeId)?.description}
+              </p>
+            )}
 
             {/* Success/Error Message */}
             {message && (
-              <div className={`p-3 rounded-lg text-sm ${
+              <div className={`p-2 rounded-lg text-xs ${
                 message.startsWith('✅')
                   ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                   : 'bg-red-500/10 border border-red-500/20 text-red-400'
@@ -260,182 +427,13 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
               <button
                 onClick={handleSaveViewType}
                 disabled={saving}
-                className="px-4 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 transition-colors font-medium text-sm"
+                className="px-3 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 transition-colors font-medium text-xs"
               >
-                {saving ? 'Saving...' : 'Save View Type'}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             )}
           </div>
         )}
-
-        {/* Info Box */}
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-          <div className="flex items-start gap-2">
-            <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-xs text-blue-300/80">
-              View types can be customized in the Admin Settings. This setting can be changed at any time.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* VALD Account Linking */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg lg:text-xl font-bold text-white">VALD Force Plates Integration</h3>
-          {athlete.vald_profile_id && (
-            <span className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded text-emerald-400 text-xs font-semibold">
-              ✓ Linked
-            </span>
-          )}
-        </div>
-        <p className="text-sm text-gray-400 mb-4">
-          Link this athlete to an existing VALD Force Plates profile to sync test data.
-        </p>
-
-        {/* Current VALD Status */}
-        {athlete.vald_profile_id ? (
-          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg mb-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p className="text-emerald-400 font-semibold text-sm">VALD Profile Linked</p>
-                <p className="text-emerald-200 text-xs mt-1 font-mono">{athlete.vald_profile_id}</p>
-                <p className="text-emerald-300 text-xs mt-2">
-                  This athlete's force plate data is syncing from VALD.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div>
-                <p className="text-amber-400 font-semibold text-sm">No VALD Profile Linked</p>
-                <p className="text-amber-200 text-xs mt-1">
-                  Search and link to an existing VALD profile to sync force plate data.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Search Button */}
-        {!athlete.vald_profile_id && canEditProfile && (
-          <button
-            onClick={handleSearchVALD}
-            disabled={valdSearching || !athlete.first_name || !athlete.last_name}
-            className="w-full px-4 py-2.5 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm mb-4"
-          >
-            {valdSearching ? (
-              <span className="flex items-center justify-center gap-2">
-                <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-black border-r-transparent"></div>
-                Searching VALD...
-              </span>
-            ) : (
-              `Search VALD for "${athlete.first_name} ${athlete.last_name}"`
-            )}
-          </button>
-        )}
-
-        {/* Permission denied message */}
-        {!athlete.vald_profile_id && !canEditProfile && (
-          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-4">
-            <p className="text-amber-400 text-sm">
-              🔒 You don't have permission to link VALD profiles. Contact an admin if you need to link this athlete.
-            </p>
-          </div>
-        )}
-
-        {/* Success/Error Message */}
-        {valdMessage && (
-          <div className={`p-3 rounded-lg text-sm mb-4 ${
-            valdMessage.startsWith('✅')
-              ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-              : 'bg-red-500/10 border border-red-500/20 text-red-400'
-          }`}>
-            {valdMessage}
-          </div>
-        )}
-
-        {/* Search Results */}
-        {valdMatches.length > 0 && canEditProfile && (
-          <div className="space-y-3">
-            <p className="text-sm text-white font-semibold">Select a VALD profile to link:</p>
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {valdMatches.map((profile: any) => (
-                <button
-                  key={profile.profileId}
-                  type="button"
-                  onClick={() => setSelectedValdProfile(profile.profileId)}
-                  className={`w-full px-4 py-3 rounded-lg text-left transition-colors ${
-                    selectedValdProfile === profile.profileId
-                      ? 'bg-emerald-500/30 border-2 border-emerald-500'
-                      : 'bg-white/5 hover:bg-white/10 border border-white/10'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="text-white text-sm font-medium">
-                        {profile.givenName} {profile.familyName}
-                      </p>
-                      {profile.email ? (
-                        <p className="text-emerald-300 text-xs mt-1">
-                          📧 {profile.email}
-                        </p>
-                      ) : (
-                        <p className="text-amber-400 text-xs mt-1 italic">
-                          ⚠️ No email in VALD
-                        </p>
-                      )}
-                      <p className="text-gray-400 text-xs mt-1">
-                        DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
-                      </p>
-                      <p className="text-gray-500 text-xs font-mono mt-1">
-                        ID: {profile.profileId}
-                      </p>
-                    </div>
-                    {selectedValdProfile === profile.profileId && (
-                      <svg className="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Link Button */}
-            <button
-              onClick={handleLinkVALD}
-              disabled={!selectedValdProfile || valdLinking}
-              className="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-sm"
-            >
-              {valdLinking ? 'Linking...' : 'Link Selected Profile'}
-            </button>
-          </div>
-        )}
-
-        {/* Info Box */}
-        <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-          <div className="flex items-start gap-2">
-            <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-xs text-blue-300/80">
-              {athlete.vald_profile_id
-                ? 'VALD data syncs automatically. Force profile data appears in the Force Profile tab.'
-                : 'Search uses the athlete\'s first and last name. Make sure the name matches their VALD profile exactly.'}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Login Account Management */}
