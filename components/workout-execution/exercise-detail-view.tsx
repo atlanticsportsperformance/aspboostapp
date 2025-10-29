@@ -352,6 +352,40 @@ export default function ExerciseDetailView({
         </div>
       </div>
 
+      {/* Exercise Navigation Buttons - Bottom Center */}
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40">
+        {/* Previous Exercise */}
+        {hasPrev && (
+          <button
+            onClick={onPrev}
+            className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-medium flex items-center gap-1.5 hover:bg-white/20 transition-all active:scale-95"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Prev Exercise
+          </button>
+        )}
+
+        {/* Exercise Counter */}
+        <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 text-white text-xs font-medium">
+          {currentIndex + 1} of {totalExercises}
+        </div>
+
+        {/* Next Exercise */}
+        {hasNext && (
+          <button
+            onClick={onNext}
+            className="px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-xs font-medium flex items-center gap-1.5 hover:bg-white/20 transition-all active:scale-95"
+          >
+            Next Exercise
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
+
       {/* Floating Action Buttons */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
         {/* Back/Previous Set FAB */}
