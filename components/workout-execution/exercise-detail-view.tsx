@@ -33,6 +33,7 @@ export default function ExerciseDetailView({
 }: ExerciseDetailViewProps) {
   const exerciseData = exercise.exercises;
   const targetSets = exercise.sets || 3;
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
 
   // Get all metric targets from the new system
   const metricTargets = exercise.metric_targets || {};
@@ -62,6 +63,14 @@ export default function ExerciseDetailView({
       onNext();
     } else {
       onBack();
+    }
+  };
+
+  const dismissKeyboard = () => {
+    setFocusedInput(null);
+    // Blur any active input
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
     }
   };
 
@@ -193,11 +202,8 @@ export default function ExerciseDetailView({
                                 step="1"
                                 value={input[key] || ''}
                                 onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                  }
-                                }}
+                                onFocus={() => setFocusedInput(`${idx}-${key}`)}
+                                onBlur={() => setFocusedInput(null)}
                                 placeholder={targetValue || '0'}
                                 className={`w-full bg-black border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
@@ -228,11 +234,8 @@ export default function ExerciseDetailView({
                                 step="0.01"
                                 value={input[key] || ''}
                                 onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    e.currentTarget.blur();
-                                  }
-                                }}
+                                onFocus={() => setFocusedInput(`${idx}-${key}`)}
+                                onBlur={() => setFocusedInput(null)}
                                 placeholder={targetValue || '0'}
                                 className={`w-full bg-gray-800 border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
@@ -273,6 +276,20 @@ export default function ExerciseDetailView({
           })}
         </div>
       </div>
+
+      {/* Floating Done Button - Shows when keyboard is open */}
+      {focusedInput && (
+        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pb-safe z-[60]">
+          <div className="px-4 pt-3 pb-4">
+            <button
+              onClick={dismissKeyboard}
+              className="w-full bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-bold py-3 rounded-xl transition-all transform active:scale-95 shadow-lg"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Navigation */}
       <div className="flex-shrink-0 bg-gradient-to-t from-gray-900 to-black border-t border-white/10 px-4 py-4">
