@@ -368,8 +368,8 @@ export default function ExerciseDetailView({
         )}
 
         {/* Exercise Counter */}
-        <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 text-white text-xs font-medium">
-          {currentIndex + 1} of {totalExercises}
+        <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10 text-white text-sm font-semibold">
+          {currentIndex + 1}/{totalExercises}
         </div>
 
         {/* Next Exercise */}
