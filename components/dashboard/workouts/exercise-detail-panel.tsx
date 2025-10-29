@@ -9,9 +9,19 @@ import { getActualIntensity, shouldUsePerceivedIntensity, getIntensityLabel } fr
 interface Measurement {
   id: string;
   name: string;
-  type: string;
-  unit: string;
-  enabled: boolean;
+  category: 'single' | 'paired';
+  primary_metric_id: string;
+  primary_metric_name: string;
+  primary_metric_type: 'integer' | 'decimal' | 'time';
+  secondary_metric_id: string | null;
+  secondary_metric_name: string | null;
+  secondary_metric_type: 'integer' | 'decimal' | 'time' | null;
+  is_locked: boolean;
+  enabled?: boolean; // For backwards compatibility
+
+  // Legacy fields for backwards compatibility during transition
+  type?: string;
+  unit?: string;
 }
 
 interface Exercise {
@@ -88,43 +98,50 @@ export default function ExerciseDetailPanel({
   const [showMeasurementsDropdown, setShowMeasurementsDropdown] = useState(false);
   const [showSwapDialog, setShowSwapDialog] = useState(false);
   const [allAvailableMeasurements, setAllAvailableMeasurements] = useState<Measurement[]>([]);
+  const [localNotes, setLocalNotes] = useState(exercise?.notes || '');
 
-  // Fetch ALL available measurements from the database on mount
+  // Fetch ALL available measurements from custom_measurements table
   useEffect(() => {
     async function fetchAllMeasurements() {
       const supabase = createClient();
 
-      const { data: exercises } = await supabase
-        .from('exercises')
-        .select('metric_schema')
-        .eq('is_active', true);
+      console.log('[Exercise Detail Panel] Fetching measurements from custom_measurements table...');
 
-      if (!exercises) return;
+      const { data: measurements, error } = await supabase
+        .from('custom_measurements')
+        .select('*')
+        .order('name');
 
-      // Extract unique measurements
-      const measurementsMap = new Map<string, Measurement>();
-      exercises.forEach((ex) => {
-        const measurements = ex.metric_schema?.measurements || [];
-        measurements.forEach((m: any) => {
-          if (!measurementsMap.has(m.id)) {
-            measurementsMap.set(m.id, {
-              id: m.id,
-              name: m.name,
-              type: m.type || 'decimal',
-              unit: m.unit || '',
-              enabled: true
-            });
-          }
-        });
-      });
+      if (error) {
+        console.error('[Exercise Detail Panel] Error fetching measurements:', error);
+        return;
+      }
 
-      const allMeasurements = Array.from(measurementsMap.values());
-      console.log('[Exercise Detail Panel] Loaded', allMeasurements.length, 'available measurements');
-      setAllAvailableMeasurements(allMeasurements);
+      if (!measurements) {
+        console.log('[Exercise Detail Panel] No measurements found');
+        return;
+      }
+
+      console.log('[Exercise Detail Panel] Loaded', measurements.length, 'available measurements');
+
+      // Add legacy fields for backwards compatibility
+      const measurementsWithLegacy = measurements.map(m => ({
+        ...m,
+        type: m.primary_metric_type,
+        unit: m.primary_metric_name,
+        enabled: true
+      }));
+
+      setAllAvailableMeasurements(measurementsWithLegacy);
     }
 
     fetchAllMeasurements();
   }, []);
+
+  // Sync localNotes when exercise changes
+  useEffect(() => {
+    setLocalNotes(exercise?.notes || '');
+  }, [exercise?.id, exercise?.notes]);
 
   if (!exercise || !routine) {
     return (
@@ -232,21 +249,34 @@ export default function ExerciseDetailPanel({
   // Get measurements that should be displayed (based on enabled_measurements)
   const getDisplayMeasurements = () => {
     const allMeasurements = getAllAvailableMeasurements();
+    let filteredMeasurements: typeof allMeasurements = [];
 
     if (exercise.enabled_measurements && exercise.enabled_measurements.length > 0) {
       // Filter to only enabled ones
-      return allMeasurements.filter(m => exercise.enabled_measurements!.includes(m.id));
+      filteredMeasurements = allMeasurements.filter(m => exercise.enabled_measurements!.includes(m.id));
+    } else {
+      // If null/empty, check if placeholder
+      const isPlaceholder = exercise.exercises?.tags?.includes('placeholder') || false;
+      if (isPlaceholder) {
+        // Placeholders with no selections show NOTHING
+        return [];
+      }
+
+      // Regular exercises default to their schema measurements
+      filteredMeasurements = exercise.exercises?.metric_schema?.measurements || [];
     }
 
-    // If null/empty, check if placeholder
-    const isPlaceholder = exercise.exercises?.tags?.includes('placeholder') || false;
-    if (isPlaceholder) {
-      // Placeholders with no selections show NOTHING
-      return [];
-    }
+    // Sort measurements: locked first (reps, weight, time, distance), then custom
+    const lockedOrder = ['reps', 'weight', 'time', 'distance'];
+    const lockedMeasurements = lockedOrder
+      .map(id => filteredMeasurements.find(m => m.id === id))
+      .filter(Boolean) as typeof filteredMeasurements;
 
-    // Regular exercises default to their schema measurements
-    return exercise.exercises?.metric_schema?.measurements || [];
+    // Get custom measurements, excluding the ones already in lockedMeasurements
+    const lockedIds = lockedMeasurements.map(m => m.id);
+    const customMeasurements = filteredMeasurements.filter(m => !lockedIds.includes(m.id));
+
+    return [...lockedMeasurements, ...customMeasurements];
   };
 
   // Check if a measurement is enabled
@@ -290,26 +320,81 @@ export default function ExerciseDetailPanel({
       // Remove measurement from enabled list
       const updated = current.filter(id => id !== measurementId);
 
-      // ALSO remove the value from metric_targets
+      // Find the measurement to check if it's paired
+      const measurement = getAllAvailableMeasurements().find(m => m.id === measurementId);
+      const metricsToDelete = [measurementId];
+
+      // For paired measurements, also delete primary and secondary metric IDs
+      if (measurement?.category === 'paired') {
+        if (measurement.primary_metric_id) metricsToDelete.push(measurement.primary_metric_id);
+        if (measurement.secondary_metric_id) metricsToDelete.push(measurement.secondary_metric_id);
+      }
+
+      console.log('🔘 Deleting metrics:', metricsToDelete);
+
+      // ALSO remove the values from metric_targets
       const updatedTargets = { ...exercise.metric_targets };
-      delete updatedTargets[measurementId];
+      metricsToDelete.forEach(id => delete updatedTargets[id]);
 
       // Remove from intensity targets if this was the intensity metric
       let updatedIntensityTargets = exercise.intensity_targets;
-      if (exercise.intensity_targets?.[0]?.metric === measurementId) {
+      if (exercise.intensity_targets?.[0]?.metric && metricsToDelete.includes(exercise.intensity_targets[0].metric)) {
         updatedIntensityTargets = null;
+      }
+
+      // CRITICAL FIX: Clear measurement values from per-set configurations
+      let updatedSetConfigurations = exercise.set_configurations;
+      if (updatedSetConfigurations && Array.isArray(updatedSetConfigurations)) {
+        updatedSetConfigurations = updatedSetConfigurations.map((setConfig: any) => {
+          const updatedSet = { ...setConfig };
+          // Remove ALL related metric values
+          metricsToDelete.forEach(id => {
+            delete updatedSet[id];
+            // Also check metric_values object
+            if (updatedSet.metric_values) {
+              delete updatedSet.metric_values[id];
+            }
+          });
+          return updatedSet;
+        });
       }
 
       const updateObj = {
         enabled_measurements: updated, // Keep as empty array, don't set to null
         metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null,
-        intensity_targets: updatedIntensityTargets
+        intensity_targets: updatedIntensityTargets,
+        set_configurations: updatedSetConfigurations // Update per-set configs
       };
       console.log('🔘 REMOVING - Calling onUpdate with:', updateObj);
       onUpdate(updateObj);
     } else {
       // Add measurement to enabled list
-      const updateObj = { enabled_measurements: [...current, measurementId] };
+      const updated = [...current, measurementId];
+
+      // Find the measurement to check if it's paired
+      const measurement = getAllAvailableMeasurements().find(m => m.id === measurementId);
+
+      // Initialize metric values in metric_targets for paired measurements
+      let updatedTargets = { ...exercise.metric_targets };
+      if (measurement?.category === 'paired') {
+        // For paired measurements, initialize BOTH primary and secondary metrics
+        if (measurement.primary_metric_id && !(measurement.primary_metric_id in updatedTargets)) {
+          updatedTargets[measurement.primary_metric_id] = null;
+        }
+        if (measurement.secondary_metric_id && !(measurement.secondary_metric_id in updatedTargets)) {
+          updatedTargets[measurement.secondary_metric_id] = null;
+        }
+      } else {
+        // For single measurements, initialize the metric if not already present
+        if (!(measurementId in updatedTargets)) {
+          updatedTargets[measurementId] = null;
+        }
+      }
+
+      const updateObj = {
+        enabled_measurements: updated,
+        metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null
+      };
       console.log('🔘 ADDING - Calling onUpdate with:', updateObj);
       onUpdate(updateObj);
     }
@@ -388,7 +473,19 @@ export default function ExerciseDetailPanel({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setEnablePerSet(!enablePerSet)}
+                onClick={() => {
+                  const newPerSetMode = !enablePerSet;
+                  setEnablePerSet(newPerSetMode);
+
+                  // Clear opposite configuration when toggling
+                  if (newPerSetMode) {
+                    // Switching TO per-set mode: clear metric_targets
+                    onUpdate({ metric_targets: null });
+                  } else {
+                    // Switching TO simple mode: clear set_configurations
+                    onUpdate({ set_configurations: null });
+                  }
+                }}
                 className={`p-2 rounded-lg transition-colors ${
                   enablePerSet ? 'bg-blue-500/30 text-blue-300' : 'text-gray-400 hover:text-white hover:bg-white/10'
                 }`}
@@ -433,59 +530,88 @@ export default function ExerciseDetailPanel({
                   </button>
 
                   {showMeasurementsDropdown && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+                    <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-white/20 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto w-[400px]">
                       {(() => {
                         const measurements = getAllAvailableMeasurements();
                         console.log('📋 [Dropdown] Rendering', measurements.length, 'measurements in dropdown');
-                        return measurements;
-                      })().map((measurement) => {
-                        // Show trophy for performance metrics only (not reps)
-                        const isMaxTracked = measurement.type !== 'reps' && (
-                          ['weight', 'distance', 'time'].includes(measurement.id) ||
-                          measurement.name.toLowerCase().includes('velo') ||
-                          measurement.name.toLowerCase().includes('max') ||
-                          measurement.name.toLowerCase().includes('time') ||
-                          measurement.type === 'performance_decimal' ||
-                          measurement.type === 'performance_integer'
-                        );
 
-                        const isEnabled = isMeasurementEnabled(measurement.id);
+                        // Separate locked and custom measurements
+                        const lockedOrder = ['reps', 'weight', 'time', 'distance'];
+                        const lockedMeasurements = lockedOrder
+                          .map(id => measurements.find(m => m.id === id))
+                          .filter(Boolean) as typeof measurements;
+
+                        const customMeasurements = measurements.filter(m => !m.is_locked);
+
+                        const renderMeasurement = (measurement: typeof measurements[0]) => {
+                          // Show trophy for performance metrics (decimal or time types)
+                          const isMaxTracked = measurement.primary_metric_type !== 'integer' && (
+                            ['weight', 'distance', 'time'].includes(measurement.id) ||
+                            measurement.name.toLowerCase().includes('velo') ||
+                            measurement.name.toLowerCase().includes('max') ||
+                            measurement.name.toLowerCase().includes('time') ||
+                            measurement.primary_metric_type === 'decimal' ||
+                            measurement.primary_metric_type === 'time'
+                          );
+
+                          const isEnabled = isMeasurementEnabled(measurement.id);
+
+                          // Display units on the right (no redundant labels in the name)
+                          const displayUnit = measurement.category === 'paired'
+                            ? `${measurement.primary_metric_name} + ${measurement.secondary_metric_name}`
+                            : measurement.primary_metric_name;
+
+                          return (
+                            <label
+                              key={measurement.id}
+                              className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 cursor-pointer transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleMeasurement(measurement.id);
+                                }}
+                                className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
+                              />
+                              <span className="text-white flex-1 flex items-center gap-1.5">
+                                {measurement.name}
+                                {isMaxTracked && (
+                                  <span
+                                    className="text-xs opacity-60"
+                                    title="This metric can be tracked as a personal record"
+                                  >
+                                    🏆
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-gray-400 text-xs">{displayUnit}</span>
+                            </label>
+                          );
+                        };
 
                         return (
-                          <label
-                            key={measurement.id}
-                            className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 cursor-pointer transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isEnabled}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                toggleMeasurement(measurement.id);
-                              }}
-                              className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                            />
-                            <span className="text-white flex-1 flex items-center gap-1.5">
-                              {measurement.name}
-                              {isMaxTracked && (
-                                <span
-                                  className="text-xs opacity-60"
-                                  title="This metric can be tracked as a personal record"
-                                >
-                                  🏆
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-gray-400 text-xs">{measurement.unit}</span>
-                          </label>
+                          <>
+                            {/* Locked measurements */}
+                            {lockedMeasurements.map(renderMeasurement)}
+
+                            {/* Divider if there are custom measurements */}
+                            {customMeasurements.length > 0 && (
+                              <div className="border-t border-white/10 my-1 mx-3" />
+                            )}
+
+                            {/* Custom measurements */}
+                            {customMeasurements.map(renderMeasurement)}
+                          </>
                         );
-                      })}
+                      })()}
                     </div>
                   )}
                 </div>
 
                 {/* Intensity % Checkbox - Inline with dropdown */}
-                {!enablePerSet && getDisplayMeasurements().some((m) => m.type !== 'reps') && (
+                {!enablePerSet && getDisplayMeasurements().some((m) => m.primary_metric_type !== 'integer') && (
                   <div className="flex flex-col gap-1">
                     <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
                       <input
@@ -493,14 +619,40 @@ export default function ExerciseDetailPanel({
                         checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            // Enable intensity for all performance measurements
-                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.type !== 'reps');
-                            const targets = performanceMeasurements.map(m => ({
-                              id: Date.now().toString() + m.id,
-                              metric: m.id,
-                              metric_label: `Max ${m.name}`,
-                              percent: 75
-                            }));
+                            // Enable intensity for all performance measurements (decimal or time)
+                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.primary_metric_type !== 'integer');
+                            const targets: any[] = [];
+
+                            performanceMeasurements.forEach(m => {
+                              // For paired measurements, create targets for BOTH metrics if they're performance types
+                              if (m.category === 'paired') {
+                                if (m.primary_metric_type !== 'integer' && m.primary_metric_id) {
+                                  targets.push({
+                                    id: Date.now().toString() + m.primary_metric_id,
+                                    metric: m.primary_metric_id,
+                                    metric_label: `Max ${m.name} (${m.primary_metric_name})`,
+                                    percent: 75
+                                  });
+                                }
+                                if (m.secondary_metric_type !== 'integer' && m.secondary_metric_id) {
+                                  targets.push({
+                                    id: Date.now().toString() + m.secondary_metric_id,
+                                    metric: m.secondary_metric_id,
+                                    metric_label: `Max ${m.name} (${m.secondary_metric_name})`,
+                                    percent: 75
+                                  });
+                                }
+                              } else {
+                                // Single measurement
+                                targets.push({
+                                  id: Date.now().toString() + m.id,
+                                  metric: m.id,
+                                  metric_label: `Max ${m.name}`,
+                                  percent: 75
+                                });
+                              }
+                            });
+
                             onUpdate({ intensity_targets: targets });
                           } else {
                             // Disable intensity
@@ -540,9 +692,6 @@ export default function ExerciseDetailPanel({
                 )}
               </div>
 
-              {/* Divider Line */}
-              <div className="border-t border-white/10 my-4"></div>
-
           {!enablePerSet ? (
             exercise.set_configurations && exercise.set_configurations.length > 0 ? (
               /* Per-Set Summary - Read Only */
@@ -559,9 +708,13 @@ export default function ExerciseDetailPanel({
                         {setConfig.metric_values && Object.entries(setConfig.metric_values).map(([key, value]: [string, any]) => {
                           const measurement = getAllAvailableMeasurements().find(m => m.id === key);
                           if (!value) return null;
+
+                          // Format the key as a readable name if measurement not found
+                          const displayName = measurement?.name || key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
                           return (
                             <span key={key} className="text-white">
-                              {value} {measurement?.name || key}
+                              {value} {displayName}
                             </span>
                           );
                         })}
@@ -596,38 +749,91 @@ export default function ExerciseDetailPanel({
 
                 {/* Dynamic Metrics in a clean grid */}
                 {getDisplayMeasurements().map((measurement) => {
-                  // Show AMRAP text for reps when is_amrap is true
-                  const isRepsWithAMRAP = measurement.id === 'reps' && exercise.is_amrap;
-
-                  return (
-                    <div key={measurement.id} className="flex flex-col">
-                      <label className="block text-xs text-gray-400 mb-1 truncate" title={measurement.name}>
-                        {measurement.name}
-                      </label>
-                      {isRepsWithAMRAP ? (
-                        <div className="w-full px-2 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-xs font-semibold flex items-center justify-center">
-                          AMRAP
+                  // For paired measurements, wrap both fields in a container to keep them together on mobile
+                  if (measurement.category === 'paired' && measurement.primary_metric_id && measurement.secondary_metric_id) {
+                    return (
+                      <div key={measurement.id} className="col-span-2 grid grid-cols-2 gap-3">
+                        {/* Primary metric field */}
+                        <div className="flex flex-col">
+                          <label className="block text-xs text-gray-400 mb-1 truncate" title={`${measurement.name} - ${measurement.primary_metric_name}`}>
+                            {measurement.name} ({measurement.primary_metric_name})
+                          </label>
+                          <input
+                            type={measurement.primary_metric_type === 'integer' || measurement.primary_metric_type === 'decimal' ? 'number' : 'text'}
+                            step={measurement.primary_metric_type === 'decimal' ? '0.01' : '1'}
+                            value={getMetricValue(measurement.primary_metric_id) || ''}
+                            onChange={(e) => {
+                              if (measurement.primary_metric_type === 'integer') {
+                                updateMetricValue(measurement.primary_metric_id, e.target.value ? parseInt(e.target.value) : null);
+                              } else if (measurement.primary_metric_type === 'decimal') {
+                                updateMetricValue(measurement.primary_metric_id, e.target.value ? parseFloat(e.target.value) : null);
+                              } else {
+                                updateMetricValue(measurement.primary_metric_id, e.target.value || null);
+                              }
+                            }}
+                            className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
+                            placeholder="0"
+                          />
                         </div>
-                      ) : (
-                        <input
-                          type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
-                          step={measurement.type === 'decimal' ? '0.01' : '1'}
-                          value={getMetricValue(measurement.id) || ''}
-                          onChange={(e) => {
-                            if (measurement.type === 'integer') {
-                              updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
-                            } else if (measurement.type === 'decimal') {
-                              updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
-                            } else {
-                              updateMetricValue(measurement.id, e.target.value || null);
-                            }
-                          }}
-                          className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
-                          placeholder="0"
-                        />
-                      )}
-                    </div>
-                  );
+
+                        {/* Secondary metric field */}
+                        <div className="flex flex-col">
+                          <label className="block text-xs text-gray-400 mb-1 truncate" title={`${measurement.name} - ${measurement.secondary_metric_name}`}>
+                            {measurement.name} ({measurement.secondary_metric_name})
+                          </label>
+                          <input
+                            type={measurement.secondary_metric_type === 'integer' || measurement.secondary_metric_type === 'decimal' ? 'number' : 'text'}
+                            step={measurement.secondary_metric_type === 'decimal' ? '0.01' : '1'}
+                            value={getMetricValue(measurement.secondary_metric_id!) || ''}
+                            onChange={(e) => {
+                              if (measurement.secondary_metric_type === 'integer') {
+                                updateMetricValue(measurement.secondary_metric_id!, e.target.value ? parseInt(e.target.value) : null);
+                              } else if (measurement.secondary_metric_type === 'decimal') {
+                                updateMetricValue(measurement.secondary_metric_id!, e.target.value ? parseFloat(e.target.value) : null);
+                              } else {
+                                updateMetricValue(measurement.secondary_metric_id!, e.target.value || null);
+                              }
+                            }}
+                            className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                    );
+                  } else {
+                    // Single measurement - show one field
+                    const isRepsWithAMRAP = measurement.id === 'reps' && exercise.is_amrap;
+
+                    return (
+                      <div key={measurement.id} className="flex flex-col">
+                        <label className="block text-xs text-gray-400 mb-1 truncate" title={measurement.name}>
+                          {measurement.name}
+                        </label>
+                        {isRepsWithAMRAP ? (
+                          <div className="w-full px-2 py-2 bg-blue-500/20 border border-blue-500/30 rounded text-blue-300 text-xs font-semibold flex items-center justify-center">
+                            AMRAP
+                          </div>
+                        ) : (
+                          <input
+                            type={measurement.primary_metric_type === 'integer' || measurement.primary_metric_type === 'decimal' ? 'number' : 'text'}
+                            step={measurement.primary_metric_type === 'decimal' ? '0.01' : '1'}
+                            value={getMetricValue(measurement.id) || ''}
+                            onChange={(e) => {
+                              if (measurement.primary_metric_type === 'integer') {
+                                updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
+                              } else if (measurement.primary_metric_type === 'decimal') {
+                                updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
+                              } else {
+                                updateMetricValue(measurement.id, e.target.value || null);
+                              }
+                            }}
+                            className="w-full px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-white/[0.15] transition-colors"
+                            placeholder="0"
+                          />
+                        )}
+                      </div>
+                    );
+                  }
                 })}
               </div>
 
@@ -685,25 +891,71 @@ export default function ExerciseDetailPanel({
               </p>
               <div className="flex flex-wrap gap-2">
                 {getDisplayMeasurements()
-                  .filter((m) => m.type !== 'reps') // Only show performance measurements for PR tracking
-                  .map((measurement) => {
-                  const isTracked = isMetricTrackedAsMax(measurement.id);
-                  return (
-                    <button
-                      key={measurement.id}
-                      onClick={() => toggleTrackAsMax(measurement.id)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                        isTracked
-                          ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
-                          : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
-                      }`}
-                    >
-                      {isTracked && <span className="mr-1">✓</span>}
-                      {measurement.name}
-                      {measurement.unit && ` (${measurement.unit})`}
-                    </button>
-                  );
-                })}
+                  .flatMap((measurement) => {
+                    const buttons = [];
+
+                    // For paired measurements, show BOTH metrics if they're decimal/time
+                    if (measurement.category === 'paired' && measurement.primary_metric_id && measurement.secondary_metric_id) {
+                      // Primary metric button (if decimal or time)
+                      if (measurement.primary_metric_type !== 'integer') {
+                        const isPrimaryTracked = isMetricTrackedAsMax(measurement.primary_metric_id);
+                        buttons.push(
+                          <button
+                            key={measurement.primary_metric_id}
+                            onClick={() => toggleTrackAsMax(measurement.primary_metric_id)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                              isPrimaryTracked
+                                ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
+                                : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {isPrimaryTracked && <span className="mr-1">✓</span>}
+                            {measurement.name} ({measurement.primary_metric_name})
+                          </button>
+                        );
+                      }
+
+                      // Secondary metric button (if decimal or time)
+                      if (measurement.secondary_metric_type !== 'integer') {
+                        const isSecondaryTracked = isMetricTrackedAsMax(measurement.secondary_metric_id);
+                        buttons.push(
+                          <button
+                            key={measurement.secondary_metric_id}
+                            onClick={() => toggleTrackAsMax(measurement.secondary_metric_id)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                              isSecondaryTracked
+                                ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
+                                : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {isSecondaryTracked && <span className="mr-1">✓</span>}
+                            {measurement.name} ({measurement.secondary_metric_name})
+                          </button>
+                        );
+                      }
+                    } else {
+                      // Single measurement - only show if decimal or time
+                      if (measurement.primary_metric_type !== 'integer') {
+                        const isTracked = isMetricTrackedAsMax(measurement.id);
+                        buttons.push(
+                          <button
+                            key={measurement.id}
+                            onClick={() => toggleTrackAsMax(measurement.id)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                              isTracked
+                                ? 'bg-yellow-500/30 border-2 border-yellow-500 text-yellow-200'
+                                : 'bg-white/5 border border-white/20 text-gray-400 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            {isTracked && <span className="mr-1">✓</span>}
+                            {measurement.name}
+                          </button>
+                        );
+                      }
+                    }
+
+                    return buttons;
+                  })}
               </div>
               {exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0 && (
                 <div className="mt-3 text-xs text-yellow-300/80">
@@ -775,8 +1027,9 @@ export default function ExerciseDetailPanel({
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Workout-Specific Notes</label>
             <textarea
-              value={exercise.notes || ''}
-              onChange={(e) => onUpdate({ notes: e.target.value })}
+              value={localNotes}
+              onChange={(e) => setLocalNotes(e.target.value)}
+              onBlur={(e) => onUpdate({ notes: e.target.value })}
               rows={4}
               className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
               placeholder="Add workout-specific notes or instructions for this exercise..."
