@@ -183,7 +183,7 @@ export default function ExerciseDetailView({
                   });
 
                   return (
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2">
                       {/* LEFT COLUMN: Primary Metrics (Reps) - BLACK with WHITE OUTLINE */}
                       <div className="space-y-1">
                         {primaryMetrics.map(([key, targetValue]: [string, any]) => {
@@ -191,8 +191,8 @@ export default function ExerciseDetailView({
                           const formattedKey = key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                           return (
-                            <div key={key}>
-                              <label className="block text-[9px] text-gray-400 mb-0.5 font-semibold flex items-center gap-0.5 truncate">
+                            <div key={key} className="flex items-center gap-1.5">
+                              <label className="text-[9px] text-gray-400 font-semibold flex items-center gap-0.5 min-w-[60px] flex-shrink-0">
                                 {formattedKey}
                                 {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
                               </label>
@@ -205,26 +205,27 @@ export default function ExerciseDetailView({
                                 onFocus={() => setFocusedInput(`${idx}-${key}`)}
                                 onBlur={() => setFocusedInput(null)}
                                 placeholder={targetValue || '0'}
-                                className={`w-full bg-black border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
+                                className={`w-16 bg-black border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
                                     ? 'border-yellow-500/50 focus:border-yellow-500 focus:ring-yellow-500/30'
                                     : 'border-white/30 focus:border-white/50 focus:ring-white/20'
                                 }`}
+                                style={{ fontSize: '16px' }}
                               />
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* RIGHT COLUMN: Secondary Metrics (Weight, Time, Distance, Velo) - GRAY */}
+                      {/* RIGHT COLUMN: Secondary Metrics (Weight, Time, Distance, Velo) - TRUE GRAY */}
                       <div className="space-y-1">
                         {secondaryMetrics.map(([key, targetValue]: [string, any]) => {
                           const isTrackedPR = exercise.tracked_max_metrics?.includes(key);
                           const formattedKey = key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                           return (
-                            <div key={key}>
-                              <label className="block text-[9px] text-gray-400 mb-0.5 font-semibold flex items-center gap-0.5 truncate">
+                            <div key={key} className="flex items-center gap-1.5">
+                              <label className="text-[9px] text-gray-400 font-semibold flex items-center gap-0.5 min-w-[60px] flex-shrink-0">
                                 {formattedKey}
                                 {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
                               </label>
@@ -237,11 +238,12 @@ export default function ExerciseDetailView({
                                 onFocus={() => setFocusedInput(`${idx}-${key}`)}
                                 onBlur={() => setFocusedInput(null)}
                                 placeholder={targetValue || '0'}
-                                className={`w-full bg-gray-800 border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
+                                className={`w-16 bg-neutral-700 border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
                                     ? 'border-yellow-500/50 focus:border-yellow-500 focus:ring-yellow-500/30'
-                                    : 'border-gray-600 focus:border-gray-500 focus:ring-gray-500/30'
+                                    : 'border-neutral-600 focus:border-neutral-500 focus:ring-neutral-500/30'
                                 }`}
+                                style={{ fontSize: '16px' }}
                               />
                             </div>
                           );
