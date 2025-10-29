@@ -136,16 +136,6 @@ USING (
     AND profiles.app_role = 'super_admin'
   )
   OR
-  -- ATHLETES: Can update their assigned workouts (for logging)
-  (
-    workouts.athlete_id = auth.uid()
-    AND EXISTS (
-      SELECT 1 FROM public.profiles
-      WHERE profiles.id = auth.uid()
-      AND profiles.app_role = 'athlete'
-    )
-  )
-  OR
   -- STAFF: Check edit permissions based on ownership (ONLY for templates)
   (
     workouts.is_template = true

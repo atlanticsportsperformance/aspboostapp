@@ -75,8 +75,8 @@ This implementation follows the same proven pattern as Exercises permissions.
 
 3. **UPDATE Policy** (`workouts_update_policy`)
    - **For TEMPLATES**: Only allows UPDATE based on ownership and permissions (`can_edit_own_workouts`, `can_edit_admin_workouts`)
-   - **For ATHLETES**: Athletes can update their assigned workouts (for logging exercises)
-   - **For STAFF**: Staff with `can_view_athletes` can update athlete-assigned workouts
+   - **For ATHLETE WORKOUTS**: Staff with `can_view_athletes` can update athlete-assigned workouts
+   - **IMPORTANT**: Athletes do NOT have UPDATE permission on workouts table - they only log exercises via `exercise_logs` table
 
 4. **DELETE Policy** (`workouts_delete_policy`)
    - **IMPORTANT**: Only template workouts can be deleted!
@@ -182,16 +182,18 @@ Old workouts may have `NULL` in the `created_by` field. This will break RLS poli
 
 2. **Athlete-Assigned Workouts** (`is_template = false` OR `athlete_id != NULL`)
    - These are workouts assigned to athletes via plans or calendar
-   - Athletes can VIEW and UPDATE (log) their own workouts
-   - Staff with `can_view_athletes` can VIEW and UPDATE any athlete workout
+   - Athletes can VIEW their own workouts (read-only in workouts table)
+   - Athletes LOG exercises via the `exercise_logs` table (separate from workouts table)
+   - Staff with `can_view_athletes` can VIEW and UPDATE any athlete workout structure
    - **CANNOT be deleted** by staff (only super_admin can delete)
    - Not affected by "workouts_visibility" permission
 
 This separation ensures:
 - ✅ Staff can manage the workout library based on permissions
-- ✅ Athletes can log their workouts without restrictions
-- ✅ Staff can monitor and adjust athlete workouts
+- ✅ Athletes can view and log their workouts (logging goes to exercise_logs table)
+- ✅ Staff can monitor and adjust athlete workout structures
 - ✅ Athlete workout data is protected from accidental deletion
+- ✅ Athletes cannot accidentally edit workout structures (sets, reps, exercises)
 
 ---
 
