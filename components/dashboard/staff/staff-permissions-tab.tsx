@@ -546,13 +546,15 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
             </div>
           </div>
 
-          {/* VALD Force Plates */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="text-base font-semibold text-white mb-3">VALD Integration</h3>
-            <div className="space-y-1.5">
-              <PermissionToggle label="Can Sync Force Plates" checked={canSyncForcePlates} onChange={setCanSyncForcePlates} />
+          {/* VALD Force Plates - Only for Admins and Super Admins */}
+          {staffMemberIsAdmin && (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <h3 className="text-base font-semibold text-white mb-3">VALD Integration</h3>
+              <div className="space-y-1.5">
+                <PermissionToggle label="Can Sync Force Plates" checked={canSyncForcePlates} onChange={setCanSyncForcePlates} />
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
