@@ -71,12 +71,20 @@ export default function WorkoutsPage() {
     loadUser();
   }, []);
 
-  // Refetch whenever we navigate to this page or permissions change
+  // Refetch whenever we navigate to this page
   useEffect(() => {
     if (userId !== null) {
       fetchWorkouts();
     }
-  }, [pathname, userId, userRole, permissions]);
+  }, [pathname, userId, userRole]);
+
+  // Recompute permissions whenever permissions load or user info changes
+  // Note: Using JSON.stringify on permissions to avoid infinite loop from object reference changes
+  useEffect(() => {
+    if (workouts.length > 0 && userId && permissions) {
+      computeWorkoutPermissions();
+    }
+  }, [workouts.length, userId, userRole, JSON.stringify(permissions)]);
 
   async function fetchWorkouts() {
     if (!userId) return;
@@ -131,12 +139,19 @@ export default function WorkoutsPage() {
     console.log('✅ Template workouts loaded:', data?.length);
     const userWorkouts = data || [];
     setWorkouts(userWorkouts);
+    setLoading(false);
+  }
+
+  async function computeWorkoutPermissions() {
+    if (!userId || !workouts || workouts.length === 0) return;
+
+    console.log('🔐 Computing workout permissions...');
 
     // 🔐 OPTIMIZED: Compute permissions for all workouts in ONE batch query
     const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
 
     // Get all unique creator IDs
-    const creatorIds = [...new Set(userWorkouts.map(w => w.created_by).filter(Boolean))] as string[];
+    const creatorIds = [...new Set(workouts.map(w => w.created_by).filter(Boolean))] as string[];
 
     if (creatorIds.length > 0) {
       // Batch fetch all creator roles at once
@@ -148,7 +163,7 @@ export default function WorkoutsPage() {
       const creatorRoles = new Map(creators?.map(c => [c.id, c.app_role]) || []);
 
       // Compute permissions for each workout using cached creator roles
-      for (const workout of userWorkouts) {
+      for (const workout of workouts) {
         const isOwnWorkout = workout.created_by === userId;
         const creatorRole = workout.created_by ? creatorRoles.get(workout.created_by) : null;
         const isAdminOrSuperAdminWorkout = creatorRole === 'admin' || creatorRole === 'super_admin';
@@ -182,7 +197,6 @@ export default function WorkoutsPage() {
     }
 
     setWorkoutPermissions(permsMap);
-    setLoading(false);
   }
 
   async function handleCreateWorkout() {
