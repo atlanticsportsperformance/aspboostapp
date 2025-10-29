@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Search, Calendar, ClipboardList } from 'lucide-react';
+import { getContentFilter } from '@/lib/utils/permissions-helpers';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Plan {
   id: string;
@@ -32,11 +34,37 @@ export function AssignPlanToGroupModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const supabase = createClient();
 
+  // Load user on mount
   useEffect(() => {
-    fetchPlans();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchPlans();
+    }
+  }, [userId, userRole, permissions]);
 
   useEffect(() => {
     // Filter plans based on search term
@@ -55,14 +83,32 @@ export function AssignPlanToGroupModal({
   }, [searchTerm, plans]);
 
   async function fetchPlans() {
-    // Fetch all training plans with workout counts
-    const { data: plansData, error } = await supabase
+    if (!userId) return;
+
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'plans');
+
+    let query = supabase
       .from('training_plans')
       .select(`
         *,
         program_days(id)
-      `)
-      .order('created_at', { ascending: false });
+      `);
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setPlans([]);
+        setFilteredPlans([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data: plansData, error } = await query;
 
     if (error) {
       console.error('Error fetching plans:', error);

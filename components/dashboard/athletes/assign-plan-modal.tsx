@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getContentFilter } from '@/lib/utils/permissions-helpers';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface AssignPlanModalProps {
   planId: string | null;
@@ -27,9 +29,36 @@ export function AssignPlanModal({ planId: initialPlanId, athleteId, onSuccess, o
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
+  // Load user on mount
   useEffect(() => {
-    fetchPlans();
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchPlans();
+    }
+  }, [userId, userRole, permissions]);
 
   useEffect(() => {
     if (selectedPlanId) {
@@ -39,13 +68,31 @@ export function AssignPlanModal({ planId: initialPlanId, athleteId, onSuccess, o
   }, [selectedPlanId, plans]);
 
   async function fetchPlans() {
+    if (!userId) return;
+
     setLoadingPlans(true);
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'plans');
+
+    let query = supabase
       .from('training_plans')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setPlans([]);
+        setLoadingPlans(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching plans:', error);
