@@ -114,9 +114,6 @@ export default function ExercisesPage() {
 
     if (!userId) return;
 
-    // Get visibility filter based on permissions
-    const filter = await getContentFilter(userId, userRole, 'exercises');
-
     let query = supabase
       .from('exercises')
       .select(`
@@ -129,22 +126,29 @@ export default function ExercisesPage() {
       `)
       .eq('is_active', true);
 
-    // Apply visibility filter
-    if (filter.filter === 'ids' && filter.creatorIds) {
-      if (filter.creatorIds.length === 0) {
-        // No creators allowed - show nothing
-        setExercises([]);
-        setFilteredExercises([]);
-        setLoading(false);
-        return;
+    // 🏷️ Tag filtering OVERRIDES visibility filtering
+    if (permissions?.allowed_exercise_tags && permissions.allowed_exercise_tags.length > 0) {
+      // Tags are set - ignore visibility settings, just show exercises with matching tags
+      console.log(`🏷️ Tag filtering enabled - skipping visibility filter (allowed tags: ${permissions.allowed_exercise_tags.join(', ')})`);
+    } else {
+      // No tags set - apply normal visibility filter
+      const filter = await getContentFilter(userId, userRole, 'exercises');
+      if (filter.filter === 'ids' && filter.creatorIds) {
+        if (filter.creatorIds.length === 0) {
+          // No creators allowed - show nothing
+          setExercises([]);
+          setFilteredExercises([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in('created_by', filter.creatorIds);
       }
-      query = query.in('created_by', filter.creatorIds);
+      // If filter === 'all', don't add any filter (show all)
     }
-    // If filter === 'all', don't add any filter (show all)
 
     const { data, error } = await query.order('name');
 
-    console.log('Exercises loaded:', { count: data?.length, data, error, filter });
+    console.log('Exercises loaded:', { count: data?.length, data, error });
 
     if (data) {
       // 🏷️ Apply tag filtering if staff has tag restrictions

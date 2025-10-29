@@ -95,9 +95,6 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
 
     setLoading(true);
 
-    // 🔐 Apply visibility filter
-    const filter = await getContentFilter(userId, userRole, 'exercises');
-
     let query = supabase
       .from('exercises')
       .select('*')
@@ -105,14 +102,21 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
       .eq('is_placeholder', false)
       .order('name');
 
-    // 🔐 Apply creator filter based on permissions
-    if (filter.filter === 'ids' && filter.creatorIds) {
-      if (filter.creatorIds.length === 0) {
-        setExercises([]);
-        setLoading(false);
-        return;
+    // 🏷️ Tag filtering OVERRIDES visibility filtering
+    if (permissions?.allowed_exercise_tags && permissions.allowed_exercise_tags.length > 0) {
+      // Tags are set - ignore visibility settings, just show exercises with matching tags
+      console.log(`🏷️ [AddExerciseDialog] Tag filtering enabled - skipping visibility filter (allowed tags: ${permissions.allowed_exercise_tags.join(', ')})`);
+    } else {
+      // No tags set - apply normal visibility filter
+      const filter = await getContentFilter(userId, userRole, 'exercises');
+      if (filter.filter === 'ids' && filter.creatorIds) {
+        if (filter.creatorIds.length === 0) {
+          setExercises([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in('created_by', filter.creatorIds);
       }
-      query = query.in('created_by', filter.creatorIds);
     }
 
     const { data, error } = await query;
