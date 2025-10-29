@@ -72,17 +72,22 @@ export default function WorkoutsPage() {
     loadUser();
   }, []);
 
-  // Refetch whenever we navigate to this page
+  // Refetch whenever we navigate to this page or permissions change
   useEffect(() => {
     if (userId !== null) {
       fetchWorkouts();
     }
-  }, [pathname, userId, userRole]);
+  }, [pathname, userId, userRole, permissions]);
 
   async function fetchWorkouts() {
     if (!userId) return;
 
-    console.log('Fetching workouts...');
+    console.log('🔍 fetchWorkouts START:', {
+      userId,
+      userRole,
+      permissionsLoaded: !!permissions,
+      permissions: permissions
+    });
 
     // 🔐 Apply visibility filter
     const filter = await getContentFilter(userId, userRole, 'workouts');
