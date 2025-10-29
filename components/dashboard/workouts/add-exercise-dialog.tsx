@@ -88,7 +88,7 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
     } else if (userId && mode === 'placeholder') {
       fetchPlaceholders();
     }
-  }, [mode, userId, userRole]);
+  }, [mode, userId, userRole, JSON.stringify(permissions?.allowed_exercise_tags)]);
 
   async function fetchExercises() {
     if (!userId) return;

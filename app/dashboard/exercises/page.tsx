@@ -83,7 +83,7 @@ export default function ExercisesPage() {
     if (userId) {
       fetchExercises();
     }
-  }, [userId, userRole]);
+  }, [userId, userRole, JSON.stringify(permissions?.allowed_exercise_tags)]);
 
   useEffect(() => {
     let filtered = exercises;

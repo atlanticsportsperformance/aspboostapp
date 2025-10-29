@@ -85,7 +85,7 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, athlete
         countInstancesForAthlete();
       }
     }
-  }, [userId, userRole]);
+  }, [userId, userRole, JSON.stringify(permissions?.allowed_exercise_tags)]);
 
   async function countInstancesInPlan() {
     if (!planId || !workoutId || (!currentExercise.exercise_id && !currentExercise.placeholder_id)) return;
