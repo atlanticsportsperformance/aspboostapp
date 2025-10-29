@@ -54,9 +54,16 @@ export default function AdminSettingsPage() {
     setTimeout(() => setMessage(''), 3000);
   };
 
-  const tabs = [
-    { id: 'general', label: 'General', icon: '⚙️' },
+  // Main category tabs
+  const [activeCategory, setActiveCategory] = useState<'connected' | 'coming-soon'>('connected');
+
+  // Subtabs for each category
+  const connectedTabs = [
     { id: 'athlete-view-types', label: 'Athlete View Types', icon: '🏃' },
+  ];
+
+  const comingSoonTabs = [
+    { id: 'general', label: 'General', icon: '⚙️' },
     { id: 'team', label: 'Team & Access', icon: '👥' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'branding', label: 'Branding', icon: '🎨' },
@@ -65,6 +72,8 @@ export default function AdminSettingsPage() {
     { id: 'automation', label: 'Automation', icon: '🤖' },
     { id: 'billing', label: 'Billing', icon: '💳' },
   ];
+
+  const tabs = activeCategory === 'connected' ? connectedTabs : comingSoonTabs;
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] p-4 lg:p-8">
@@ -75,9 +84,41 @@ export default function AdminSettingsPage() {
           <p className="text-gray-400">Manage your organization preferences and configuration</p>
         </div>
 
-        {/* Tabs */}
+        {/* Main Category Tabs */}
+        <div className="mb-4">
+          <div className="inline-flex rounded-lg bg-white/5 border border-white/10 p-1">
+            <button
+              onClick={() => {
+                setActiveCategory('connected');
+                setActiveTab('athlete-view-types');
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                activeCategory === 'connected'
+                  ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] text-black shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              ✅ Active Settings
+            </button>
+            <button
+              onClick={() => {
+                setActiveCategory('coming-soon');
+                setActiveTab('general');
+              }}
+              className={`px-6 py-2 rounded-md text-sm font-medium transition-all ${
+                activeCategory === 'coming-soon'
+                  ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] text-black shadow-lg'
+                  : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              🚧 Coming Soon
+            </button>
+          </div>
+        </div>
+
+        {/* Subtabs */}
         <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-          {/* Tab Navigation */}
+          {/* Subtab Navigation */}
           <div className="border-b border-white/10 bg-white/5">
             <div className="flex overflow-x-auto">
               {tabs.map((tab) => (

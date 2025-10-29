@@ -6,6 +6,8 @@ import { CreateExerciseDialog } from '@/components/dashboard/exercises/create-ex
 import { CustomMeasurementsManager } from '@/components/dashboard/exercises/custom-measurements-manager';
 import { BulkEditDialog } from '@/components/dashboard/exercises/bulk-edit-dialog';
 import { ExerciseTagsManager } from '@/components/dashboard/exercises/exercise-tags-manager';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter, canEditContent, canDeleteContent } from '@/lib/auth/permissions';
 
 interface Exercise {
   id: string;
@@ -50,9 +52,38 @@ export default function ExercisesPage() {
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [showBulkEditDialog, setShowBulkEditDialog] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+  const [exercisePermissions, setExercisePermissions] = useState<{[key: string]: {canEdit: boolean, canDelete: boolean}}>({});
+
+  // Fetch user info and permissions
   useEffect(() => {
-    fetchExercises();
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        // Get user role from profiles
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
+    }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchExercises();
+    }
+  }, [userId, userRole]);
 
   useEffect(() => {
     let filtered = exercises;
@@ -81,7 +112,12 @@ export default function ExercisesPage() {
   async function fetchExercises() {
     const supabase = createClient();
 
-    const { data, error } = await supabase
+    if (!userId) return;
+
+    // Get visibility filter based on permissions
+    const filter = await getContentFilter(userId, userRole, 'exercises');
+
+    let query = supabase
       .from('exercises')
       .select(`
         *,
@@ -91,10 +127,24 @@ export default function ExercisesPage() {
           email
         )
       `)
-      .eq('is_active', true)
-      .order('name');
+      .eq('is_active', true);
 
-    console.log('Exercises loaded:', { count: data?.length, data, error });
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        // No creators allowed - show nothing
+        setExercises([]);
+        setFilteredExercises([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+    // If filter === 'all', don't add any filter (show all)
+
+    const { data, error } = await query.order('name');
+
+    console.log('Exercises loaded:', { count: data?.length, data, error, filter });
 
     if (data) {
       // Filter out system exercises (used for measurement/tag definitions)
@@ -113,6 +163,16 @@ export default function ExercisesPage() {
         });
       });
       setAvailableTags(Array.from(tagsSet).sort());
+
+      // Compute permissions for each exercise
+      const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
+      for (const ex of userExercises) {
+        permsMap[ex.id] = {
+          canEdit: await canEditContent(userId, userRole, 'exercises', ex.created_by),
+          canDelete: await canDeleteContent(userId, userRole, 'exercises', ex.created_by),
+        };
+      }
+      setExercisePermissions(permsMap);
     }
 
     setLoading(false);
@@ -195,6 +255,18 @@ export default function ExercisesPage() {
     return colors[tag?.toLowerCase()] || colors.assessment;
   }
 
+  // Check if user can edit specific exercise
+  async function canEditExercise(exercise: Exercise): Promise<boolean> {
+    if (!userId) return false;
+    return await canEditContent(userId, userRole, 'exercises', exercise.created_by);
+  }
+
+  // Check if user can delete specific exercise
+  async function canDeleteExercise(exercise: Exercise): Promise<boolean> {
+    if (!userId) return false;
+    return await canDeleteContent(userId, userRole, 'exercises', exercise.created_by);
+  }
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0A0A0A]">
@@ -254,12 +326,15 @@ export default function ExercisesPage() {
               >
                 🏷️ Tags
               </button>
-              <button
-                onClick={handleCreateNew}
-                className="px-3 md:px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-sm font-semibold rounded-lg transition-all whitespace-nowrap"
-              >
-                + Create
-              </button>
+              {/* Only show Create button if user has permission */}
+              {(userRole === 'super_admin' || permissions?.can_create_exercises) && (
+                <button
+                  onClick={handleCreateNew}
+                  className="px-3 md:px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-sm font-semibold rounded-lg transition-all whitespace-nowrap"
+                >
+                  + Create
+                </button>
+              )}
             </>
           )}
         </div>
@@ -475,24 +550,30 @@ export default function ExercisesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleEdit(exercise)}
-                        className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
-                        title="Edit exercise"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(exercise.id)}
-                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                        title="Delete exercise"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {/* Show Edit button only if user has permission */}
+                      {exercisePermissions[exercise.id]?.canEdit && (
+                        <button
+                          onClick={() => handleEdit(exercise)}
+                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                          title="Edit exercise"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+                      {/* Show Delete button only if user has permission */}
+                      {exercisePermissions[exercise.id]?.canDelete && (
+                        <button
+                          onClick={() => handleDelete(exercise.id)}
+                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                          title="Delete exercise"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
