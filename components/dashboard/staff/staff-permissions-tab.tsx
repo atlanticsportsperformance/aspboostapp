@@ -255,33 +255,33 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
   return (
     <div className="max-w-7xl">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Permissions</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-white">Permissions</h2>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+          className="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
         >
           {saving ? 'Saving...' : 'Save Permissions'}
         </button>
       </div>
 
       {/* 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* LEFT COLUMN */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
           {/* Content Visibility Section */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Content Visibility</h3>
-            <div className="space-y-4">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Content Visibility</h3>
+            <div className="space-y-3">
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Exercises Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Exercises Visibility</label>
                 <select
                   value={exercisesVisibility}
                   onChange={(e) => setExercisesVisibility(e.target.value as ContentVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="own" className="bg-black">See Their Own</option>
                   <option value="own_and_admin" className="bg-black">See Their Own + Admin</option>
@@ -290,11 +290,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Workouts Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Workouts Visibility</label>
                 <select
                   value={workoutsVisibility}
                   onChange={(e) => setWorkoutsVisibility(e.target.value as ContentVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="own" className="bg-black">See Their Own</option>
                   <option value="own_and_admin" className="bg-black">See Their Own + Admin</option>
@@ -303,11 +303,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Routines Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Routines Visibility</label>
                 <select
                   value={routinesVisibility}
                   onChange={(e) => setRoutinesVisibility(e.target.value as ContentVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="own" className="bg-black">See Their Own</option>
                   <option value="own_and_admin" className="bg-black">See Their Own + Admin</option>
@@ -316,11 +316,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Athletes Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Athletes Visibility</label>
                 <select
                   value={athletesVisibility}
                   onChange={(e) => setAthletesVisibility(e.target.value as AthleteVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="assigned" className="bg-black">Assigned Only</option>
                   <option value="all" className="bg-black">All Athletes</option>
@@ -328,11 +328,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Plans Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Plans Visibility</label>
                 <select
                   value={plansVisibility}
                   onChange={(e) => setPlansVisibility(e.target.value as ContentVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="own" className="bg-black">See Their Own</option>
                   <option value="own_and_admin" className="bg-black">See Their Own + Admin</option>
@@ -341,11 +341,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
               </div>
 
               <div>
-                <label className="block text-sm text-gray-400 mb-2">Groups Visibility</label>
+                <label className="block text-xs text-gray-400 mb-1">Groups Visibility</label>
                 <select
                   value={groupsVisibility}
                   onChange={(e) => setGroupsVisibility(e.target.value as GroupsVisibility)}
-                  className="w-full px-4 py-2 bg-black border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-1.5 text-sm bg-black border border-white/20 rounded text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="own" className="bg-black">See Their Own</option>
                   <option value="assigned" className="bg-black">Assigned Groups</option>
@@ -356,9 +356,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Exercise Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Exercises</h3>
-            <div className="space-y-2 mb-6">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Exercises</h3>
+            <div className="space-y-1.5 mb-4">
               <PermissionToggle label="Can Create Exercises" checked={canCreateExercises} onChange={setCanCreateExercises} />
               <PermissionToggle label="Can Edit Own Exercises" checked={canEditOwnExercises} onChange={setCanEditOwnExercises} />
               <PermissionToggle label="Can Edit Admin Exercises" checked={canEditAdminExercises} onChange={setCanEditAdminExercises} />
@@ -367,9 +367,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
             </div>
 
             {/* Tag-Based Exercise Filtering */}
-            <div className="pt-6 border-t border-white/10">
-              <h4 className="text-base font-semibold text-white mb-2">Tag Restrictions</h4>
-              <p className="text-sm text-gray-400 mb-4">
+            <div className="pt-4 border-t border-white/10">
+              <h4 className="text-sm font-semibold text-white mb-1.5">Tag Restrictions</h4>
+              <p className="text-xs text-gray-400 mb-3">
                 Optionally limit which exercises this staff member can see based on tags. If no tags are selected, normal visibility rules apply.
               </p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -428,9 +428,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Workout Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Workouts</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Workouts</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can Create Workouts" checked={canCreateWorkouts} onChange={setCanCreateWorkouts} />
               <PermissionToggle label="Can Edit Own Workouts" checked={canEditOwnWorkouts} onChange={setCanEditOwnWorkouts} />
               <PermissionToggle label="Can Edit Admin Workouts" checked={canEditAdminWorkouts} onChange={setCanEditAdminWorkouts} />
@@ -440,9 +440,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Routine Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Routines</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Routines</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can Create Routines" checked={canCreateRoutines} onChange={setCanCreateRoutines} />
               <PermissionToggle label="Can Edit Own Routines" checked={canEditOwnRoutines} onChange={setCanEditOwnRoutines} />
               <PermissionToggle label="Can Edit Admin Routines" checked={canEditAdminRoutines} onChange={setCanEditAdminRoutines} />
@@ -452,9 +452,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Plans Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Plans</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Plans</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can Create Plans" checked={canCreatePlans} onChange={setCanCreatePlans} />
               <PermissionToggle label="Can Edit Own Plans" checked={canEditOwnPlans} onChange={setCanEditOwnPlans} />
               <PermissionToggle label="Can Edit Admin Plans" checked={canEditAdminPlans} onChange={setCanEditAdminPlans} />
@@ -466,12 +466,12 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="space-y-6">
+        <div className="space-y-4">
 
           {/* Athlete Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Athletes</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Athletes</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can Assign Coaches" checked={canAssignCoaches} onChange={setCanAssignCoaches} />
               <PermissionToggle label="Can Edit Athlete Profiles" checked={canEditAthleteProfile} onChange={setCanEditAthleteProfile} />
               <PermissionToggle label="Can Delete Athletes" checked={canDeleteAthletes} onChange={setCanDeleteAthletes} />
@@ -479,9 +479,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Staff Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Staff Management</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Staff Management</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can View Staff Page" checked={canViewStaff} onChange={setCanViewStaff} />
               <PermissionToggle label="Can Manage Staff" checked={canManageStaff} onChange={setCanManageStaff} />
               <PermissionToggle label="Can View All Staff" checked={canViewAllStaff} onChange={setCanViewAllStaff} />
@@ -490,9 +490,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* Groups Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">Groups Management</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">Groups Management</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can View Groups" checked={canViewGroups} onChange={setCanViewGroups} />
               <PermissionToggle label="Can Create Groups" checked={canCreateGroups} onChange={setCanCreateGroups} />
               <PermissionToggle label="Can Edit Own Groups" checked={canEditOwnGroups} onChange={setCanEditOwnGroups} />
@@ -504,9 +504,9 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           </div>
 
           {/* VALD Force Plates */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-4">VALD Integration</h3>
-            <div className="space-y-2">
+          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+            <h3 className="text-base font-semibold text-white mb-3">VALD Integration</h3>
+            <div className="space-y-1.5">
               <PermissionToggle label="Can Sync Force Plates" checked={canSyncForcePlates} onChange={setCanSyncForcePlates} />
             </div>
           </div>
@@ -520,8 +520,8 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
 
 function PermissionToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
   return (
-    <label className="flex items-center justify-between p-3 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-      <span className="text-sm text-white">{label}</span>
+    <label className="flex items-center justify-between p-2 bg-white/5 border border-white/10 rounded cursor-pointer hover:bg-white/10 transition-colors">
+      <span className="text-xs text-white">{label}</span>
       <input
         type="checkbox"
         checked={checked}
