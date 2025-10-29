@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter } from '@/lib/auth/permissions';
 
 interface Exercise {
   id: string;
@@ -53,26 +55,67 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
   const [loading, setLoading] = useState(false);
   const supabase = createClient();
 
+  // 🔐 Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   // Get unique tags from exercises
   const allTags = Array.from(new Set(exercises.flatMap(ex => ex.tags || []))).sort();
 
+  // 🔐 Load user info and permissions
   useEffect(() => {
-    if (mode === 'direct') {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
+  useEffect(() => {
+    if (userId && mode === 'direct') {
       fetchExercises();
-    } else if (mode === 'placeholder') {
+    } else if (userId && mode === 'placeholder') {
       fetchPlaceholders();
     }
-  }, [mode]);
+  }, [mode, userId, userRole]);
 
   async function fetchExercises() {
+    if (!userId) return;
+
     setLoading(true);
 
-    const { data, error } = await supabase
+    // 🔐 Apply visibility filter
+    const filter = await getContentFilter(userId, userRole, 'exercises');
+
+    let query = supabase
       .from('exercises')
       .select('*')
       .eq('is_active', true)
       .eq('is_placeholder', false)
       .order('name');
+
+    // 🔐 Apply creator filter based on permissions
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setExercises([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching exercises:', error);

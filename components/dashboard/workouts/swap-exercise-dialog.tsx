@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter } from '@/lib/auth/permissions';
 
 interface Measurement {
   id: string;
@@ -46,18 +48,44 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, athlete
   const [totalInstanceCount, setTotalInstanceCount] = useState(0);
   const supabase = createClient();
 
+  // 🔐 Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   // Get unique tags and categories from exercises
   const allTags = Array.from(new Set(exercises.flatMap(ex => ex.tags || []))).sort();
   const allCategories = Array.from(new Set(exercises.map(ex => ex.category).filter(Boolean))).sort();
 
+  // 🔐 Load user info and permissions
   useEffect(() => {
-    fetchExercises();
-    if (planId) {
-      countInstancesInPlan();
-    } else if (athleteId) {
-      countInstancesForAthlete();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
     }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchExercises();
+      if (planId) {
+        countInstancesInPlan();
+      } else if (athleteId) {
+        countInstancesForAthlete();
+      }
+    }
+  }, [userId, userRole]);
 
   async function countInstancesInPlan() {
     if (!planId || !workoutId || (!currentExercise.exercise_id && !currentExercise.placeholder_id)) return;
@@ -226,14 +254,31 @@ export function SwapExerciseDialog({ currentExercise, planId, workoutId, athlete
   }
 
   async function fetchExercises() {
+    if (!userId) return;
+
     setLoading(true);
 
-    const { data, error } = await supabase
+    // 🔐 Apply visibility filter
+    const filter = await getContentFilter(userId, userRole, 'exercises');
+
+    let query = supabase
       .from('exercises')
       .select('*')
       .eq('is_active', true)
       .eq('is_placeholder', false)
       .order('name');
+
+    // 🔐 Apply creator filter based on permissions
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setExercises([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching exercises:', error);
