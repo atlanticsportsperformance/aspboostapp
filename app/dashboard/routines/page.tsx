@@ -440,7 +440,7 @@ export default function RoutinesPage() {
                   <div className="grid grid-cols-12 gap-4 items-center">
                     {/* Routine Name */}
                     <div className="col-span-3">
-                      <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                      <div className="text-white font-medium">
                         {routine.name}
                       </div>
                       {routine.description && (
