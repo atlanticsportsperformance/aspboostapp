@@ -353,7 +353,7 @@ export default function ExerciseDetailView({
       </div>
 
       {/* Exercise Navigation Buttons - Bottom Center */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-40">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-40">
         {/* Previous Exercise */}
         {hasPrev && (
           <button
