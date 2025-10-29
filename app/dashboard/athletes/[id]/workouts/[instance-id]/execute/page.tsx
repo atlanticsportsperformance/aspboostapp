@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { saveWorkoutState, loadWorkoutState, clearWorkoutState, type WorkoutState } from '@/lib/workout-persistence';
+import BlockOverview from '@/components/workout-execution/block-overview';
+import ExerciseDetailView from '@/components/workout-execution/exercise-detail-view';
 
 export default function WorkoutExecutionPage() {
   const params = useParams();
@@ -28,6 +30,10 @@ export default function WorkoutExecutionPage() {
   // Incomplete exercises warning modal
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [incompleteExercises, setIncompleteExercises] = useState<any[]>([]);
+
+  // 🆕 VIEW MODE - Switch between overview and full-screen exercise view
+  const [viewMode, setViewMode] = useState<'overview' | 'exercise'>('overview');
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (instanceId) {
@@ -461,32 +467,32 @@ export default function WorkoutExecutionPage() {
       {/* Content */}
       <div className="px-0 md:px-4 py-3">
         {instance.status === 'not_started' && (
-          <div className="py-4 px-3 pb-32">
-            {/* Header */}
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-full flex items-center justify-center border border-green-500/30">
-                <svg className="w-8 h-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="py-3 px-3 pb-32">
+            {/* Header - Smaller */}
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-full flex items-center justify-center border border-green-500/30">
+                <svg className="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold mb-2">Workout Preview</h2>
-              <p className="text-sm text-gray-400">{allExercises.length} exercises • {routines.length} {routines.length === 1 ? 'block' : 'blocks'}</p>
+              <h2 className="text-xl font-bold mb-1">Workout Preview</h2>
+              <p className="text-xs text-gray-400">{allExercises.length} exercises • {routines.length} {routines.length === 1 ? 'block' : 'blocks'}</p>
             </div>
 
-            {/* Workout Notes - Show if present */}
+            {/* Workout Notes - Show if present - Smaller */}
             {(workout.notes || workout.description) && (
-              <div className="max-w-2xl mx-auto mb-6">
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                      <svg className="w-4 h-4 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="max-w-2xl mx-auto mb-3">
+                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-sm font-bold text-yellow-400 mb-1">Workout Notes</h3>
-                      <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                      <h3 className="text-xs font-bold text-yellow-400 mb-0.5">Workout Notes</h3>
+                      <p className="text-xs text-gray-300 whitespace-pre-wrap">
                         {workout.notes || workout.description}
                       </p>
                     </div>
@@ -496,86 +502,154 @@ export default function WorkoutExecutionPage() {
             )}
 
             {/* Workout Preview - Blocks with Exercises */}
-            <div className="space-y-4 max-w-2xl mx-auto">
+            <div className="space-y-3 max-w-2xl mx-auto">
               {routines.map((routine, routineIdx) => {
                 const hasBlockTitle = routine.name && routine.name.toLowerCase() !== 'exercise';
                 const exercises = routine.routine_exercises || [];
+                const blockLetter = String.fromCharCode(65 + routineIdx); // A, B, C, etc.
+
+                // Helper function to extract YouTube video ID
+                const getYouTubeVideoId = (url: string | null | undefined): string | null => {
+                  if (!url) return null;
+                  const patterns = [
+                    /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+                    /youtube\.com\/embed\/([^&\n?#]+)/
+                  ];
+                  for (const pattern of patterns) {
+                    const match = url.match(pattern);
+                    if (match && match[1]) return match[1];
+                  }
+                  return null;
+                };
+
+                // Helper function to get YouTube thumbnail
+                const getThumbnail = (videoUrl: string | null | undefined): string | null => {
+                  const videoId = getYouTubeVideoId(videoUrl);
+                  return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : null;
+                };
+
+                // Helper to check if a metric is primary (reps-based) or secondary (weight, time, distance, velo)
+                const isPrimaryMetric = (key: string): boolean => {
+                  const lowerKey = key.toLowerCase();
+                  return lowerKey === 'reps' || lowerKey.endsWith('_reps');
+                };
+
+                // Helper to format metric display name
+                const formatMetricName = (key: string): string => {
+                  if (key.includes('_')) {
+                    const parts = key.split('_');
+                    const lastPart = parts[parts.length - 1];
+
+                    if (['reps', 'velo', 'mph', 'weight', 'time', 'distance'].includes(lastPart.toLowerCase())) {
+                      const baseName = parts.slice(0, -1).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                      const metricType = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+                      return `${baseName} ${metricType}`;
+                    }
+                  }
+                  return key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                };
 
                 return (
-                  <div key={routine.id} className="relative">
-                    {/* Block Card */}
-                    <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                      {/* Block Header */}
-                      {hasBlockTitle && (
-                        <div className="bg-[#9BDDFF]/10 border-b border-[#9BDDFF]/20 px-4 py-3">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-bold text-[#9BDDFF] uppercase tracking-wide">
-                              {routine.name}
-                            </h3>
-                            <span className="text-xs text-gray-400">{exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}</span>
-                          </div>
+                  <div key={routine.id} className="relative mb-4">
+                    {/* Block Header - Shiny black */}
+                    {hasBlockTitle && (
+                      <div className="mb-2">
+                        <div className="bg-gradient-to-r from-white/10 via-white/5 to-transparent border-l-4 border-white/30 px-3 py-2 rounded-lg backdrop-blur-sm">
+                          <h3 className="text-sm font-black text-white uppercase tracking-wide">
+                            {routine.name}
+                          </h3>
+                          {routine.description && (
+                            <p className="text-xs text-gray-400 mt-0.5 italic">{routine.description}</p>
+                          )}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Exercises List */}
-                      <div className="divide-y divide-white/5">
-                        {exercises.map((ex: any, exIdx: number) => {
-                          const exercise = ex.exercises;
-                          if (!exercise) return null;
+                    {/* Exercise Rows - Flowy, no container */}
+                    <div className="space-y-1.5 pl-6">
+                      {exercises.map((ex: any, exIdx: number) => {
+                        const exercise = ex.exercises;
+                        if (!exercise) return null;
 
-                          const measurements = exercise.metric_schema?.measurements || [];
-                          const hasCustomMetrics = measurements.length > 0;
+                        const exerciseCode = `${blockLetter}${exIdx + 1}`;
+                        const tracksPR = ex.tracked_max_metrics && ex.tracked_max_metrics.length > 0;
+                        const thumbnail = getThumbnail(exercise.video_url);
 
-                          return (
-                            <div key={ex.id} className="px-4 py-3">
-                              {/* Exercise Name */}
-                              <div className="flex items-start justify-between gap-3 mb-2">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-gray-400">
-                                    {exIdx + 1}
-                                  </span>
-                                  <h4 className="font-semibold text-white truncate">{exercise.name}</h4>
-                                </div>
-                              </div>
+                        // Get reps display - check for ANY reps metric (reps, green_ball_reps, etc.)
+                        let repsDisplay = '—';
+                        if (ex.metric_targets) {
+                          // Find any metric that ends with "_reps" or is just "reps"
+                          const repsKeys = Object.keys(ex.metric_targets).filter((k: string) => k === 'reps' || k.endsWith('_reps'));
+                          if (repsKeys.length > 0) {
+                            // Use the first reps metric found
+                            repsDisplay = ex.metric_targets[repsKeys[0]];
+                          }
+                        }
 
-                              {/* Sets x Reps */}
-                              <div className="flex items-center gap-4 text-sm">
-                                <div className="flex items-center gap-1.5 text-gray-300">
-                                  <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                  </svg>
-                                  <span className="font-medium">
-                                    {ex.sets || 3} × {ex.reps || '—'}
-                                  </span>
-                                </div>
+                        // Check for per-set reps in set_configurations
+                        const hasPerSetReps = ex.set_configurations &&
+                                             Array.isArray(ex.set_configurations) &&
+                                             ex.set_configurations.length > 0 &&
+                                             ex.set_configurations.some((s: any) => s.metric_values?.reps || s.reps);
 
-                                {/* Custom Metrics Preview */}
-                                {hasCustomMetrics && (
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    {measurements.slice(0, 3).map((metric: any) => (
-                                      <span key={metric.id} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                                        {metric.name}
-                                      </span>
-                                    ))}
-                                    {measurements.length > 3 && (
-                                      <span className="text-xs text-gray-500">
-                                        +{measurements.length - 3} more
-                                      </span>
-                                    )}
-                                  </div>
+                        if (hasPerSetReps) {
+                          const repsPerSet = ex.set_configurations.map((setConfig: any) =>
+                            setConfig.metric_values?.reps || setConfig.reps || '—'
+                          );
+                          repsDisplay = repsPerSet.join(', ');
+                        }
+
+                        return (
+                          <div key={ex.id} className="w-full flex items-center gap-2 py-1.5">
+                            {/* Exercise Code Badge - Smaller */}
+                            <div className="flex-shrink-0 w-6 h-6 rounded bg-[#9BDDFF]/20 border border-[#9BDDFF]/40 flex items-center justify-center">
+                              <span className="text-xs font-black text-[#9BDDFF]">{exerciseCode}</span>
+                            </div>
+
+                            {/* Exercise Info */}
+                            <div className="flex-1 min-w-0 text-left">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-white text-base truncate">
+                                  {exercise.name}
+                                </h4>
+                                {tracksPR && (
+                                  <span className="text-yellow-400 text-sm shrink-0">🏆</span>
                                 )}
                               </div>
 
-                              {/* Notes Preview */}
-                              {ex.notes && (
-                                <div className="mt-2 text-xs text-gray-400 italic">
-                                  {ex.notes}
-                                </div>
-                              )}
+                              {/* Compact format: 3 × 2 (Red Ball Reps, Blue Ball Reps, ...) */}
+                              <div className="text-sm text-gray-300">
+                                {ex.metric_targets && Object.keys(ex.metric_targets).length > 0 ? (
+                                  <span>
+                                    {ex.sets || 3} × {repsDisplay}
+                                    {ex.intensity_targets && ex.intensity_targets.length > 0 && (
+                                      <span className="text-[#9BDDFF] font-semibold"> @ {ex.intensity_targets[0].percent}%</span>
+                                    )}
+                                    <span className="text-gray-400"> (
+                                      {Object.entries(ex.metric_targets)
+                                        .filter(([key, value]: [string, any]) => {
+                                          const isPrimary = isPrimaryMetric(key);
+
+                                          // Always show primary metrics (reps)
+                                          if (isPrimary) return true;
+
+                                          // For secondary metrics (weight, time, distance, velo), only show if value > 0
+                                          return value && value > 0;
+                                        })
+                                        .map(([key, value]: [string, any], idx: number) => {
+                                          const formattedKey = formatMetricName(key);
+                                          return idx === 0 ? formattedKey : `, ${formattedKey}`;
+                                        }).join('')}
+                                    )</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-yellow-300">Not configured</span>
+                                )}
+                              </div>
                             </div>
-                          );
-                        })}
-                      </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -585,97 +659,82 @@ export default function WorkoutExecutionPage() {
         )}
 
         {instance.status === 'in_progress' && (
-          <div className="space-y-3">
-            {routines.map((routine, routineIdx) => {
-              const hasBlockTitle = routine.name && routine.name.toLowerCase() !== 'exercise';
+          <>
+            {/* BLOCK OVERVIEW MODE - Collapsed exercise list */}
+            {viewMode === 'overview' && (
+              <BlockOverview
+                routines={routines}
+                exerciseInputs={exerciseInputs}
+                workout={workout}
+                onExerciseClick={(exerciseId: string) => {
+                  setActiveExerciseId(exerciseId);
+                  setViewMode('exercise');
+                }}
+              />
+            )}
+
+            {/* EXERCISE DETAIL MODE - Full-screen exercise view */}
+            {viewMode === 'exercise' && activeExerciseId && (() => {
+              const allExercises = routines.flatMap(r => r.routine_exercises || []);
+              const currentIndex = allExercises.findIndex((ex: any) => ex.id === activeExerciseId);
+              const currentExercise = allExercises[currentIndex];
+
+              if (!currentExercise) return null;
 
               return (
-                <div key={routine.id} className="relative">
-                  {/* Visual grouping - Left gold border on ALL views */}
-                  <div className="border-l-4 border-[#9BDDFF] pl-3 md:pl-4">
-                    {/* Block Header - Show if name is NOT "Exercise" */}
-                    {hasBlockTitle && (
-                      <div className="mb-2 -ml-3 md:-ml-4 pl-3 md:pl-4">
-                        <h3 className="text-sm font-bold text-[#9BDDFF] uppercase tracking-wide">
-                          {routine.name}
-                        </h3>
-                        {routine.description && (
-                          <p className="text-xs text-gray-400 mt-1">{routine.description}</p>
-                        )}
-                        {routine.notes && (
-                          <p className="text-xs text-gray-300 mt-1 italic">{routine.notes}</p>
-                        )}
-                      </div>
-                    )}
+                <ExerciseDetailView
+                  exercise={currentExercise}
+                  exerciseInputs={exerciseInputs[activeExerciseId] || []}
+                  onInputChange={(setIndex: number, field: string, value: any) => {
+                    setExerciseInputs(prev => {
+                      const exerciseData = prev[activeExerciseId] || [];
+                      const updatedData = [...exerciseData];
 
-                    {/* Exercise Cards - Mobile: no spacing, Desktop: tight spacing */}
-                    <div className="space-y-0 md:space-y-0.5">
-                      {(routine.routine_exercises || []).map((exercise: any, exerciseIdx: number) => {
-                    const videoId = getYouTubeVideoId(exercise.exercises?.video_url);
-                    // Generate exercise code (A1, A2, B1, etc.)
-                    const letter = String.fromCharCode(65 + routineIdx); // A, B, C, etc.
-                    const number = exerciseIdx + 1;
-                    const exerciseCode = `${letter}${number}`;
+                      // Ensure the set index exists
+                      while (updatedData.length <= setIndex) {
+                        updatedData.push({});
+                      }
 
-                    return (
-                      <ExerciseAccordionCard
-                        key={exercise.id}
-                        exercise={exercise}
-                        exerciseCode={exerciseCode}
-                        athleteId={athleteId}
-                        instanceId={instanceId}
-                        logs={logs}
-                        isExpanded={expandedExerciseId === exercise.id}
-                        onToggle={() => setExpandedExerciseId(expandedExerciseId === exercise.id ? null : exercise.id)}
-                        onUpdate={fetchData}
-                        onMoveNext={() => {
-                          const currentIdx = allExercises.findIndex((ex: any) => ex.id === exercise.id);
-                          if (currentIdx >= 0 && currentIdx < allExercises.length - 1) {
-                            setExpandedExerciseId(allExercises[currentIdx + 1].id);
-                          } else {
-                            setExpandedExerciseId(null);
-                          }
-                        }}
-                        videoId={videoId}
-                        persistedInputs={exerciseInputs[exercise.id]}
-                        onInputsChange={(inputs: any[]) => {
-                          setExerciseInputs(prev => ({
-                            ...prev,
-                            [exercise.id]: inputs
-                          }));
-                        }}
-                        thumbnail={getYouTubeThumbnail(videoId)}
-                        sharedAthleteMaxes={sharedAthleteMaxes}
-                        onMaxUpdate={(exerciseId: string, metricId: string, maxValue: number) => {
-                          setSharedAthleteMaxes(prev => ({
-                            ...prev,
-                            [exerciseId]: {
-                              ...prev[exerciseId],
-                              [metricId]: maxValue
-                            }
-                          }));
-                        }}
-                        onLogsUpdate={(newLogsForExercise: any[]) => {
-                          setLogs(prevLogs => {
-                            // Remove old logs for this exercise and add new ones
-                            const otherLogs = prevLogs.filter(log => log.routine_exercise_id !== exercise.id);
-                            return [...otherLogs, ...newLogsForExercise];
-                          });
-                        }}
-                      />
-                    );
-                  })}
-                    </div>
-                  </div>
-                </div>
+                      updatedData[setIndex] = {
+                        ...updatedData[setIndex],
+                        [field]: value
+                      };
+
+                      return {
+                        ...prev,
+                        [activeExerciseId]: updatedData
+                      };
+                    });
+                  }}
+                  onBack={() => {
+                    setViewMode('overview');
+                    setActiveExerciseId(null);
+                  }}
+                  onPrev={() => {
+                    if (currentIndex > 0) {
+                      setActiveExerciseId(allExercises[currentIndex - 1].id);
+                    }
+                  }}
+                  onNext={() => {
+                    if (currentIndex < allExercises.length - 1) {
+                      setActiveExerciseId(allExercises[currentIndex + 1].id);
+                    }
+                  }}
+                  hasPrev={currentIndex > 0}
+                  hasNext={currentIndex < allExercises.length - 1}
+                  currentIndex={currentIndex}
+                  totalExercises={allExercises.length}
+                  timer={timer}
+                  athleteId={athleteId}
+                />
               );
-            })}
-          </div>
+            })()}
+          </>
         )}
       </div>
 
       {/* Floating Action Button (FAB) - Mobile optimized */}
-      {instance.status === 'in_progress' && (
+      {instance.status === 'in_progress' && viewMode === 'overview' && (
         <>
           {/* Backdrop when menu is open */}
           {showFabMenu && (
@@ -756,7 +815,13 @@ export default function WorkoutExecutionPage() {
         <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/98 to-transparent backdrop-blur-lg p-4 pb-6 safe-area-inset-bottom z-30">
           <button
             onClick={startWorkout}
-            className="w-full max-w-md mx-auto block py-4 px-8 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 active:scale-95 text-black rounded-xl font-bold text-lg transition-all shadow-lg shadow-green-500/30"
+            className={`w-full max-w-md mx-auto block py-4 px-8 active:scale-95 text-black rounded-xl font-bold text-lg transition-all ${
+              workout?.category === 'hitting'
+                ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-400 hover:to-red-500 shadow-lg shadow-red-500/30'
+                : workout?.category === 'throwing'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 shadow-lg shadow-blue-500/30'
+                : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-400 hover:to-green-500 shadow-lg shadow-green-500/30'
+            }`}
           >
             Start Workout
           </button>
