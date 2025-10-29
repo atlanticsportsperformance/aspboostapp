@@ -34,7 +34,6 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [displayCount, setDisplayCount] = useState(10);
   const [prData, setPrData] = useState<any>(null);
 
   useEffect(() => {
@@ -258,8 +257,8 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
       {isExpanded && (
         <div className="border-t border-white/10">
           {/* Scrollable History - One Row Per Workout */}
-          <div className="max-h-64 overflow-y-auto">
-            {history.slice(0, displayCount).map((session, sessionIdx) => {
+          <div className="max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+            {history.map((session, sessionIdx) => {
               const stats = getSessionStats(session);
 
               return (
@@ -315,18 +314,6 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
               );
             })}
           </div>
-
-          {/* Load More Button */}
-          {displayCount < history.length && (
-            <div className="p-2 border-t border-white/10 text-center">
-              <button
-                onClick={() => setDisplayCount(prev => prev + 10)}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
-              >
-                Show More ({history.length - displayCount} remaining)
-              </button>
-            </div>
-          )}
 
           {/* PR/MAX KPI Section */}
           {prData && Object.keys(prData).length > 0 && (
