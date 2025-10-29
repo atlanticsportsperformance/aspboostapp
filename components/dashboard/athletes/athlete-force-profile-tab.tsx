@@ -22,6 +22,14 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
 
   useEffect(() => {
     fetchValdStatus();
+
+    // OPTIMIZATION: Prefetch CMJ data immediately since it's commonly accessed
+    // This happens in the background while user views the overview
+    if (athleteId) {
+      fetch(`/api/athletes/${athleteId}/vald/percentile-history?test_type=CMJ`)
+        .then(res => res.json())
+        .catch(err => console.log('Prefetch CMJ failed (non-critical):', err));
+    }
   }, [athleteId]);
 
   async function fetchValdStatus() {

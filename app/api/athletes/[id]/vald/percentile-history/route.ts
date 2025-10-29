@@ -95,47 +95,56 @@ export async function GET(
       // Get unique metrics from the flattened data
       const uniqueMetrics = Array.from(new Set(flattenedMetrics.map(m => m.metric_name)));
 
-      for (const metricName of uniqueMetrics) {
-        // Map display name to metric_column name in percentile_lookup table
-        const metricColumn = getMetricColumnName(testTypeFilter!, metricName);
+      // OPTIMIZATION: Build list of metric columns and fetch ALL percentile data in ONE query
+      const metricColumns = uniqueMetrics
+        .map(metricName => getMetricColumnName(testTypeFilter!, metricName))
+        .filter(Boolean) as string[];
 
-        if (!metricColumn) {
-          console.warn(`No metric column mapping for ${testTypeFilter}:${metricName}`);
-          continue;
+      if (metricColumns.length > 0) {
+        // Fetch all percentile data for all metrics in a single query
+        const { data: allPercentiles } = await serviceSupabase
+          .from('percentile_lookup')
+          .select('metric_column, value, percentile')
+          .in('metric_column', metricColumns)
+          .eq('play_level', playLevel)
+          .in('percentile', [25, 50, 75, 90])
+          .order('metric_column')
+          .order('percentile');
+
+        // Group percentile data by metric column
+        const percentilesByMetric: Record<string, Array<{ percentile: number; value: number }>> = {};
+
+        for (const p of allPercentiles || []) {
+          if (!percentilesByMetric[p.metric_column]) {
+            percentilesByMetric[p.metric_column] = [];
+          }
+          percentilesByMetric[p.metric_column].push({
+            percentile: p.percentile,
+            value: p.value
+          });
         }
 
-        // Get 75th percentile value from percentile_lookup table
-        const { data: p75Data } = await serviceSupabase
-          .from('percentile_lookup')
-          .select('value')
-          .eq('metric_column', metricColumn)
-          .eq('play_level', playLevel)
-          .eq('percentile', 75)
-          .single();
+        // Process each metric using the batched data
+        for (const metricName of uniqueMetrics) {
+          const metricColumn = getMetricColumnName(testTypeFilter!, metricName);
+          if (!metricColumn) continue;
 
-        if (p75Data && p75Data.value !== null) {
-          eliteThresholds[metricName] = p75Data.value;
+          const percentileValues = percentilesByMetric[metricColumn];
+          if (!percentileValues || percentileValues.length === 0) continue;
 
-          // Calculate standard deviation from percentile distribution
-          // Get values at key percentiles (25th, 50th, 75th, 90th) to estimate spread
-          const { data: percentileValues } = await serviceSupabase
-            .from('percentile_lookup')
-            .select('value, percentile')
-            .eq('metric_column', metricColumn)
-            .eq('play_level', playLevel)
-            .in('percentile', [25, 50, 75, 90])
-            .order('percentile');
+          // Get 75th percentile threshold
+          const p75 = percentileValues.find(p => p.percentile === 75);
+          if (p75 && p75.value !== null) {
+            eliteThresholds[metricName] = p75.value;
+          }
 
-          if (percentileValues && percentileValues.length >= 2) {
-            // Estimate standard deviation from interquartile range (IQR)
-            // IQR = Q3 - Q1, and for normal distribution: σ ≈ IQR / 1.35
-            const q1 = percentileValues.find(p => p.percentile === 25)?.value;
-            const q3 = percentileValues.find(p => p.percentile === 75)?.value;
+          // Calculate standard deviation from IQR
+          const q1 = percentileValues.find(p => p.percentile === 25)?.value;
+          const q3 = percentileValues.find(p => p.percentile === 75)?.value;
 
-            if (q1 !== undefined && q3 !== undefined && q1 !== null && q3 !== null) {
-              const iqr = q3 - q1;
-              eliteStdDev[metricName] = iqr / 1.35;
-            }
+          if (q1 !== undefined && q3 !== undefined && q1 !== null && q3 !== null) {
+            const iqr = q3 - q1;
+            eliteStdDev[metricName] = iqr / 1.35;
           }
         }
       }

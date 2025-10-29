@@ -54,40 +54,49 @@ export async function GET(
       { test_type: 'IMTP', metric_name: 'Relative Strength', displayName: 'IMTP Rel Strength' },
     ];
 
+    // OPTIMIZATION: Fetch all metrics in ONE query instead of 6 separate queries
+    const metricCombinations = metrics.map(m => `${m.test_type}|${m.metric_name}`);
+
+    const { data: allTests, error: testsError } = await supabase
+      .from('athlete_percentile_history')
+      .select('test_type, metric_name, test_date, value, percentile_play_level, percentile_overall')
+      .eq('athlete_id', athleteId)
+      .eq('play_level', athlete.play_level)
+      .order('test_date', { ascending: false });
+
+    if (testsError) {
+      console.error('Error fetching tests:', testsError);
+      return NextResponse.json(
+        { error: 'Failed to fetch test data' },
+        { status: 500 }
+      );
+    }
+
     const radarData: MetricData[] = [];
 
+    // Process each metric from the single query result
     for (const metric of metrics) {
-      // Get the 2 most recent tests for this metric AT THE CURRENT PLAY LEVEL
-      const { data: tests, error } = await supabase
-        .from('athlete_percentile_history')
-        .select('test_date, value, percentile_play_level, percentile_overall')
-        .eq('athlete_id', athleteId)
-        .eq('test_type', metric.test_type)
-        .eq('metric_name', metric.metric_name)
-        .eq('play_level', athlete.play_level) // IMPORTANT: Filter by current play level
-        .order('test_date', { ascending: false })
-        .limit(2);
+      // Filter tests for this specific metric
+      const metricTests = (allTests || [])
+        .filter(t => t.test_type === metric.test_type && t.metric_name === metric.metric_name)
+        .slice(0, 2); // Get the 2 most recent
 
-      if (error) {
-        console.error(`Error fetching ${metric.metric_name}:`, error);
-        continue;
-      }
-
-      const current = tests && tests.length > 0 ? {
-        percentile: tests[0].percentile_play_level || 0,
-        value: tests[0].value || 0,
-        date: tests[0].test_date,
+      const current = metricTests.length > 0 ? {
+        percentile: metricTests[0].percentile_play_level || 0,
+        value: metricTests[0].value || 0,
+        date: metricTests[0].test_date,
       } : null;
 
-      const previous = tests && tests.length > 1 ? {
-        percentile: tests[1].percentile_play_level || 0,
-        value: tests[1].value || 0,
-        date: tests[1].test_date,
+      const previous = metricTests.length > 1 ? {
+        percentile: metricTests[1].percentile_play_level || 0,
+        value: metricTests[1].value || 0,
+        date: metricTests[1].test_date,
       } : null;
 
       radarData.push({
         name: metric.metric_name,
         displayName: metric.displayName,
+        unit: '', // Add unit if needed
         current,
         previous,
       });
