@@ -86,16 +86,25 @@ export default function ExercisesPage() {
   }, [userId, userRole, JSON.stringify(permissions?.allowed_exercise_tags)]);
 
   useEffect(() => {
+    console.log('📊 Filtering exercises:', {
+      totalExercises: exercises.length,
+      activeCategory,
+      tagFilter,
+      searchQuery
+    });
+
     let filtered = exercises;
 
     // Filter by active category tab
     filtered = filtered.filter(ex => ex.category === activeCategory);
+    console.log(`📊 After category filter (${activeCategory}): ${filtered.length} exercises`);
 
     // Filter by tags
     if (tagFilter.length > 0) {
       filtered = filtered.filter(ex =>
         tagFilter.every(selectedTag => ex.tags?.includes(selectedTag))
       );
+      console.log(`📊 After tag filter: ${filtered.length} exercises`);
     }
 
     // Filter by search query
@@ -104,8 +113,10 @@ export default function ExercisesPage() {
         ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         ex.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
       );
+      console.log(`📊 After search filter: ${filtered.length} exercises`);
     }
 
+    console.log('📊 Final filtered exercises:', filtered.length);
     setFilteredExercises(filtered);
   }, [searchQuery, activeCategory, tagFilter, exercises]);
 
