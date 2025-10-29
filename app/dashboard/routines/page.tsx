@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { WorkoutTagsManager } from '@/components/dashboard/workouts/workout-tags-manager';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter } from '@/lib/auth/permissions';
 
 // Routine categories - update here if new categories are added to database
 const ROUTINE_CATEGORIES = [
@@ -47,16 +49,56 @@ export default function RoutinesPage() {
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [managerOpen, setManagerOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+  const [routinePermissions, setRoutinePermissions] = useState<{[key: string]: {canEdit: boolean, canDelete: boolean}}>({});
+
+  // Load user info and permissions
   useEffect(() => {
-    fetchRoutines();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
+    }
+    loadUser();
   }, []);
 
+  // Fetch routines when user info changes
+  useEffect(() => {
+    if (userId !== null) {
+      fetchRoutines();
+    }
+  }, [pathname, userId, userRole]);
+
+  // Recompute permissions when permissions load or routines change
+  useEffect(() => {
+    if (routines.length > 0 && userId && permissions) {
+      computeRoutinePermissions();
+    }
+  }, [routines.length, userId, userRole, JSON.stringify(permissions)]);
+
   async function fetchRoutines() {
+    if (!userId) return;
     console.log('Fetching standalone routines...');
 
-    const { data, error} = await supabase
+    // Apply visibility filter
+    const filter = await getContentFilter(userId, userRole, 'routines');
+
+    let query = supabase
       .from('routines')
       .select(`
         *,
@@ -77,6 +119,18 @@ export default function RoutinesPage() {
       .is('athlete_id', null)              // ✅ NOT for an athlete
       .order('created_at', { ascending: false });
 
+    // Apply creator filter based on permissions
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setRoutines([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    const { data, error} = await query;
+
     if (error) {
       console.error('Error fetching routines:', error);
     } else {
@@ -86,6 +140,40 @@ export default function RoutinesPage() {
     }
 
     setLoading(false);
+  }
+
+  async function computeRoutinePermissions() {
+    if (!userId || !routines || routines.length === 0) return;
+
+    const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
+    const creatorIds = [...new Set(routines.map(r => r.created_by).filter(Boolean))] as string[];
+
+    if (creatorIds.length > 0) {
+      // Batch fetch all creator roles at once
+      const { data: creators } = await supabase
+        .from('profiles')
+        .select('id, app_role')
+        .in('id', creatorIds);
+
+      const creatorRoles = new Map(creators?.map(c => [c.id, c.app_role]) || []);
+
+      for (const routine of routines) {
+        const isOwnRoutine = routine.created_by === userId;
+        const creatorRole = routine.created_by ? creatorRoles.get(routine.created_by) : null;
+        const isAdminOrSuperAdminRoutine = creatorRole === 'admin' || creatorRole === 'super_admin';
+
+        const canEdit = userRole === 'super_admin' ||
+                        (isOwnRoutine && permissions?.can_edit_own_routines) ||
+                        (isAdminOrSuperAdminRoutine && permissions?.can_edit_admin_routines);
+        const canDelete = userRole === 'super_admin' ||
+                          (isOwnRoutine && permissions?.can_delete_own_routines) ||
+                          (isAdminOrSuperAdminRoutine && permissions?.can_delete_admin_routines);
+
+        permsMap[routine.id] = { canEdit, canDelete };
+      }
+    }
+
+    setRoutinePermissions(permsMap);
   }
 
   async function handleCreateRoutine() {
@@ -253,12 +341,14 @@ export default function RoutinesPage() {
           >
             ⚙️ Manage Tags
           </button>
-          <button
-            onClick={handleCreateRoutine}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-          >
-            + Create Routine
-          </button>
+          {(userRole === 'super_admin' || permissions?.can_create_routines) && (
+            <button
+              onClick={handleCreateRoutine}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              + Create Routine
+            </button>
+          )}
         </div>
       </div>
 
@@ -343,9 +433,8 @@ export default function RoutinesPage() {
               const exerciseCount = routine.routine_exercises?.length || 0;
 
               return (
-                <Link
+                <div
                   key={routine.id}
-                  href={`/dashboard/routines/${routine.id}`}
                   className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
@@ -407,25 +496,41 @@ export default function RoutinesPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDelete(routine.id, routine.name);
-                        }}
-                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                        title="Delete routine"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                      <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+
+                      {routinePermissions[routine.id]?.canEdit && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/dashboard/routines/${routine.id}`);
+                          }}
+                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                          title="Edit routine"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {routinePermissions[routine.id]?.canDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDelete(routine.id, routine.name);
+                          }}
+                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                          title="Delete routine"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
