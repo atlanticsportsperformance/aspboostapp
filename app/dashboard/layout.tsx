@@ -8,7 +8,7 @@ import { useRouter, usePathname } from 'next/navigation';
 const navLinks = [
   { href: '/dashboard', label: 'Overview', icon: '📊' },
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
-  { href: '/dashboard/staff', label: 'Staff', icon: '👥' },
+  { href: '/dashboard/staff', label: 'Staff', icon: '👥', adminOnly: true },
   { href: '/dashboard/groups', label: 'Groups', icon: '👫' },
 ];
 
@@ -188,24 +188,32 @@ export default function DashboardLayout({
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {navLinks.map((link) => {
-            const isActive = mounted && pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
-                style={isActive ? {
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  color: 'white'
-                } : undefined}
-              >
-                <span className="text-lg">{link.icon}</span>
-                <span className="text-sm font-medium">{link.label}</span>
-              </Link>
-            );
-          })}
+          {navLinks
+            .filter((link) => {
+              // Hide Staff tab from coaches
+              if (link.adminOnly && profile?.app_role === 'coach') {
+                return false;
+              }
+              return true;
+            })
+            .map((link) => {
+              const isActive = mounted && pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
+                  style={isActive ? {
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    color: 'white'
+                  } : undefined}
+                >
+                  <span className="text-lg">{link.icon}</span>
+                  <span className="text-sm font-medium">{link.label}</span>
+                </Link>
+              );
+            })}
 
 
           {/* Programming Section - Collapsible */}

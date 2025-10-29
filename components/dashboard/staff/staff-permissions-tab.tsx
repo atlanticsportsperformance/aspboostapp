@@ -20,6 +20,11 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
   const { permissions: existingPermissions, loading } = useStaffPermissions(staff.user_id);
   const [saving, setSaving] = useState(false);
 
+  // Current user's role (person viewing the page)
+  const [currentUserRole, setCurrentUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const { permissions: currentUserPermissions } = useStaffPermissions(currentUserId);
+
   // Permission states
   const [exercisesVisibility, setExercisesVisibility] = useState<ContentVisibility>('own_and_admin');
   const [workoutsVisibility, setWorkoutsVisibility] = useState<ContentVisibility>('own_and_admin');
@@ -82,6 +87,26 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
   // Tag-based exercise filtering
   const [allowedExerciseTags, setAllowedExerciseTags] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+
+  // Load current user's role on mount
+  useEffect(() => {
+    async function loadCurrentUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setCurrentUserRole(profile.app_role);
+        }
+      }
+    }
+    loadCurrentUser();
+  }, []);
 
   // Load available exercise tags
   useEffect(() => {
@@ -241,6 +266,22 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
       setSaving(false);
     }
   }
+
+  // Determine if Staff Management section should be shown
+  // Show if:
+  // 1. The staff member being edited is an admin (not a coach)
+  // 2. AND the current user is super_admin OR (admin with staff permissions)
+  const staffMemberIsAdmin = staff.profile.app_role === 'admin' || staff.profile.app_role === 'super_admin';
+  const currentUserCanManageStaff =
+    currentUserRole === 'super_admin' ||
+    (currentUserRole === 'admin' && (
+      currentUserPermissions?.can_view_staff ||
+      currentUserPermissions?.can_manage_staff ||
+      currentUserPermissions?.can_view_all_staff ||
+      currentUserPermissions?.can_assign_permissions
+    ));
+
+  const canViewStaffManagementSection = staffMemberIsAdmin && currentUserCanManageStaff;
 
   if (loading) {
     return (
@@ -478,16 +519,18 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
             </div>
           </div>
 
-          {/* Staff Permissions */}
-          <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-            <h3 className="text-base font-semibold text-white mb-3">Staff Management</h3>
-            <div className="space-y-1.5">
-              <PermissionToggle label="Can View Staff Page" checked={canViewStaff} onChange={setCanViewStaff} />
-              <PermissionToggle label="Can Manage Staff" checked={canManageStaff} onChange={setCanManageStaff} />
-              <PermissionToggle label="Can View All Staff" checked={canViewAllStaff} onChange={setCanViewAllStaff} />
-              <PermissionToggle label="Can Assign Permissions" checked={canAssignPermissions} onChange={setCanAssignPermissions} />
+          {/* Staff Permissions - Only for Super Admins and Admins with staff permissions */}
+          {canViewStaffManagementSection && (
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <h3 className="text-base font-semibold text-white mb-3">Staff Management</h3>
+              <div className="space-y-1.5">
+                <PermissionToggle label="Can View Staff Page" checked={canViewStaff} onChange={setCanViewStaff} />
+                <PermissionToggle label="Can Manage Staff" checked={canManageStaff} onChange={setCanManageStaff} />
+                <PermissionToggle label="Can View All Staff" checked={canViewAllStaff} onChange={setCanViewAllStaff} />
+                <PermissionToggle label="Can Assign Permissions" checked={canAssignPermissions} onChange={setCanAssignPermissions} />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Groups Permissions */}
           <div className="bg-white/5 border border-white/10 rounded-lg p-4">
