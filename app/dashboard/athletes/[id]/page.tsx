@@ -10,6 +10,7 @@ import OverviewTab from '@/components/dashboard/athletes/athlete-overview-tab';
 import CalendarTab from '@/components/dashboard/athletes/athlete-calendar-tab';
 import PerformanceTab from '@/components/dashboard/athletes/athlete-performance-tab';
 import ForceProfileTab from '@/components/dashboard/athletes/athlete-force-profile-tab';
+import HittingProfileTab from '@/components/dashboard/athletes/athlete-hitting-profile-tab';
 import AthleteSettingsTab from '@/components/dashboard/athletes/athlete-settings-tab';
 import ManageTagsModal from '@/components/dashboard/athletes/manage-tags-modal';
 import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
@@ -227,6 +228,7 @@ export default function AthleteDetailPage() {
     { id: 'calendar', label: 'Calendar & Programming', icon: '📅' },
     { id: 'performance', label: 'Programming KPIs', icon: '📈' },
     { id: 'force-profile', label: 'Force Profile', icon: '⚡' },
+    { id: 'hitting-profile', label: 'Hitting Profile', icon: '⚾' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
 
@@ -303,35 +305,35 @@ export default function AthleteDetailPage() {
     <div className="min-h-screen pb-20 lg:pb-8">
       {/* Header with Back Button */}
       <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
-        <div className="p-4 lg:p-6">
-          <div className="flex items-center gap-4 mb-4">
+        <div className="p-3 lg:p-6">
+          <div className="flex items-center gap-3 mb-2 lg:mb-4">
             <button
               onClick={() => router.push('/dashboard/athletes')}
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              <span>Back to Athletes</span>
+              <span className="text-sm lg:text-base">Back to Athletes</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 lg:gap-4">
             {/* Avatar and Name */}
-            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
+            <div className="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-lg lg:text-2xl flex-shrink-0">
               {athlete.first_name?.[0] || 'A'}
               {athlete.last_name?.[0] || ''}
             </div>
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white">{fullName}</h1>
-              <div className="flex flex-wrap items-center gap-2 mt-1">
+              <h1 className="text-xl lg:text-3xl font-bold text-white">{fullName}</h1>
+              <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 mt-0.5 lg:mt-1">
                 {athlete.primary_position && (
-                  <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded-md text-sm font-medium">
+                  <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 bg-blue-500/10 text-blue-400 rounded-md text-xs lg:text-sm font-medium">
                     {athlete.primary_position}
                   </span>
                 )}
                 {athlete.grad_year && (
-                  <span className="px-2.5 py-1 bg-purple-500/10 text-purple-400 rounded-md text-sm font-medium">
+                  <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 bg-purple-500/10 text-purple-400 rounded-md text-xs lg:text-sm font-medium">
                     Class of {athlete.grad_year}
                   </span>
                 )}
@@ -410,6 +412,7 @@ export default function AthleteDetailPage() {
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
         {activeTab === 'performance' && <PerformanceTab athleteId={athleteId} />}
         {activeTab === 'force-profile' && <ForceProfileTab athleteId={athleteId} athleteName={fullName} />}
+        {activeTab === 'hitting-profile' && <HittingProfileTab athleteId={athleteId} athleteName={fullName} />}
         {activeTab === 'settings' && (
           <AthleteSettingsTab
             athleteData={athleteData}
