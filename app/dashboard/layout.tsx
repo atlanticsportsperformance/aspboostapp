@@ -10,6 +10,7 @@ const navLinks = [
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
   { href: '/dashboard/staff', label: 'Staff', icon: '👥', adminOnly: true },
   { href: '/dashboard/groups', label: 'Groups', icon: '👫' },
+  { href: '/dashboard/hitting', label: 'Hitting', icon: '⚾' },
 ];
 
 const adminLinks = [
