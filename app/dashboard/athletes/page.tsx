@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AddAthleteModal from '@/components/dashboard/athletes/add-athlete-modal';
+import { getAthleteFilter } from '@/lib/auth/permissions';
 
 interface Profile {
   id: string;
@@ -55,6 +56,10 @@ export default function AthletesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+
   // Bulk selection state
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
@@ -72,18 +77,58 @@ export default function AthletesPage() {
     setMounted(true);
   }, []);
 
+  // Load user on mount
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
   // Function to fetch athletes (can be called to refresh)
   async function fetchAthletes() {
+      if (!userId) return;
+
       const supabase = createClient();
 
       console.log('=== ATHLETES PAGE LOADING ===');
 
+      // Apply athlete visibility filtering
+      const filter = await getAthleteFilter(userId, userRole);
+
       // Step 1: Get all active athletes (include VALD profile status)
-      const { data: athletesData, error: athletesError } = await supabase
+      let query = supabase
         .from('athletes')
         .select('*, vald_profile_id')
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
+        .eq('is_active', true);
+
+      // Apply visibility filter
+      if (filter.filter === 'ids' && filter.athleteIds) {
+        if (filter.athleteIds.length === 0) {
+          // No athletes assigned - show empty
+          setAthletes([]);
+          setFilteredAthletes([]);
+          setLoading(false);
+          return;
+        }
+        query = query.in('id', filter.athleteIds);
+      }
+
+      query = query.order('created_at', { ascending: false });
+
+      const { data: athletesData, error: athletesError } = await query;
 
       console.log('1. Athletes query:', { count: athletesData?.length, data: athletesData, error: athletesError });
 
@@ -231,8 +276,10 @@ export default function AthletesPage() {
     }
 
   useEffect(() => {
-    fetchAthletes();
-  }, []);
+    if (userId) {
+      fetchAthletes();
+    }
+  }, [userId, userRole]);
 
   // Filter athletes when filter changes
   useEffect(() => {
