@@ -694,28 +694,43 @@ export default function WorkoutExecutionPage() {
                         const tracksPR = ex.tracked_max_metrics && ex.tracked_max_metrics.length > 0;
                         const thumbnail = getThumbnail(exercise.video_url);
 
-                        // Get reps display - check for ANY reps metric (reps, green_ball_reps, etc.)
-                        let repsDisplay = '—';
-                        if (ex.metric_targets) {
-                          // Find any metric that ends with "_reps" or is just "reps"
-                          const repsKeys = Object.keys(ex.metric_targets).filter((k: string) => k === 'reps' || k.endsWith('_reps'));
-                          if (repsKeys.length > 0) {
-                            // Use the first reps metric found
-                            repsDisplay = ex.metric_targets[repsKeys[0]];
-                          }
+                        // Check if we have per-set configuration
+                        const hasPerSetConfig = ex.set_configurations &&
+                                               Array.isArray(ex.set_configurations) &&
+                                               ex.set_configurations.length > 0;
+
+                        // Get all metrics that need to be displayed
+                        let metricsToShow: {[key: string]: string} = {};
+
+                        if (hasPerSetConfig) {
+                          // Build per-set display for ALL metrics
+                          const allMetricKeys = new Set<string>();
+
+                          // Collect all metric keys from all sets
+                          ex.set_configurations.forEach((setConfig: any) => {
+                            if (setConfig.metric_values) {
+                              Object.keys(setConfig.metric_values).forEach(key => allMetricKeys.add(key));
+                            }
+                          });
+
+                          // For each metric, build the per-set display
+                          allMetricKeys.forEach(metricKey => {
+                            const valuesPerSet = ex.set_configurations.map((setConfig: any) => {
+                              const value = setConfig.metric_values?.[metricKey];
+                              return value !== undefined && value !== null && value !== '' ? value : '—';
+                            });
+                            metricsToShow[metricKey] = valuesPerSet.join(', ');
+                          });
+                        } else if (ex.metric_targets) {
+                          // Use metric_targets (standard non-per-set configuration)
+                          metricsToShow = {...ex.metric_targets};
                         }
 
-                        // Check for per-set reps in set_configurations
-                        const hasPerSetReps = ex.set_configurations &&
-                                             Array.isArray(ex.set_configurations) &&
-                                             ex.set_configurations.length > 0 &&
-                                             ex.set_configurations.some((s: any) => s.metric_values?.reps || s.reps);
-
-                        if (hasPerSetReps) {
-                          const repsPerSet = ex.set_configurations.map((setConfig: any) =>
-                            setConfig.metric_values?.reps || setConfig.reps || '—'
-                          );
-                          repsDisplay = repsPerSet.join(', ');
+                        // Get reps display specifically for the "3 × reps" format
+                        let repsDisplay = '—';
+                        const repsKeys = Object.keys(metricsToShow).filter((k: string) => k === 'reps' || k.endsWith('_reps'));
+                        if (repsKeys.length > 0) {
+                          repsDisplay = metricsToShow[repsKeys[0]];
                         }
 
                         return (
@@ -738,21 +753,26 @@ export default function WorkoutExecutionPage() {
 
                               {/* Compact format: 3 × 2 (Red Ball Reps, Blue Ball Reps, ...) */}
                               <div className="text-sm text-gray-300">
-                                {ex.metric_targets && Object.keys(ex.metric_targets).length > 0 ? (
+                                {Object.keys(metricsToShow).length > 0 ? (
                                   <span>
                                     {ex.sets || 3} × {repsDisplay}
                                     {ex.intensity_targets && ex.intensity_targets.length > 0 && (
                                       <span className="text-[#9BDDFF] font-semibold"> @ {ex.intensity_targets[0].percent}%</span>
                                     )}
                                     <span className="text-gray-400"> (
-                                      {Object.entries(ex.metric_targets)
+                                      {Object.entries(metricsToShow)
                                         .filter(([key, value]: [string, any]) => {
                                           const isPrimary = isPrimaryMetric(key);
 
                                           // Always show primary metrics (reps)
                                           if (isPrimary) return true;
 
-                                          // For secondary metrics (weight, time, distance, velo), only show if value > 0
+                                          // For secondary metrics (weight, time, distance, velo), only show if not all empty/zero
+                                          if (typeof value === 'string' && value.includes(',')) {
+                                            // Per-set values - check if any are non-zero/non-empty
+                                            const parts = value.split(',').map(v => v.trim());
+                                            return parts.some(v => v !== '—' && v !== '' && v !== '0');
+                                          }
                                           return value && value > 0;
                                         })
                                         .map(([key, value]: [string, any], idx: number) => {
