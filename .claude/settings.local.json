@@ -16,7 +16,9 @@
       "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -c \"\\d exercise_logs\")",
       "Bash(npm install:*)",
       "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -c \"\\d athletes\")",
-      "Bash(python scripts/fix-overview-tab.py:*)"
+      "Bash(python scripts/fix-overview-tab.py:*)",
+      "Bash(find:*)",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []
