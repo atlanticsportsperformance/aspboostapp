@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { WorkoutTagsManager } from '@/components/dashboard/workouts/workout-tags-manager';
 import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 import { getContentFilter } from '@/lib/auth/permissions';
@@ -479,9 +478,8 @@ export default function WorkoutsPage() {
               ) || 0;
 
               return (
-                <Link
+                <div
                   key={workout.id}
-                  href={`/dashboard/workouts/${workout.id}`}
                   className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
@@ -597,12 +595,9 @@ export default function WorkoutsPage() {
                           </svg>
                         </button>
                       )}
-                      <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
                     </div>
                   </div>
-                </Link>
+                </div>
               );
             })}
           </div>
