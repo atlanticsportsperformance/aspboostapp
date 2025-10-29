@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Search, Calendar, ClipboardList } from 'lucide-react';
-import { getContentFilter } from '@/lib/utils/permissions-helpers';
+import { getContentFilter } from '@/lib/auth/permissions';
 import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Plan {

@@ -321,7 +321,7 @@ export async function canDeleteContent(
 export async function getContentFilter(
   userId: string,
   userRole: 'super_admin' | 'admin' | 'coach' | 'athlete',
-  contentType: 'exercises' | 'workouts' | 'routines'
+  contentType: 'exercises' | 'workouts' | 'routines' | 'plans'
 ): Promise<{ filter: 'all' | 'ids', creatorIds?: string[] }> {
   // Super admins see everything - bypass permissions
   if (userRole === 'super_admin') {
@@ -339,7 +339,7 @@ export async function getContentFilter(
     return { filter: 'ids', creatorIds: [] };
   }
 
-  const visibilityField = `${contentType}_visibility` as keyof Pick<StaffPermissions, 'exercises_visibility' | 'workouts_visibility' | 'routines_visibility'>;
+  const visibilityField = `${contentType}_visibility` as keyof Pick<StaffPermissions, 'exercises_visibility' | 'workouts_visibility' | 'routines_visibility' | 'plans_visibility'>;
   const visibility = permissions[visibilityField] as ContentVisibility;
 
   switch (visibility) {
