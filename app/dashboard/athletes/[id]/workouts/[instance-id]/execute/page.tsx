@@ -27,6 +27,10 @@ export default function WorkoutExecutionPage() {
   const [sharedAthleteMaxes, setSharedAthleteMaxes] = useState<Record<string, Record<string, number>>>({});
   // Persistent input state for all exercises (keyed by exercise ID)
   const [exerciseInputs, setExerciseInputs] = useState<Record<string, Array<any>>>({});
+  // Set completion tracking (keyed by exercise ID, value is array of booleans for each set)
+  const [completedSets, setCompletedSets] = useState<Record<string, boolean[]>>({});
+  // Current set index for each exercise (keyed by exercise ID)
+  const [currentSetIndexes, setCurrentSetIndexes] = useState<Record<string, number>>({});
   // Incomplete exercises warning modal
   const [showIncompleteWarning, setShowIncompleteWarning] = useState(false);
   const [incompleteExercises, setIncompleteExercises] = useState<any[]>([]);
@@ -240,11 +244,14 @@ export default function WorkoutExecutionPage() {
 
       for (let i = 0; i < targetSets; i++) {
         const setData = inputs[i] || {};
-        const hasData = (setData.reps > 0) ||
-                       (setData.weight > 0) ||
-                       (setData.time > 0) ||
-                       (setData.rpe > 0) ||
-                       (setData.notes && setData.notes.trim());
+
+        // Check if set has ANY metric with actual data (including 0, excluding "-" and empty)
+        const hasData = Object.keys(setData).some(key => {
+          const value = setData[key];
+          // "-" = null (doesn't count), 0 = valid data (counts), undefined/empty = no data
+          if (key === 'notes') return value && value.trim();
+          return value !== undefined && value !== '' && value !== null && value !== '-' && value !== '−';
+        });
 
         if (hasData) {
           hasAnyData = true;
@@ -279,10 +286,16 @@ export default function WorkoutExecutionPage() {
   }
 
   async function completeWorkout() {
+    console.log('🏁 Starting completeWorkout()...');
+    console.log('📊 Exercise inputs state:', exerciseInputs);
+
     // First, save all exercises with their current inputs (like hitting "Next" on each)
     const allExercises = routines.flatMap(r => r.routine_exercises || []);
+    console.log(`📝 Processing ${allExercises.length} exercises...`);
 
     for (const exercise of allExercises) {
+      console.log(`\n🎯 Processing exercise: ${exercise.exercises?.name || 'Unknown'}`);
+
       // Skip exercises without an exercise_id (placeholders or incomplete exercises)
       if (!exercise.exercise_id) {
         console.warn('⚠️ Skipping exercise without exercise_id:', exercise.id);
@@ -295,27 +308,58 @@ export default function WorkoutExecutionPage() {
 
       // Get persisted inputs for this exercise, or create empty ones
       const inputs = exerciseInputs[exercise.id] || [];
+      console.log(`   Sets data for this exercise:`, inputs);
+      console.log(`   Target sets: ${targetSets}`);
 
       for (let i = 0; i < targetSets; i++) {
         const setNumber = i + 1;
         const setData = inputs[i] || {};
         const existingLog = exLogs.find((log: any) => log.set_number === setNumber);
 
-        // Prepare log data - use inputted values or 0s
-        const logData = {
-          actual_reps: setData.reps > 0 ? setData.reps : null,
-          actual_weight: setData.weight > 0 ? setData.weight : null,
-          actual_duration_seconds: setData.time > 0 ? setData.time : null,
-          actual_rpe: setData.rpe > 0 ? setData.rpe : null,
-          notes: setData.notes || null
+        // Helper function to parse metric values
+        // "-" (dash) = null (explicit skip/hide)
+        // 0 = valid data (attempted but zero result)
+        // undefined/empty = null (not attempted)
+        const parseMetricValue = (value: any) => {
+          if (value === '-' || value === '−') return null; // Dash = explicit null
+          // Explicitly check for 0 since it's a valid value but falsy
+          if (value === 0) return 0;
+          if (value !== undefined && value !== '' && value !== null) return value;
+          return null;
         };
 
-        // Check if there's any actual data to save
+        // Separate basic metrics from custom metrics
+        // Only reps and weight have dedicated columns - everything else goes in metric_data JSONB
+        const basicMetricKeys = ['reps', 'weight'];
+        const customMetrics: any = {};
+
+        Object.keys(setData).forEach(key => {
+          if (!basicMetricKeys.includes(key)) {
+            const parsed = parseMetricValue(setData[key]);
+            if (parsed !== null) {
+              customMetrics[key] = parsed;
+            }
+          }
+        });
+
+        // Prepare log data - only reps/weight have columns, rest goes in metric_data
+        const logData = {
+          actual_reps: parseMetricValue(setData.reps),
+          actual_weight: parseMetricValue(setData.weight),
+          metric_data: Object.keys(customMetrics).length > 0 ? customMetrics : null
+        };
+
+        // Check if there's any actual data to save (now 0 counts as data, but "-" doesn't)
         const hasData = logData.actual_reps !== null ||
                        logData.actual_weight !== null ||
-                       logData.actual_duration_seconds !== null ||
-                       logData.actual_rpe !== null ||
-                       logData.notes !== null;
+                       (logData.metric_data && Object.keys(logData.metric_data).length > 0);
+
+        console.log(`      Set ${setNumber}:`, {
+          setData,
+          parsedLogData: logData,
+          hasData,
+          willSave: hasData && !existingLog
+        });
 
         if (existingLog) {
           // Update existing log only if there's new data
@@ -342,10 +386,6 @@ export default function WorkoutExecutionPage() {
             exercise_id: exercise.exercise_id,
             set_number: setNumber,
             target_sets: targetSets,
-            target_reps: setData.targetReps || null,
-            target_weight: setData.targetWeight || null,
-            target_duration_seconds: setData.targetTime || null,
-            target_intensity_percent: setData.intensityPercent || null,
             ...logData
           });
 
@@ -359,6 +399,85 @@ export default function WorkoutExecutionPage() {
             });
           } else {
             console.log('✅ Inserted exercise log:', { exercise: exercise.exercises?.name, set: setNumber, reps: logData.actual_reps, weight: logData.actual_weight });
+          }
+        }
+      }
+    }
+
+    // Check for PRs and update athlete_maxes
+    console.log('🏆 Checking for PRs across all exercises...');
+    for (const exercise of allExercises) {
+      if (!exercise.exercise_id) continue;
+
+      const isTrackingPR = exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0;
+      if (!isTrackingPR) continue;
+
+      const inputs = exerciseInputs[exercise.id] || [];
+      if (inputs.length === 0) continue;
+
+      console.log(`🔍 Checking PRs for: ${exercise.exercises?.name}`, {
+        tracked_metrics: exercise.tracked_max_metrics
+      });
+
+      // Loop through each metric that's being tracked as a max
+      for (const metricId of exercise.tracked_max_metrics) {
+        // Find highest value logged across all sets for this metric
+        // Check both basic metrics and custom metrics in metric_data
+        let maxValue = 0;
+
+        inputs.forEach((setData: any) => {
+          if (!setData) return;
+
+          // Check basic metrics (reps, weight, time)
+          if (setData[metricId] !== undefined && setData[metricId] !== null && setData[metricId] !== '-' && setData[metricId] !== '−') {
+            maxValue = Math.max(maxValue, parseFloat(setData[metricId]) || 0);
+          }
+        });
+
+        if (maxValue > 0) {
+          // Check current max from athlete_maxes
+          const { data: currentMaxData } = await supabase
+            .from('athlete_maxes')
+            .select('max_value')
+            .eq('athlete_id', athleteId)
+            .eq('exercise_id', exercise.exercise_id)
+            .eq('metric_id', metricId)
+            .eq('reps_at_max', 1)
+            .order('achieved_on', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          // Get metric display name and unit
+          const measurement = exercise.exercises?.metric_schema?.measurements?.find((m: any) => m.id === metricId);
+          const metricName = measurement?.name || metricId;
+          const metricUnit = measurement?.unit || '';
+
+          // Only save if it's a new PR (higher than previous max, or first time)
+          const isNewPR = !currentMaxData || maxValue > currentMaxData.max_value;
+
+          if (isNewPR) {
+            console.log(`🎉 NEW PR detected! ${metricName}: ${maxValue} ${metricUnit}`);
+
+            // Save to athlete_maxes
+            const { error: maxError } = await supabase
+              .from('athlete_maxes')
+              .insert({
+                athlete_id: athleteId,
+                exercise_id: exercise.exercise_id,
+                metric_id: metricId,
+                max_value: maxValue,
+                reps_at_max: 1,
+                achieved_on: new Date().toISOString().split('T')[0],
+                source: 'logged'
+              });
+
+            if (!maxError) {
+              console.log(`✅ PR saved: ${metricName} = ${maxValue} ${metricUnit}`);
+            } else {
+              console.error(`Failed to save max for ${metricName}:`, maxError);
+            }
+          } else {
+            console.log(`📊 No PR for ${metricName}. Current: ${maxValue}, Previous best: ${currentMaxData?.max_value}`);
           }
         }
       }
@@ -685,6 +804,27 @@ export default function WorkoutExecutionPage() {
                 <ExerciseDetailView
                   exercise={currentExercise}
                   exerciseInputs={exerciseInputs[activeExerciseId] || []}
+                  completedSetsTracker={completedSets[activeExerciseId] || Array(currentExercise.sets || 3).fill(false)}
+                  currentSetIndex={currentSetIndexes[activeExerciseId] || 0}
+                  onSetComplete={(setIndex: number) => {
+                    setCompletedSets(prev => {
+                      const exerciseSets = prev[activeExerciseId] || Array(currentExercise.sets || 3).fill(false);
+                      const updated = [...exerciseSets];
+                      updated[setIndex] = true;
+                      return { ...prev, [activeExerciseId]: updated };
+                    });
+                  }}
+                  onSetIncomplete={(setIndex: number) => {
+                    setCompletedSets(prev => {
+                      const exerciseSets = prev[activeExerciseId] || Array(currentExercise.sets || 3).fill(false);
+                      const updated = [...exerciseSets];
+                      updated[setIndex] = false;
+                      return { ...prev, [activeExerciseId]: updated };
+                    });
+                  }}
+                  onSetIndexChange={(index: number) => {
+                    setCurrentSetIndexes(prev => ({ ...prev, [activeExerciseId]: index }));
+                  }}
                   onInputChange={(setIndex: number, field: string, value: any) => {
                     setExerciseInputs(prev => {
                       const exerciseData = prev[activeExerciseId] || [];
@@ -699,6 +839,23 @@ export default function WorkoutExecutionPage() {
                         ...updatedData[setIndex],
                         [field]: value
                       };
+
+                      // Check if this set now has any data - if so, mark it complete
+                      const setData = updatedData[setIndex];
+                      const hasData = Object.keys(setData).some(key => {
+                        const val = setData[key];
+                        return val && val !== '' && val !== 0 && key !== 'notes';
+                      });
+
+                      // Auto-mark set as complete if it has data
+                      if (hasData) {
+                        setCompletedSets(prevCompleted => {
+                          const exerciseSets = prevCompleted[activeExerciseId] || Array(currentExercise.sets || 3).fill(false);
+                          const updatedSets = [...exerciseSets];
+                          updatedSets[setIndex] = true;
+                          return { ...prevCompleted, [activeExerciseId]: updatedSets };
+                        });
+                      }
 
                       return {
                         ...prev,

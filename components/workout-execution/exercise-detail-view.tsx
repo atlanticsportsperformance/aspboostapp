@@ -1,10 +1,16 @@
 'use client';
 
 import { useState } from 'react';
+import { ExerciseHistoryPanel } from './exercise-history-panel';
 
 interface ExerciseDetailViewProps {
   exercise: any;
   exerciseInputs: Array<any>;
+  completedSetsTracker: boolean[];
+  currentSetIndex: number;
+  onSetComplete: (setIndex: number) => void;
+  onSetIncomplete: (setIndex: number) => void;
+  onSetIndexChange: (index: number) => void;
   onInputChange: (setIndex: number, field: string, value: any) => void;
   onBack: () => void;
   onPrev: () => void;
@@ -20,6 +26,11 @@ interface ExerciseDetailViewProps {
 export default function ExerciseDetailView({
   exercise,
   exerciseInputs,
+  completedSetsTracker,
+  currentSetIndex,
+  onSetComplete,
+  onSetIncomplete,
+  onSetIndexChange,
   onInputChange,
   onBack,
   onPrev,
@@ -58,11 +69,52 @@ export default function ExerciseDetailView({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleCompleteAndNext = () => {
-    if (hasNext) {
-      onNext();
+  const handleNextSet = () => {
+    // Check if current set has any data
+    const currentSetData = exerciseInputs[currentSetIndex] || {};
+    const hasAnyData = Object.keys(metricTargets).some(key => {
+      const val = currentSetData[key];
+      return val && val !== '' && val !== 0;
+    });
+
+    // If no data entered, save the placeholder/target values as the actual values
+    if (!hasAnyData) {
+      // Save all target values as the actual values (auto-fill from placeholders)
+      Object.entries(metricTargets).forEach(([key, targetValue]) => {
+        // Only save if there's a target value and no current value
+        if (targetValue && !currentSetData[key]) {
+          onInputChange(currentSetIndex, key, targetValue);
+        }
+      });
+    }
+
+    // Mark current set as completed
+    onSetComplete(currentSetIndex);
+
+    // Move to next set or next exercise
+    if (currentSetIndex < targetSets - 1) {
+      // Move to next set
+      onSetIndexChange(currentSetIndex + 1);
     } else {
-      onBack();
+      // All sets completed, move to next exercise or back to overview
+      if (hasNext) {
+        onNext();
+      } else {
+        onBack();
+      }
+    }
+  };
+
+  const handlePreviousSet = () => {
+    if (currentSetIndex > 0) {
+      // Go back to previous set and uncheck it
+      onSetIncomplete(currentSetIndex - 1);
+      onSetIndexChange(currentSetIndex - 1);
+    } else {
+      // At first set, go to previous exercise
+      if (hasPrev) {
+        onPrev();
+      }
     }
   };
 
@@ -77,7 +129,7 @@ export default function ExerciseDetailView({
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col animate-in slide-in-from-bottom duration-300">
       {/* Header */}
-      <div className="flex-shrink-0 bg-gradient-to-b from-gray-900 to-black border-b border-white/10 px-4 py-4">
+      <div className="flex-shrink-0 bg-gradient-to-b from-gray-900 to-black border-b border-white/10 px-4 py-3">
         {/* Top Row - Back & Timer */}
         <div className="flex items-center justify-between mb-3">
           <button
@@ -98,54 +150,75 @@ export default function ExerciseDetailView({
           </div>
         </div>
 
-        {/* Exercise Title & Progress */}
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-1">{exerciseData?.name || 'Exercise'}</h1>
-          <p className="text-sm text-gray-400">
-            Exercise {currentIndex + 1} of {totalExercises} • {completedSets}/{targetSets} sets complete
-          </p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-3 h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] transition-all duration-500"
-            style={{ width: `${(completedSets / targetSets) * 100}%` }}
-          />
+        {/* Exercise Title - Left Aligned */}
+        <div className="text-left">
+          <h1 className="text-xl font-bold text-white uppercase tracking-wide">{exerciseData?.name || 'Exercise'}</h1>
+          {/* Exercise Notes - Inline */}
+          {exercise.notes && (
+            <p className="text-xs text-gray-400 mt-1">{exercise.notes}</p>
+          )}
         </div>
       </div>
 
-      {/* Exercise Notes */}
-      {exercise.notes && (
-        <div className="flex-shrink-0 bg-yellow-500/10 border-b border-yellow-500/20 px-4 py-3">
-          <div className="flex items-start gap-2">
-            <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-yellow-300 mb-0.5">Exercise Notes</p>
-              <p className="text-sm text-gray-300">{exercise.notes}</p>
+      {/* Video Section */}
+      {exerciseData?.video_url && (() => {
+        // Convert YouTube URL to embed format and add mute parameter
+        let videoUrl = exerciseData.video_url;
+
+        // Handle youtube.com/watch?v=VIDEO_ID
+        if (videoUrl.includes('youtube.com/watch')) {
+          const videoId = new URL(videoUrl).searchParams.get('v');
+          if (videoId) {
+            videoUrl = `https://www.youtube.com/embed/${videoId}?mute=1&autoplay=0`;
+          }
+        }
+        // Handle youtu.be/VIDEO_ID
+        else if (videoUrl.includes('youtu.be/')) {
+          const videoId = videoUrl.split('youtu.be/')[1].split('?')[0];
+          videoUrl = `https://www.youtube.com/embed/${videoId}?mute=1&autoplay=0`;
+        }
+        // Handle youtube.com/embed/VIDEO_ID (already embed format)
+        else if (videoUrl.includes('youtube.com/embed/')) {
+          const separator = videoUrl.includes('?') ? '&' : '?';
+          videoUrl = `${videoUrl}${separator}mute=1&autoplay=0`;
+        }
+
+        return (
+          <div className="flex-shrink-0 bg-black">
+            <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                src={videoUrl}
+                className="absolute top-0 left-0 w-full h-full"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ border: 0 }}
+              />
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* Exercise History Panel */}
+      <div className="px-2 py-2 flex-shrink-0">
+        <ExerciseHistoryPanel
+          athleteId={exercise.athlete_id || ''}
+          exerciseId={exercise.exercise_id}
+          exerciseName={exerciseData?.name || 'Exercise'}
+        />
+      </div>
 
       {/* Set Input Area - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-2 py-3">
+      <div className="flex-1 overflow-y-auto px-2 py-1">
         <div className="max-w-2xl mx-auto space-y-2">
           {Array.from({ length: targetSets }, (_, idx) => {
             const input = exerciseInputs[idx] || {};
-            const isCompleted = input.reps > 0 || input.weight > 0;
+            const isCompleted = completedSetsTracker[idx];
             const hasNotes = input.notes && input.notes.trim().length > 0;
 
             return (
               <div
                 key={idx}
-                className={`bg-white/5 border rounded-lg p-2 transition-all ${
-                  isCompleted
-                    ? 'border-green-500/50 bg-green-500/5'
-                    : 'border-white/10 hover:border-white/20'
-                }`}
+                className="p-2 transition-all"
               >
                 {/* Set Header */}
                 <div className="flex items-center justify-between mb-2">
@@ -185,66 +258,66 @@ export default function ExerciseDetailView({
                   return (
                     <div className="grid grid-cols-2 gap-2">
                       {/* LEFT COLUMN: Primary Metrics (Reps) - BLACK with WHITE OUTLINE */}
-                      <div className="space-y-1">
+                      <div className="space-y-1 flex flex-col items-end">
                         {primaryMetrics.map(([key, targetValue]: [string, any]) => {
                           const isTrackedPR = exercise.tracked_max_metrics?.includes(key);
                           const formattedKey = key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                           return (
-                            <div key={key} className="flex items-center gap-1.5">
-                              <label className="text-[9px] text-gray-400 font-semibold flex items-center gap-0.5 min-w-[60px] flex-shrink-0">
-                                {formattedKey}
-                                {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
-                              </label>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                step="1"
-                                value={input[key] || ''}
-                                onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
-                                onFocus={() => setFocusedInput(`${idx}-${key}`)}
-                                onBlur={() => setFocusedInput(null)}
-                                placeholder={targetValue || '0'}
-                                className={`w-16 bg-black border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
-                                  isTrackedPR
-                                    ? 'border-yellow-500/50 focus:border-yellow-500 focus:ring-yellow-500/30'
-                                    : 'border-white/30 focus:border-white/50 focus:ring-white/20'
-                                }`}
-                                style={{ fontSize: '16px' }}
-                              />
+                            <div key={key} className="flex flex-col items-end">
+                              <div className="w-[120px] flex flex-col items-center">
+                                <label className="text-[9px] text-gray-400 mb-0.5 font-semibold flex items-center gap-0.5">
+                                  {formattedKey}
+                                  {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
+                                </label>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  step="1"
+                                  value={input[key] || ''}
+                                  onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
+                                  onFocus={() => setFocusedInput(`${idx}-${key}`)}
+                                  onBlur={() => setFocusedInput(null)}
+                                  placeholder={targetValue || '0'}
+                                  className={`w-full bg-black border-0 rounded px-2 py-1.5 text-white text-sm font-bold text-center focus:outline-none transition-all ${
+                                    isTrackedPR ? 'text-yellow-300' : ''
+                                  }`}
+                                  style={{ fontSize: '16px' }}
+                                />
+                              </div>
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* RIGHT COLUMN: Secondary Metrics (Weight, Time, Distance, Velo) - TRUE GRAY */}
-                      <div className="space-y-1">
+                      {/* RIGHT COLUMN: Secondary Metrics (Weight, Time, Distance, Velo) - GRAY */}
+                      <div className="space-y-1 flex flex-col items-start">
                         {secondaryMetrics.map(([key, targetValue]: [string, any]) => {
                           const isTrackedPR = exercise.tracked_max_metrics?.includes(key);
                           const formattedKey = key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
                           return (
-                            <div key={key} className="flex items-center gap-1.5">
-                              <label className="text-[9px] text-gray-400 font-semibold flex items-center gap-0.5 min-w-[60px] flex-shrink-0">
-                                {formattedKey}
-                                {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
-                              </label>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                step="0.01"
-                                value={input[key] || ''}
-                                onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
-                                onFocus={() => setFocusedInput(`${idx}-${key}`)}
-                                onBlur={() => setFocusedInput(null)}
-                                placeholder={targetValue || '0'}
-                                className={`w-16 bg-neutral-700 border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
-                                  isTrackedPR
-                                    ? 'border-yellow-500/50 focus:border-yellow-500 focus:ring-yellow-500/30'
-                                    : 'border-neutral-600 focus:border-neutral-500 focus:ring-neutral-500/30'
-                                }`}
-                                style={{ fontSize: '16px' }}
-                              />
+                            <div key={key} className="flex flex-col items-start">
+                              <div className="w-[120px] flex flex-col items-center">
+                                <label className="text-[9px] text-gray-400 mb-0.5 font-semibold flex items-center gap-0.5">
+                                  {formattedKey}
+                                  {isTrackedPR && <span className="text-yellow-400 text-[10px]">🏆</span>}
+                                </label>
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  step="0.01"
+                                  value={input[key] || ''}
+                                  onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
+                                  onFocus={() => setFocusedInput(`${idx}-${key}`)}
+                                  onBlur={() => setFocusedInput(null)}
+                                  placeholder={targetValue || '0'}
+                                  className={`w-full bg-neutral-700 border-0 rounded px-2 py-1.5 text-white text-sm font-bold text-center focus:outline-none transition-all ${
+                                    isTrackedPR ? 'text-yellow-300' : ''
+                                  }`}
+                                  style={{ fontSize: '16px' }}
+                                />
+                              </div>
                             </div>
                           );
                         })}
@@ -279,64 +352,42 @@ export default function ExerciseDetailView({
         </div>
       </div>
 
-      {/* Floating Done Button - Shows when keyboard is open */}
-      {focusedInput && (
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/95 to-transparent pb-safe z-[60]">
-          <div className="px-4 pt-3 pb-4">
-            <button
-              onClick={dismissKeyboard}
-              className="w-full bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-bold py-3 rounded-xl transition-all transform active:scale-95 shadow-lg"
-            >
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Bottom Navigation */}
-      <div className="flex-shrink-0 bg-gradient-to-t from-gray-900 to-black border-t border-white/10 px-4 py-4">
-        <div className="max-w-2xl mx-auto">
-          {/* Navigation Arrows */}
-          <div className="flex items-center justify-between mb-3">
-            <button
-              onClick={onPrev}
-              disabled={!hasPrev}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                hasPrev
-                  ? 'text-white bg-white/5 hover:bg-white/10 border border-white/10'
-                  : 'text-gray-600 bg-white/5 border border-white/5 cursor-not-allowed'
-              }`}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              <span>Previous</span>
-            </button>
-
-            <button
-              onClick={onNext}
-              disabled={!hasNext}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                hasNext
-                  ? 'text-white bg-white/5 hover:bg-white/10 border border-white/10'
-                  : 'text-gray-600 bg-white/5 border border-white/5 cursor-not-allowed'
-              }`}
-            >
-              <span>Next</span>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Complete & Next Button */}
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+        {/* Back/Previous Set FAB */}
+        {(currentSetIndex > 0 || hasPrev) && (
           <button
-            onClick={handleCompleteAndNext}
-            className="w-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#9BDDFF] text-black font-bold py-4 rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-[#9BDDFF]/20"
+            onClick={handlePreviousSet}
+            className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center shadow-lg hover:bg-white/20 transition-all active:scale-95"
           >
-            {hasNext ? 'Complete & Next Exercise' : 'Complete & Return to Overview'}
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </button>
-        </div>
+        )}
+
+        {/* Next Set / Next Exercise / Complete FAB */}
+        <button
+          onClick={handleNextSet}
+          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] text-black flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95"
+        >
+          {currentSetIndex < targetSets - 1 ? (
+            // More sets to complete - show right arrow
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          ) : hasNext ? (
+            // All sets complete, has next exercise - show right arrow
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          ) : (
+            // All sets complete, no next exercise - show checkmark
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+            </svg>
+          )}
+        </button>
       </div>
     </div>
   );
