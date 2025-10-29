@@ -189,9 +189,15 @@ export default function ExerciseDetailView({
                               </label>
                               <input
                                 type="number"
+                                inputMode="decimal"
                                 step="1"
                                 value={input[key] || ''}
                                 onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
                                 placeholder={targetValue || '0'}
                                 className={`w-full bg-black border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
@@ -218,9 +224,15 @@ export default function ExerciseDetailView({
                               </label>
                               <input
                                 type="number"
+                                inputMode="decimal"
                                 step="0.01"
                                 value={input[key] || ''}
                                 onChange={(e) => onInputChange(idx, key, parseFloat(e.target.value) || 0)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                  }
+                                }}
                                 placeholder={targetValue || '0'}
                                 className={`w-full bg-gray-800 border rounded px-1.5 py-1 text-white text-sm font-bold text-center focus:outline-none focus:ring-1 transition-all ${
                                   isTrackedPR
