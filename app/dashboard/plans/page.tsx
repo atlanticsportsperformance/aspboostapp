@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { PlanTagsManager } from '@/components/dashboard/plans/plan-tags-manager';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter } from '@/lib/auth/permissions';
 
 interface TrainingPlan {
   id: string;
@@ -24,6 +26,7 @@ interface TrainingPlan {
 
 export default function PlansPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = createClient();
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,13 +34,53 @@ export default function PlansPage() {
   const [newPlanName, setNewPlanName] = useState('');
   const [managerOpen, setManagerOpen] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+  const [planPermissions, setPlanPermissions] = useState<{[key: string]: {canEdit: boolean, canDelete: boolean}}>({});
+
+  // Load user info and permissions
   useEffect(() => {
-    fetchPlans();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
+    }
+    loadUser();
   }, []);
 
+  // Fetch plans when user info changes
+  useEffect(() => {
+    if (userId !== null) {
+      fetchPlans();
+    }
+  }, [pathname, userId, userRole]);
+
+  // Recompute permissions when permissions load or plans change
+  useEffect(() => {
+    if (plans.length > 0 && userId && permissions) {
+      computePlanPermissions();
+    }
+  }, [plans.length, userId, userRole, JSON.stringify(permissions)]);
+
   async function fetchPlans() {
+    if (!userId) return;
     setLoading(true);
-    const { data, error } = await supabase
+
+    // Apply visibility filter
+    const filter = await getContentFilter(userId, userRole, 'plans');
+
+    let query = supabase
       .from('training_plans')
       .select(`
         *,
@@ -49,12 +92,58 @@ export default function PlansPage() {
       `)
       .order('created_at', { ascending: false });
 
+    // Apply creator filter based on permissions
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setPlans([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       console.error('Error fetching plans:', error);
     } else {
       setPlans(data || []);
     }
     setLoading(false);
+  }
+
+  async function computePlanPermissions() {
+    if (!userId || !plans || plans.length === 0) return;
+
+    const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
+    const creatorIds = [...new Set(plans.map(p => p.created_by).filter(Boolean))] as string[];
+
+    if (creatorIds.length > 0) {
+      // Batch fetch all creator roles at once
+      const { data: creators } = await supabase
+        .from('profiles')
+        .select('id, app_role')
+        .in('id', creatorIds);
+
+      const creatorRoles = new Map(creators?.map(c => [c.id, c.app_role]) || []);
+
+      for (const plan of plans) {
+        const isOwnPlan = plan.created_by === userId;
+        const creatorRole = plan.created_by ? creatorRoles.get(plan.created_by) : null;
+        const isAdminOrSuperAdminPlan = creatorRole === 'admin' || creatorRole === 'super_admin';
+
+        const canEdit = userRole === 'super_admin' ||
+                        (isOwnPlan && permissions?.can_edit_own_plans) ||
+                        (isAdminOrSuperAdminPlan && permissions?.can_edit_admin_plans);
+        const canDelete = userRole === 'super_admin' ||
+                          (isOwnPlan && permissions?.can_delete_own_plans) ||
+                          (isAdminOrSuperAdminPlan && permissions?.can_delete_admin_plans);
+
+        permsMap[plan.id] = { canEdit, canDelete };
+      }
+    }
+
+    setPlanPermissions(permsMap);
   }
 
   async function handleCreatePlan() {
@@ -151,12 +240,14 @@ export default function PlansPage() {
                 </svg>
                 Manage Tags
               </button>
-              <button
-                onClick={() => setShowCreateDialog(true)}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
-              >
-                + New Plan
-              </button>
+              {(userRole === 'super_admin' || permissions?.can_create_plans) && (
+                <button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
+                >
+                  + New Plan
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -196,14 +287,13 @@ export default function PlansPage() {
             {/* List Items */}
             <div className="divide-y divide-neutral-800">
               {plans.map((plan) => (
-                <Link
+                <div
                   key={plan.id}
-                  href={`/dashboard/plans/${plan.id}`}
                   className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
                 >
                   <div className="grid grid-cols-12 gap-4 items-center">
                     <div className="col-span-4">
-                      <div className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                      <div className="text-white font-medium">
                         {plan.name}
                       </div>
                     </div>
@@ -228,25 +318,40 @@ export default function PlansPage() {
                       {plan.description || '—'}
                     </div>
                     <div className="col-span-2 flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDeletePlan(plan.id);
-                        }}
-                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                        title="Delete plan"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                      <svg className="w-5 h-5 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      {planPermissions[plan.id]?.canEdit && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            router.push(`/dashboard/plans/${plan.id}`);
+                          }}
+                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                          title="Edit plan"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      )}
+
+                      {planPermissions[plan.id]?.canDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeletePlan(plan.id);
+                          }}
+                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                          title="Delete plan"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
