@@ -149,14 +149,31 @@ export default function WorkoutsPage() {
         const creatorRole = workout.created_by ? creatorRoles.get(workout.created_by) : null;
         const isAdminOrSuperAdminWorkout = creatorRole === 'admin' || creatorRole === 'super_admin';
 
-        permsMap[workout.id] = {
-          canEdit: userRole === 'super_admin' ||
-                   (isOwnWorkout && permissions?.can_edit_own_workouts) ||
-                   (isAdminOrSuperAdminWorkout && permissions?.can_edit_admin_workouts),
-          canDelete: userRole === 'super_admin' ||
-                     (isOwnWorkout && permissions?.can_delete_own_workouts) ||
-                     (isAdminOrSuperAdminWorkout && permissions?.can_delete_admin_workouts),
-        };
+        const canEdit = userRole === 'super_admin' ||
+                        (isOwnWorkout && permissions?.can_edit_own_workouts) ||
+                        (isAdminOrSuperAdminWorkout && permissions?.can_edit_admin_workouts);
+        const canDelete = userRole === 'super_admin' ||
+                          (isOwnWorkout && permissions?.can_delete_own_workouts) ||
+                          (isAdminOrSuperAdminWorkout && permissions?.can_delete_admin_workouts);
+
+        console.log(`🔐 Workout "${workout.name}":`, {
+          workoutId: workout.id,
+          createdBy: workout.created_by,
+          creatorRole,
+          isOwnWorkout,
+          isAdminOrSuperAdminWorkout,
+          currentUserId: userId,
+          currentUserRole: userRole,
+          permissions: {
+            can_edit_own: permissions?.can_edit_own_workouts,
+            can_edit_admin: permissions?.can_edit_admin_workouts,
+            can_delete_own: permissions?.can_delete_own_workouts,
+            can_delete_admin: permissions?.can_delete_admin_workouts,
+          },
+          computed: { canEdit, canDelete }
+        });
+
+        permsMap[workout.id] = { canEdit, canDelete };
       }
     }
 
