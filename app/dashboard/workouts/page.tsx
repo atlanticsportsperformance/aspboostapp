@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { WorkoutTagsManager } from '@/components/dashboard/workouts/workout-tags-manager';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
+import { getContentFilter } from '@/lib/auth/permissions';
 
 // Workout categories - update here if new categories are added to database
 const WORKOUT_CATEGORIES = [
@@ -45,15 +47,47 @@ export default function WorkoutsPage() {
   const pathname = usePathname();
   const supabase = createClient();
 
+  // 🔐 Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+  const [workoutPermissions, setWorkoutPermissions] = useState<{[key: string]: {canEdit: boolean, canDelete: boolean}}>({});
+
+  // 🔐 Load user info and permissions
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role || 'coach');
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
   // Refetch whenever we navigate to this page
   useEffect(() => {
-    fetchWorkouts();
-  }, [pathname]);
+    if (userId !== null) {
+      fetchWorkouts();
+    }
+  }, [pathname, userId, userRole]);
 
   async function fetchWorkouts() {
+    if (!userId) return;
+
     console.log('Fetching workouts...');
 
-    const { data, error } = await supabase
+    // 🔐 Apply visibility filter
+    const filter = await getContentFilter(userId, userRole, 'workouts');
+
+    let query = supabase
       .from('workouts')
       .select(`
         *,
@@ -72,14 +106,61 @@ export default function WorkoutsPage() {
       .is('athlete_id', null)             // ✅ NOT for an athlete
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching workouts:', error);
-    } else {
-      console.log('✅ Template workouts loaded:', data?.length);
-      console.log('✅ Filtered to templates only (is_template=true, plan_id=null, athlete_id=null)');
-      setWorkouts(data || []);
+    // 🔐 Apply creator filter based on permissions
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setWorkouts([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
     }
 
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('Error fetching workouts:', error);
+      setLoading(false);
+      return;
+    }
+
+    console.log('✅ Template workouts loaded:', data?.length);
+    const userWorkouts = data || [];
+    setWorkouts(userWorkouts);
+
+    // 🔐 OPTIMIZED: Compute permissions for all workouts in ONE batch query
+    const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
+
+    // Get all unique creator IDs
+    const creatorIds = [...new Set(userWorkouts.map(w => w.created_by).filter(Boolean))] as string[];
+
+    if (creatorIds.length > 0) {
+      // Batch fetch all creator roles at once
+      const { data: creators } = await supabase
+        .from('profiles')
+        .select('id, app_role')
+        .in('id', creatorIds);
+
+      const creatorRoles = new Map(creators?.map(c => [c.id, c.app_role]) || []);
+
+      // Compute permissions for each workout using cached creator roles
+      for (const workout of userWorkouts) {
+        const isOwnWorkout = workout.created_by === userId;
+        const creatorRole = workout.created_by ? creatorRoles.get(workout.created_by) : null;
+        const isAdminOrSuperAdminWorkout = creatorRole === 'admin' || creatorRole === 'super_admin';
+
+        permsMap[workout.id] = {
+          canEdit: userRole === 'super_admin' ||
+                   (isOwnWorkout && permissions?.can_edit_own_workouts) ||
+                   (isAdminOrSuperAdminWorkout && permissions?.can_edit_admin_workouts),
+          canDelete: userRole === 'super_admin' ||
+                     (isOwnWorkout && permissions?.can_delete_own_workouts) ||
+                     (isAdminOrSuperAdminWorkout && permissions?.can_delete_admin_workouts),
+        };
+      }
+    }
+
+    setWorkoutPermissions(permsMap);
     setLoading(false);
   }
 
@@ -292,12 +373,15 @@ export default function WorkoutsPage() {
           >
             ⚙️ Manage Tags
           </button>
-          <button
-            onClick={handleCreateWorkout}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-          >
-            + Create Workout
-          </button>
+          {/* 🔐 Only show Create button if user has permission */}
+          {(userRole === 'super_admin' || permissions?.can_create_workouts) && (
+            <button
+              onClick={handleCreateWorkout}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            >
+              + Create Workout
+            </button>
+          )}
         </div>
       </div>
 
@@ -443,32 +527,38 @@ export default function WorkoutsPage() {
 
                     {/* Actions */}
                     <div className="col-span-1 flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDuplicate(workout);
-                        }}
-                        className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
-                        title="Duplicate workout"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDelete(workout.id, workout.name);
-                        }}
-                        className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                        title="Delete workout"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      {/* 🔐 Only show Duplicate if user can create workouts */}
+                      {(userRole === 'super_admin' || permissions?.can_create_workouts) && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDuplicate(workout);
+                          }}
+                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                          title="Duplicate workout"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      )}
+                      {/* 🔐 Only show Delete if user has permission */}
+                      {workoutPermissions[workout.id]?.canDelete && (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDelete(workout.id, workout.name);
+                          }}
+                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                          title="Delete workout"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                       <svg className="w-5 h-5 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
