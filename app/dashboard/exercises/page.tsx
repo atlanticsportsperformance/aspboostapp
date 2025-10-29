@@ -164,12 +164,33 @@ export default function ExercisesPage() {
       });
       setAvailableTags(Array.from(tagsSet).sort());
 
-      // Compute permissions for each exercise
+      // Compute permissions for each exercise (optimized batch processing)
       const permsMap: {[key: string]: {canEdit: boolean, canDelete: boolean}} = {};
+
+      // Get all unique creator IDs
+      const creatorIds = [...new Set(userExercises.map(ex => ex.created_by).filter(Boolean))] as string[];
+
+      // Batch fetch all creator roles at once
+      const { data: creators } = await supabase
+        .from('profiles')
+        .select('id, app_role')
+        .in('id', creatorIds);
+
+      const creatorRoles = new Map(creators?.map(c => [c.id, c.app_role]) || []);
+
+      // Compute permissions for each exercise using cached creator roles
       for (const ex of userExercises) {
+        const isOwnExercise = ex.created_by === userId;
+        const creatorRole = ex.created_by ? creatorRoles.get(ex.created_by) : null;
+        const isAdminOrSuperAdminExercise = creatorRole === 'admin' || creatorRole === 'super_admin';
+
         permsMap[ex.id] = {
-          canEdit: await canEditContent(userId, userRole, 'exercises', ex.created_by),
-          canDelete: await canDeleteContent(userId, userRole, 'exercises', ex.created_by),
+          canEdit: userRole === 'super_admin' ||
+                   (isOwnExercise && permissions?.can_edit_own_exercises) ||
+                   (isAdminOrSuperAdminExercise && permissions?.can_edit_admin_exercises),
+          canDelete: userRole === 'super_admin' ||
+                     (isOwnExercise && permissions?.can_delete_own_exercises) ||
+                     (isAdminOrSuperAdminExercise && permissions?.can_delete_admin_exercises),
         };
       }
       setExercisePermissions(permsMap);
