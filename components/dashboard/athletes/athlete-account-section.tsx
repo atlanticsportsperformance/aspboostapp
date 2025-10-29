@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface AthleteAccountSectionProps {
   athlete: {
@@ -40,7 +41,35 @@ export default function AthleteAccountSection({ athlete, onUpdate, onDeleteAthle
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const hasLoginAccount = !!athlete.user_id;
+  const supabase = createClient();
+
+  // Load user and permissions on mount
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
+  // Check if user can edit athlete profiles
+  const canEditProfile = userRole === 'super_admin' || permissions?.can_edit_athlete_profile;
 
   const generateRandomPassword = (forCreateLogin = false) => {
     const length = 12;
@@ -295,17 +324,24 @@ export default function AthleteAccountSection({ athlete, onUpdate, onDeleteAthle
             </svg>
           </div>
           <p className="text-gray-400 mb-4">No login account exists for this athlete</p>
-          <button
-            onClick={() => setShowCreateLoginDialog(true)}
-            disabled={loading}
-            className="px-4 py-2 bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] text-black rounded-lg font-medium hover:from-[#7BC5F0] hover:to-[#5AB3E8] transition-all disabled:opacity-50"
-          >
-            Create Login Account
-          </button>
+          {canEditProfile ? (
+            <button
+              onClick={() => setShowCreateLoginDialog(true)}
+              disabled={loading}
+              className="px-4 py-2 bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] text-black rounded-lg font-medium hover:from-[#7BC5F0] hover:to-[#5AB3E8] transition-all disabled:opacity-50"
+            >
+              Create Login Account
+            </button>
+          ) : (
+            <p className="text-amber-400 text-sm">
+              🔒 You don't have permission to create login accounts
+            </p>
+          )}
         </div>
       ) : (
         // Has login account - show management options
-        <div className="space-y-3">
+        canEditProfile ? (
+          <div className="space-y-3">
           {/* Account Status Toggle */}
           <button
             onClick={handleToggleActiveStatus}
@@ -408,6 +444,13 @@ export default function AthleteAccountSection({ athlete, onUpdate, onDeleteAthle
             <p className="text-gray-400 text-sm mt-1 ml-8">Copy link to text or share (expires in 1 hour)</p>
           </button>
         </div>
+        ) : (
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+            <p className="text-amber-400 text-sm">
+              🔒 You don't have permission to manage this athlete's account. Contact an admin if you need to update passwords or generate login links.
+            </p>
+          </div>
+        )
       )}
 
       {/* Update Password Dialog */}
