@@ -10,7 +10,6 @@ const navLinks = [
   { href: '/dashboard/athletes', label: 'Athletes', icon: '🏃' },
   { href: '/dashboard/staff', label: 'Staff', icon: '👥', adminOnly: true },
   { href: '/dashboard/groups', label: 'Groups', icon: '👫' },
-  { href: '/dashboard/hitting', label: 'Hitting', icon: '⚾' },
 ];
 
 const adminLinks = [
@@ -259,6 +258,22 @@ export default function DashboardLayout({
                 })}
               </div>
             )}
+          </div>
+
+          {/* Hitting Link */}
+          <div className="pt-4">
+            <Link
+              href="/dashboard/hitting"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5"
+              style={mounted && pathname === '/dashboard/hitting' ? {
+                backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                color: 'white'
+              } : undefined}
+            >
+              <span className="text-lg">⚾</span>
+              <span className="text-sm font-medium">Hitting</span>
+            </Link>
           </div>
         </nav>
 
