@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Search, Calendar, Clock, Dumbbell } from 'lucide-react';
+import { getContentFilter } from '@/lib/auth/permissions';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Routine {
   id: string;
@@ -38,11 +40,37 @@ export function AddRoutineToGroupModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const supabase = createClient();
 
+  // Load user on mount
   useEffect(() => {
-    fetchRoutines();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchRoutines();
+    }
+  }, [userId, userRole, permissions]);
 
   useEffect(() => {
     // Filter routines based on search term
@@ -61,19 +89,38 @@ export function AddRoutineToGroupModal({
   }, [searchTerm, routines]);
 
   async function fetchRoutines() {
-    // Fetch standalone routines (not part of workouts)
-    const { data: standaloneRoutines, error } = await supabase
+    if (!userId) return;
+
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'routines');
+
+    let query = supabase
       .from('routines')
       .select(`
         *,
         routine_exercises(id)
       `)
-      .eq('is_standalone', true)
-      .order('created_at', { ascending: false });
+      .eq('is_standalone', true);
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setRoutines([]);
+        setFilteredRoutines([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data: standaloneRoutines, error } = await query;
 
     if (error) {
       console.error('Error fetching routines:', error);
     } else {
+      console.log('✅ Standalone routines available (with permissions):', standaloneRoutines?.length);
       // Add exercises count
       const enriched = (standaloneRoutines || []).map(r => ({
         ...r,

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getContentFilter } from '@/lib/auth/permissions';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Workout {
   id: string;
@@ -32,31 +34,75 @@ export function AddWorkoutToAthleteModal({
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [copying, setCopying] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const WORKOUT_CATEGORIES = [
     { value: 'hitting', label: 'Hitting' },
     { value: 'throwing', label: 'Throwing' },
     { value: 'strength_conditioning', label: 'Strength & Conditioning' }
   ] as const;
 
+  // Load user on mount
   useEffect(() => {
-    fetchWorkouts();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
 
+  useEffect(() => {
+    if (userId) {
+      fetchWorkouts();
+    }
+  }, [userId, userRole, permissions]);
+
   async function fetchWorkouts() {
+    if (!userId) return;
+
     setLoading(true);
-    // Fetch template workouts only
-    const { data, error } = await supabase
+
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'workouts');
+
+    let query = supabase
       .from('workouts')
       .select('id, name, category, estimated_duration_minutes, tags')
       .eq('is_template', true)
       .is('plan_id', null)
-      .is('athlete_id', null)
-      .order('name');
+      .is('athlete_id', null);
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setWorkouts([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('name');
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching workouts:', error);
     } else {
-      console.log('✅ Template workouts available:', data?.length);
+      console.log('✅ Template workouts available (with permissions):', data?.length);
       setWorkouts(data || []);
     }
     setLoading(false);

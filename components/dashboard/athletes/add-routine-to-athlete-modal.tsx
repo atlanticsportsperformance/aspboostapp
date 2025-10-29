@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getContentFilter } from '@/lib/auth/permissions';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Routine {
   id: string;
@@ -32,12 +34,43 @@ export function AddRoutineToAthleteModal({
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
+  // Load user on mount
   useEffect(() => {
-    fetchRoutines();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
 
+  useEffect(() => {
+    if (userId) {
+      fetchRoutines();
+    }
+  }, [userId, userRole, permissions]);
+
   async function fetchRoutines() {
-    const { data, error } = await supabase
+    if (!userId) return;
+
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'routines');
+
+    let query = supabase
       .from('routines')
       .select(`
         *,
@@ -45,12 +78,26 @@ export function AddRoutineToAthleteModal({
       `)
       .eq('is_standalone', true)
       .is('athlete_id', null)
-      .is('plan_id', null)
-      .order('created_at', { ascending: false });
+      .is('plan_id', null);
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setRoutines([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching routines:', error);
     } else {
+      console.log('✅ Standalone routines available (with permissions):', data?.length);
       setRoutines(data || []);
     }
 

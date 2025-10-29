@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { X, Search, Calendar, Clock } from 'lucide-react';
+import { getContentFilter } from '@/lib/auth/permissions';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Workout {
   id: string;
@@ -38,11 +40,37 @@ export function AddWorkoutToGroupModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const supabase = createClient();
 
+  // Load user on mount
   useEffect(() => {
-    fetchWorkouts();
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
   }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchWorkouts();
+    }
+  }, [userId, userRole, permissions]);
 
   useEffect(() => {
     // Filter workouts based on search term
@@ -62,20 +90,39 @@ export function AddWorkoutToGroupModal({
   }, [searchTerm, workouts]);
 
   async function fetchWorkouts() {
-    // Fetch template workouts (global library)
-    const { data: templateWorkouts, error } = await supabase
+    if (!userId) return;
+
+    // Apply visibility filtering
+    const filter = await getContentFilter(userId, userRole, 'workouts');
+
+    let query = supabase
       .from('workouts')
       .select(`
         *,
         routines(id)
       `)
       .eq('is_template', true)
-      .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .eq('is_active', true);
+
+    // Apply visibility filter
+    if (filter.filter === 'ids' && filter.creatorIds) {
+      if (filter.creatorIds.length === 0) {
+        setWorkouts([]);
+        setFilteredWorkouts([]);
+        setLoading(false);
+        return;
+      }
+      query = query.in('created_by', filter.creatorIds);
+    }
+
+    query = query.order('created_at', { ascending: false });
+
+    const { data: templateWorkouts, error } = await query;
 
     if (error) {
       console.error('Error fetching workouts:', error);
     } else {
+      console.log('✅ Template workouts available (with permissions):', templateWorkouts?.length);
       // Add routines count
       const enriched = (templateWorkouts || []).map(w => ({
         ...w,
