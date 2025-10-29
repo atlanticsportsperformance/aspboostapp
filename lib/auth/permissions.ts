@@ -56,6 +56,8 @@ export interface StaffPermissions {
   groups_visibility?: GroupsVisibility;
   // VALD Integration
   can_sync_force_plates?: boolean;
+  // Tag-based filtering (optional additional restriction on exercises)
+  allowed_exercise_tags?: string[] | null;
 }
 
 export interface UserWithRole {

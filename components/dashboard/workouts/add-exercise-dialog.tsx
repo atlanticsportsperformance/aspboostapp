@@ -119,9 +119,21 @@ export function AddExerciseDialog({ workout, onClose, onAdd, onAddMultiple, onAd
 
     if (error) {
       console.error('Error fetching exercises:', error);
-    } else {
+    } else if (data) {
+      // 🏷️ Apply tag filtering if staff has tag restrictions
+      let filteredData = data;
+      if (permissions?.allowed_exercise_tags && permissions.allowed_exercise_tags.length > 0) {
+        const allowedTags = permissions.allowed_exercise_tags;
+        filteredData = data.filter(exercise => {
+          // Exercise must have at least one tag that matches the allowed tags
+          if (!exercise.tags || exercise.tags.length === 0) return false;
+          return exercise.tags.some(tag => allowedTags.includes(tag));
+        });
+        console.log(`🏷️ [AddExerciseDialog] Tag filtering: ${data.length} → ${filteredData.length} exercises (allowed tags: ${allowedTags.join(', ')})`);
+      }
+
       // Filter out system exercises (used for measurement/tag definitions)
-      const userExercises = (data || []).filter(ex => !ex.tags?.includes('_system'));
+      const userExercises = filteredData.filter(ex => !ex.tags?.includes('_system'));
       setExercises(userExercises);
     }
 
