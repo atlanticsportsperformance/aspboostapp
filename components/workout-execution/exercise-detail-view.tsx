@@ -387,41 +387,47 @@ export default function ExerciseDetailView({
       </div>
 
       {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-        {/* Back/Previous Set FAB */}
-        {(currentSetIndex > 0 || hasPrev) && (
-          <button
-            onClick={handlePreviousSet}
-            className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center shadow-lg hover:bg-white/20 transition-all active:scale-95"
-          >
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-        )}
+      <div className="fixed bottom-6 right-6 flex flex-col items-center gap-1 z-50">
+        {/* Label */}
+        <span className="text-xs text-white/60 font-medium uppercase tracking-wide">Sets</span>
 
-        {/* Next Set / Next Exercise / Complete FAB */}
-        <button
-          onClick={handleNextSet}
-          className="w-14 h-14 rounded-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] text-black flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95"
-        >
-          {currentSetIndex < targetSets - 1 ? (
-            // More sets to complete - show right arrow
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          ) : hasNext ? (
-            // All sets complete, has next exercise - show right arrow
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          ) : (
-            // All sets complete, no next exercise - show checkmark
-            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-            </svg>
+        {/* Buttons */}
+        <div className="flex flex-col gap-3">
+          {/* Back/Previous Set FAB */}
+          {(currentSetIndex > 0 || hasPrev) && (
+            <button
+              onClick={handlePreviousSet}
+              className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white flex items-center justify-center shadow-lg hover:bg-white/20 transition-all active:scale-95"
+            >
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
           )}
-        </button>
+
+          {/* Next Set / Next Exercise / Complete FAB */}
+          <button
+            onClick={handleNextSet}
+            className="w-14 h-14 rounded-full bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] text-black flex items-center justify-center shadow-lg hover:shadow-xl transition-all active:scale-95"
+          >
+            {currentSetIndex < targetSets - 1 ? (
+              // More sets to complete - show right arrow
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            ) : hasNext ? (
+              // All sets complete, has next exercise - show right arrow
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            ) : (
+              // All sets complete, no next exercise - show checkmark
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
