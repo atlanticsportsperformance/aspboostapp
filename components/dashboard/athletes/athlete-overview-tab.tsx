@@ -442,89 +442,7 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
   return (
     <>
       <div className="space-y-4">
-      {/* Stats Row - Compact for Mobile */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Total Workouts */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
-          <p className="text-gray-400 text-xs lg:text-sm mb-1">Total Workouts</p>
-          <p className="text-xl lg:text-2xl font-bold text-white">{stats.totalWorkouts}</p>
-        </div>
-
-        {/* Completion Rate */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
-          <p className="text-gray-400 text-xs lg:text-sm mb-1">Completion Rate</p>
-          <p className="text-xl lg:text-2xl font-bold text-white">{stats.completionRate}%</p>
-        </div>
-
-        {/* Current Streak */}
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
-          <p className="text-gray-400 text-xs lg:text-sm mb-1">Current Streak</p>
-          <p className="text-xl lg:text-2xl font-bold text-white">{stats.currentStreak} days</p>
-        </div>
-
-        {/* Personal Records Button */}
-        <Link
-          href={`/dashboard/athletes/${athlete.id}/records`}
-          className="bg-gradient-to-br from-[#9BDDFF]/10 to-transparent border border-[#9BDDFF]/20 rounded-xl p-3 lg:p-4 hover:border-[#9BDDFF]/40 transition-all group flex flex-col items-center justify-center"
-        >
-          <span className="text-lg mb-1">🏆</span>
-          <p className="text-white text-xs lg:text-sm font-semibold group-hover:text-[#9BDDFF] transition-colors text-center">Records</p>
-        </Link>
-      </div>
-
-      {/* Upcoming Workouts - Priority Section */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
-        <div className="mb-4">
-          <h3 className="text-lg font-bold text-white">Upcoming Workouts</h3>
-          <p className="text-xs text-gray-400 mt-1">{taggedItems.workouts.length} scheduled this week</p>
-        </div>
-
-        {taggedItems.workouts.length > 0 ? (
-          <div className="space-y-2 max-h-[300px] lg:max-h-[400px] overflow-y-auto pr-2">
-            {taggedItems.workouts.map((instance: any) => (
-              <div
-                key={instance.id}
-                className={`p-3 rounded-lg border-l-4 ${getCategoryColor(instance.workouts?.category)}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="text-white font-medium text-sm truncate">{instance.workouts?.name || 'Unnamed Workout'}</p>
-                      {instance.workouts?.category && (
-                        <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300 capitalize flex-shrink-0">
-                          {instance.workouts.category}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
-                      <span>
-                        {new Date(instance.scheduled_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </span>
-                      {instance.workouts?.estimated_duration_minutes && (
-                        <>
-                          <span>•</span>
-                          <span>{instance.workouts.estimated_duration_minutes} min</span>
-                        </>
-                      )}
-                      <span>•</span>
-                      <span className={`${getStatusBadge(instance.status)} px-2 py-0.5 rounded`}>
-                        {instance.status.replace('_', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-400 text-sm">No upcoming workouts</p>
-            <p className="text-gray-500 text-xs mt-1">Schedule workouts in the Calendar tab</p>
-          </div>
-        )}
-      </div>
-
-      {/* Combined Profile & Contact Card - Horizontal on Desktop, Vertical on Mobile */}
+      {/* Athlete Profile Card - Moved to Top */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
         <div className="flex items-start justify-between mb-4 lg:mb-6">
           <h2 className="text-lg lg:text-xl font-bold text-white">Athlete Profile</h2>
@@ -895,6 +813,88 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
         </div>
       </div>
 
+      {/* Stats Row - Compact for Mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Total Workouts */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Total Workouts</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.totalWorkouts}</p>
+        </div>
+
+        {/* Completion Rate */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Completion Rate</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.completionRate}%</p>
+        </div>
+
+        {/* Current Streak */}
+        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-1">Current Streak</p>
+          <p className="text-xl lg:text-2xl font-bold text-white">{stats.currentStreak} days</p>
+        </div>
+
+        {/* Personal Records Button */}
+        <Link
+          href={`/dashboard/athletes/${athlete.id}/records`}
+          className="bg-gradient-to-br from-[#9BDDFF]/10 to-transparent border border-[#9BDDFF]/20 rounded-xl p-3 lg:p-4 hover:border-[#9BDDFF]/40 transition-all group flex flex-col items-center justify-center"
+        >
+          <span className="text-lg mb-1">🏆</span>
+          <p className="text-white text-xs lg:text-sm font-semibold group-hover:text-[#9BDDFF] transition-colors text-center">Records</p>
+        </Link>
+      </div>
+
+      {/* Upcoming Workouts - Priority Section */}
+      <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-bold text-white">Upcoming Workouts</h3>
+          <p className="text-xs text-gray-400 mt-1">{taggedItems.workouts.length} scheduled this week</p>
+        </div>
+
+        {taggedItems.workouts.length > 0 ? (
+          <div className="space-y-2 max-h-[300px] lg:max-h-[400px] overflow-y-auto pr-2">
+            {taggedItems.workouts.map((instance: any) => (
+              <div
+                key={instance.id}
+                className={`p-3 rounded-lg border-l-4 ${getCategoryColor(instance.workouts?.category)}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-medium text-sm truncate">{instance.workouts?.name || 'Unnamed Workout'}</p>
+                      {instance.workouts?.category && (
+                        <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-300 capitalize flex-shrink-0">
+                          {instance.workouts.category}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-400 flex-wrap">
+                      <span>
+                        {new Date(instance.scheduled_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      </span>
+                      {instance.workouts?.estimated_duration_minutes && (
+                        <>
+                          <span>•</span>
+                          <span>{instance.workouts.estimated_duration_minutes} min</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span className={`${getStatusBadge(instance.status)} px-2 py-0.5 rounded`}>
+                        {instance.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">No upcoming workouts</p>
+            <p className="text-gray-500 text-xs mt-1">Schedule workouts in the Calendar tab</p>
+          </div>
+        )}
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
@@ -937,16 +937,6 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
               <p className="text-gray-400 text-xs lg:text-sm">No group assignments</p>
             )}
           </div>
-
-        {/* Login Account Management */}
-        <AthleteAccountSection
-          athlete={athlete}
-          onUpdate={() => {
-            // Refresh athlete data if needed
-            window.location.reload();
-          }}
-          onDeleteAthlete={onDeleteAthlete}
-        />
 
         {/* Recent Activity Feed */}
         <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">

@@ -10,6 +10,7 @@ import OverviewTab from '@/components/dashboard/athletes/athlete-overview-tab';
 import CalendarTab from '@/components/dashboard/athletes/athlete-calendar-tab';
 import PerformanceTab from '@/components/dashboard/athletes/athlete-performance-tab';
 import ForceProfileTab from '@/components/dashboard/athletes/athlete-force-profile-tab';
+import AthleteSettingsTab from '@/components/dashboard/athletes/athlete-settings-tab';
 import ManageTagsModal from '@/components/dashboard/athletes/manage-tags-modal';
 import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
 
@@ -195,7 +196,8 @@ export default function AthleteDetailPage() {
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'calendar', label: 'Calendar & Programming', icon: '📅' },
     { id: 'performance', label: 'Programming KPIs', icon: '📈' },
-    { id: 'force-profile', label: 'Force Profile', icon: '⚡' }
+    { id: 'force-profile', label: 'Force Profile', icon: '⚡' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
 
   const updateTabInUrl = (tabId: string) => {
@@ -378,6 +380,12 @@ export default function AthleteDetailPage() {
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
         {activeTab === 'performance' && <PerformanceTab athleteId={athleteId} />}
         {activeTab === 'force-profile' && <ForceProfileTab athleteId={athleteId} athleteName={fullName} />}
+        {activeTab === 'settings' && (
+          <AthleteSettingsTab
+            athleteData={athleteData}
+            onDeleteAthlete={() => setShowDeleteModal(true)}
+          />
+        )}
       </div>
 
       {/* Delete Confirmation Modal */}

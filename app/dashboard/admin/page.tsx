@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import AthleteViewTypesTab from '@/components/dashboard/admin/athlete-view-types-tab';
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
@@ -55,6 +56,7 @@ export default function AdminSettingsPage() {
 
   const tabs = [
     { id: 'general', label: 'General', icon: '⚙️' },
+    { id: 'athlete-view-types', label: 'Athlete View Types', icon: '🏃' },
     { id: 'team', label: 'Team & Access', icon: '👥' },
     { id: 'notifications', label: 'Notifications', icon: '🔔' },
     { id: 'branding', label: 'Branding', icon: '🎨' },
@@ -166,6 +168,9 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
             )}
+
+            {/* Athlete View Types */}
+            {activeTab === 'athlete-view-types' && <AthleteViewTypesTab />}
 
             {/* Team & Access Control */}
             {activeTab === 'team' && (
