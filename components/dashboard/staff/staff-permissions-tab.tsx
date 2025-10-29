@@ -358,72 +358,72 @@ export default function StaffPermissionsTab({ staff }: StaffPermissionsTabProps)
           {/* Exercise Permissions */}
           <div className="bg-white/5 border border-white/10 rounded-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-4">Exercises</h3>
-            <div className="space-y-2">
+            <div className="space-y-2 mb-6">
               <PermissionToggle label="Can Create Exercises" checked={canCreateExercises} onChange={setCanCreateExercises} />
               <PermissionToggle label="Can Edit Own Exercises" checked={canEditOwnExercises} onChange={setCanEditOwnExercises} />
               <PermissionToggle label="Can Edit Admin Exercises" checked={canEditAdminExercises} onChange={setCanEditAdminExercises} />
               <PermissionToggle label="Can Delete Own Exercises" checked={canDeleteOwnExercises} onChange={setCanDeleteOwnExercises} />
               <PermissionToggle label="Can Delete Admin Exercises" checked={canDeleteAdminExercises} onChange={setCanDeleteAdminExercises} />
             </div>
-          </div>
 
-          {/* Tag-Based Exercise Filtering */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-2">Exercise Tag Restrictions</h3>
-            <p className="text-sm text-gray-400 mb-4">
-              Optionally limit which exercises this staff member can see based on tags. If no tags are selected, normal visibility rules apply.
-            </p>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {availableTags.length === 0 ? (
-                <div className="text-sm text-gray-500 italic py-2">Loading tags...</div>
-              ) : (
-                <>
-                  {/* Select All / Clear All */}
-                  <div className="flex gap-2 mb-3 pb-3 border-b border-white/10">
-                    <button
-                      type="button"
-                      onClick={() => setAllowedExerciseTags(availableTags)}
-                      className="px-3 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded border border-blue-500/50 transition-colors"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAllowedExerciseTags([])}
-                      className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-gray-300 rounded border border-white/20 transition-colors"
-                    >
-                      Clear All
-                    </button>
-                    {allowedExerciseTags.length > 0 && (
-                      <span className="px-3 py-1 text-xs bg-green-500/20 text-green-300 rounded border border-green-500/50">
-                        {allowedExerciseTags.length} selected
-                      </span>
-                    )}
-                  </div>
+            {/* Tag-Based Exercise Filtering */}
+            <div className="pt-6 border-t border-white/10">
+              <h4 className="text-base font-semibold text-white mb-2">Tag Restrictions</h4>
+              <p className="text-sm text-gray-400 mb-4">
+                Optionally limit which exercises this staff member can see based on tags. If no tags are selected, normal visibility rules apply.
+              </p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {availableTags.length === 0 ? (
+                  <div className="text-sm text-gray-500 italic py-2">Loading tags...</div>
+                ) : (
+                  <>
+                    {/* Select All / Clear All */}
+                    <div className="flex gap-2 mb-3 pb-3 border-b border-white/10">
+                      <button
+                        type="button"
+                        onClick={() => setAllowedExerciseTags(availableTags)}
+                        className="px-3 py-1 text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 rounded border border-blue-500/50 transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAllowedExerciseTags([])}
+                        className="px-3 py-1 text-xs bg-white/10 hover:bg-white/20 text-gray-300 rounded border border-white/20 transition-colors"
+                      >
+                        Clear All
+                      </button>
+                      {allowedExerciseTags.length > 0 && (
+                        <span className="px-3 py-1 text-xs bg-green-500/20 text-green-300 rounded border border-green-500/50">
+                          {allowedExerciseTags.length} selected
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Tag checkboxes */}
-                  {availableTags.map(tag => (
-                    <label
-                      key={tag}
-                      className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-pointer transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={allowedExerciseTags.includes(tag)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setAllowedExerciseTags([...allowedExerciseTags, tag]);
-                          } else {
-                            setAllowedExerciseTags(allowedExerciseTags.filter(t => t !== tag));
-                          }
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm text-white capitalize">{tag}</span>
-                    </label>
-                  ))}
-                </>
-              )}
+                    {/* Tag checkboxes */}
+                    {availableTags.map(tag => (
+                      <label
+                        key={tag}
+                        className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={allowedExerciseTags.includes(tag)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setAllowedExerciseTags([...allowedExerciseTags, tag]);
+                            } else {
+                              setAllowedExerciseTags(allowedExerciseTags.filter(t => t !== tag));
+                            }
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm text-white capitalize">{tag}</span>
+                      </label>
+                    ))}
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
