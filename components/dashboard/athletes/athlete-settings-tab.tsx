@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import AthleteAccountSection from './athlete-account-section';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface ViewType {
   id: string;
@@ -30,7 +31,31 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
   const [valdMessage, setValdMessage] = useState('');
   const [valdLinking, setValdLinking] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
   const supabase = createClient();
+
+  // Load user and permissions on mount
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     fetchViewTypes();
@@ -176,6 +201,9 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
     }
   }
 
+  // Check if user can edit athlete profiles
+  const canEditProfile = userRole === 'super_admin' || permissions?.can_edit_athlete_profile;
+
   return (
     <div className="space-y-4">
       {/* Athlete View Type Selection */}
@@ -300,7 +328,7 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
         )}
 
         {/* Search Button */}
-        {!athlete.vald_profile_id && (
+        {!athlete.vald_profile_id && canEditProfile && (
           <button
             onClick={handleSearchVALD}
             disabled={valdSearching || !athlete.first_name || !athlete.last_name}
@@ -317,6 +345,15 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
           </button>
         )}
 
+        {/* Permission denied message */}
+        {!athlete.vald_profile_id && !canEditProfile && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-4">
+            <p className="text-amber-400 text-sm">
+              🔒 You don't have permission to link VALD profiles. Contact an admin if you need to link this athlete.
+            </p>
+          </div>
+        )}
+
         {/* Success/Error Message */}
         {valdMessage && (
           <div className={`p-3 rounded-lg text-sm mb-4 ${
@@ -329,7 +366,7 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
         )}
 
         {/* Search Results */}
-        {valdMatches.length > 0 && (
+        {valdMatches.length > 0 && canEditProfile && (
           <div className="space-y-3">
             <p className="text-sm text-white font-semibold">Select a VALD profile to link:</p>
             <div className="space-y-2 max-h-80 overflow-y-auto">
