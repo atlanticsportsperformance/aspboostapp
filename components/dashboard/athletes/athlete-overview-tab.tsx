@@ -7,6 +7,7 @@ import EditAthleteProfileModal from './edit-athlete-profile-modal';
 import { BodyweightHistoryModal } from './bodyweight-history-modal';
 import AthleteCoachesSection from './athlete-coaches-section';
 import AthleteAccountSection from './athlete-account-section';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface OverviewTabProps {
   athleteData: any;
@@ -37,6 +38,35 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showBodyweightHistory, setShowBodyweightHistory] = useState(false);
   const [latestWeight, setLatestWeight] = useState<number | null>(null);
+
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
+  const supabase = createClient();
+
+  // Load user and permissions on mount
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
+  // Check if user can edit athlete profiles
+  const canEditProfile = userRole === 'super_admin' || permissions?.can_edit_athlete_profile;
 
   // Inline editing states
   const [editingNotes, setEditingNotes] = useState(false);
@@ -446,15 +476,17 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
       <div className="bg-white/5 border border-white/10 rounded-xl p-4 lg:p-6">
         <div className="flex items-start justify-between mb-4 lg:mb-6">
           <h2 className="text-lg lg:text-xl font-bold text-white">Athlete Profile</h2>
-          <button
-            onClick={() => setShowEditProfileModal(true)}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-            title="Edit profile"
-          >
-            <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-            </svg>
-          </button>
+          {canEditProfile && (
+            <button
+              onClick={() => setShowEditProfileModal(true)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Edit profile"
+            >
+              <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* Header Row: Avatar + Name + Physical Stats + Notes - Mobile Friendly */}
