@@ -41,7 +41,7 @@ USING (
       -- "See Their Own" visibility
       (sp.exercises_visibility = 'own' AND exercises.created_by = auth.uid())
       OR
-      -- "See Their Own + Admin" visibility
+      -- "See Their Own + Admin" visibility (includes super_admin too)
       (
         sp.exercises_visibility = 'own_and_admin'
         AND (
@@ -50,7 +50,7 @@ USING (
           EXISTS (
             SELECT 1 FROM public.profiles p
             WHERE p.id = exercises.created_by
-            AND p.app_role = 'admin'
+            AND p.app_role IN ('admin', 'super_admin')
           )
         )
       )
@@ -106,13 +106,13 @@ USING (
       -- Can edit their own exercises
       (exercises.created_by = auth.uid() AND sp.can_edit_own_exercises = true)
       OR
-      -- Can edit admin exercises
+      -- Can edit admin exercises (includes super_admin too)
       (
         sp.can_edit_admin_exercises = true
         AND EXISTS (
           SELECT 1 FROM public.profiles p
           WHERE p.id = exercises.created_by
-          AND p.app_role = 'admin'
+          AND p.app_role IN ('admin', 'super_admin')
         )
       )
     )
@@ -145,13 +145,13 @@ USING (
       -- Can delete their own exercises
       (exercises.created_by = auth.uid() AND sp.can_delete_own_exercises = true)
       OR
-      -- Can delete admin exercises
+      -- Can delete admin exercises (includes super_admin too)
       (
         sp.can_delete_admin_exercises = true
         AND EXISTS (
           SELECT 1 FROM public.profiles p
           WHERE p.id = exercises.created_by
-          AND p.app_role = 'admin'
+          AND p.app_role IN ('admin', 'super_admin')
         )
       )
     )

@@ -138,17 +138,17 @@ export async function canViewContent(
     case 'all':
       return true;
     case 'own_and_admin':
-      // Can view their own content + admin-created content
+      // Can view their own content + admin-created content + super_admin-created content
       if (!contentCreatorId) return true; // No creator = old content, show it
       if (contentCreatorId === userId) return true; // Their own content
-      // Check if creator is admin
+      // Check if creator is admin or super_admin
       const supabase = createClient();
       const { data: creator } = await supabase
         .from('profiles')
         .select('app_role')
         .eq('id', contentCreatorId)
         .single();
-      return creator?.app_role === 'admin';
+      return creator?.app_role === 'admin' || creator?.app_role === 'super_admin';
     case 'own':
       // Can only view their own content
       return !contentCreatorId || contentCreatorId === userId;
@@ -242,7 +242,7 @@ export async function canEditContent(
     const ownPermissionField = `can_edit_own_${contentType}` as keyof Pick<StaffPermissions, 'can_edit_own_exercises' | 'can_edit_own_workouts' | 'can_edit_own_routines'>;
     return permissions[ownPermissionField] as boolean;
   } else {
-    // Check if creator is admin
+    // Check if creator is admin or super_admin
     const supabase = createClient();
     const { data: creator } = await supabase
       .from('profiles')
@@ -250,7 +250,7 @@ export async function canEditContent(
       .eq('id', contentCreatorId)
       .single();
 
-    const isAdminContent = creator?.app_role === 'admin';
+    const isAdminContent = creator?.app_role === 'admin' || creator?.app_role === 'super_admin';
 
     if (isAdminContent) {
       const adminPermissionField = `can_edit_admin_${contentType}` as keyof Pick<StaffPermissions, 'can_edit_admin_exercises' | 'can_edit_admin_workouts' | 'can_edit_admin_routines'>;
@@ -288,7 +288,7 @@ export async function canDeleteContent(
     const ownPermissionField = `can_delete_own_${contentType}` as keyof Pick<StaffPermissions, 'can_delete_own_exercises' | 'can_delete_own_workouts' | 'can_delete_own_routines'>;
     return permissions[ownPermissionField] as boolean;
   } else {
-    // Check if creator is admin
+    // Check if creator is admin or super_admin
     const supabase = createClient();
     const { data: creator } = await supabase
       .from('profiles')
@@ -296,7 +296,7 @@ export async function canDeleteContent(
       .eq('id', contentCreatorId)
       .single();
 
-    const isAdminContent = creator?.app_role === 'admin';
+    const isAdminContent = creator?.app_role === 'admin' || creator?.app_role === 'super_admin';
 
     if (isAdminContent) {
       const adminPermissionField = `can_delete_admin_${contentType}` as keyof Pick<StaffPermissions, 'can_delete_admin_exercises' | 'can_delete_admin_workouts' | 'can_delete_admin_routines'>;
@@ -345,12 +345,12 @@ export async function getContentFilter(
       return { filter: 'all' };
 
     case 'own_and_admin':
-      // Get all admin IDs
+      // Get all admin and super_admin IDs
       const supabase = createClient();
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
-        .eq('app_role', 'admin');
+        .in('app_role', ['admin', 'super_admin']);
 
       const adminIds = admins?.map(a => a.id) || [];
       return { filter: 'ids', creatorIds: [...adminIds, userId] };
