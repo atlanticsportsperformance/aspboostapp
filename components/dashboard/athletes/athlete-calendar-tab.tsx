@@ -929,6 +929,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
               setEditingWorkoutId(selectedInstance.workout_id);
               setSelectedInstance(null);
             }}
+            onCopy={() => handleCopyWorkout(selectedInstance.id, selectedInstance.workouts?.name || 'Workout')}
           />
         )}
       </div>
@@ -1263,17 +1264,33 @@ function DraggableWorkoutChip({
                                       <span className="text-[9px]">{routineExercise.sets} Sets</span>
                                     )}
 
-                                    {/* Show metrics from metric_targets */}
-                                    {routineExercise.metric_targets && Object.entries(routineExercise.metric_targets).map(([key, value]) => {
-                                      if (!key) return null;
+                                    {/* Show metrics from set_configurations or metric_targets */}
+                                    {(() => {
+                                      // Check if we have per-set configuration
+                                      const hasSetConfigurations = routineExercise.set_configurations &&
+                                                                  Array.isArray(routineExercise.set_configurations) &&
+                                                                  routineExercise.set_configurations.length > 0;
 
-                                      // Helper: check if metric is primary (reps-based)
-                                      const isPrimaryMetric = key === 'reps' || key.toLowerCase().endsWith('_reps');
+                                      const hasMetricTargets = routineExercise.metric_targets &&
+                                                              Object.keys(routineExercise.metric_targets).length > 0;
 
-                                      // Skip secondary metrics with 0/null values
-                                      if (!isPrimaryMetric && (!value || value === 0)) return null;
+                                      if (!hasSetConfigurations && !hasMetricTargets) {
+                                        return null;
+                                      }
 
-                                      // Format metric name
+                                      // Get all unique metric keys from all sets or metric_targets
+                                      const allMetricKeys = new Set<string>();
+                                      if (hasSetConfigurations) {
+                                        routineExercise.set_configurations.forEach((setConfig: any) => {
+                                          if (setConfig.metric_values) {
+                                            Object.keys(setConfig.metric_values).forEach(key => allMetricKeys.add(key));
+                                          }
+                                        });
+                                      } else if (hasMetricTargets) {
+                                        Object.keys(routineExercise.metric_targets).forEach(key => allMetricKeys.add(key));
+                                      }
+
+                                      // Format metric name helper
                                       const formatMetricName = (metricKey: string): string => {
                                         if (metricKey.includes('_')) {
                                           const parts = metricKey.split('_');
@@ -1284,30 +1301,47 @@ function DraggableWorkoutChip({
                                             return `${baseName} ${metricType}`;
                                           }
                                         }
-                                        return metricKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                        return metricKey.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
                                       };
 
-                                      const formattedKey = formatMetricName(key);
+                                      // Check if metric is primary (reps-based)
+                                      const isPrimaryMetric = (key: string) => key === 'reps' || key.toLowerCase().endsWith('_reps');
 
-                                      // Check if reps with per-set config
-                                      if (key === 'reps') {
-                                        const hasPerSetReps = routineExercise.set_configurations &&
-                                                             Array.isArray(routineExercise.set_configurations) &&
-                                                             routineExercise.set_configurations.length > 0 &&
-                                                             routineExercise.set_configurations.some((s: any) => s.metric_values?.reps || s.reps);
+                                      return Array.from(allMetricKeys).map((key: string) => {
+                                        if (!key) return null;
 
-                                        if (hasPerSetReps) {
-                                          const repsArray = routineExercise.set_configurations.map((s: any) => s.metric_values?.reps || s.reps || '—');
-                                          return <span key={key} className="text-[9px]">{repsArray.join(', ')}</span>;
-                                        } else if (routineExercise.is_amrap) {
+                                        // Skip secondary metrics with 0/null values in metric_targets
+                                        if (!hasSetConfigurations && !isPrimaryMetric(key)) {
+                                          const value = routineExercise.metric_targets[key];
+                                          if (!value || value === 0) return null;
+                                        }
+
+                                        const formattedKey = formatMetricName(key);
+
+                                        // Check for per-set values for THIS metric
+                                        if (hasSetConfigurations) {
+                                          const hasPerSetValues = routineExercise.set_configurations.some((s: any) =>
+                                            s.metric_values?.[key] !== undefined && s.metric_values?.[key] !== null
+                                          );
+
+                                          if (hasPerSetValues) {
+                                            const valuesArray = routineExercise.set_configurations.map((s: any) =>
+                                              s.metric_values?.[key] ?? '—'
+                                            );
+                                            return <span key={key} className="text-[9px]">{formattedKey}: {valuesArray.join(', ')}</span>;
+                                          }
+                                        }
+
+                                        // Fallback to metric_targets or show AMRAP
+                                        if (key === 'reps' && routineExercise.is_amrap) {
                                           return <span key={key} className="text-[9px] text-purple-300">AMRAP</span>;
                                         }
-                                      }
 
-                                      // Display value or "—" if null/undefined (for primary metrics only at this point)
-                                      const displayValue = (value === null || value === undefined) ? '—' : value;
-                                      return <span key={key} className="text-[9px]">{formattedKey}: {displayValue}</span>;
-                                    })}
+                                        const value = routineExercise.metric_targets?.[key];
+                                        const displayValue = (value === null || value === undefined) ? '—' : value;
+                                        return <span key={key} className="text-[9px]">{formattedKey}: {displayValue}</span>;
+                                      });
+                                    })()}
 
                                     {/* Intensity */}
                                     {routineExercise.intensity_targets && routineExercise.intensity_targets.length > 0 && (
@@ -1315,9 +1349,14 @@ function DraggableWorkoutChip({
                                     )}
 
                                     {/* Not configured badge */}
-                                    {(!routineExercise.metric_targets || Object.keys(routineExercise.metric_targets).length === 0) && (
-                                      <span className="text-[9px] text-yellow-300">Not configured</span>
-                                    )}
+                                    {(() => {
+                                      const hasSetConfigs = routineExercise.set_configurations && routineExercise.set_configurations.length > 0;
+                                      const hasMetricTargets = routineExercise.metric_targets && Object.keys(routineExercise.metric_targets).length > 0;
+                                      if (!hasSetConfigs && !hasMetricTargets) {
+                                        return <span className="text-[9px] text-yellow-300">Not configured</span>;
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
 
                                   {/* Special notes from notes field */}
@@ -1374,13 +1413,16 @@ function WorkoutInstanceModal({
   instance,
   athleteId,
   onClose,
-  onEdit
+  onEdit,
+  onCopy
 }: {
   instance: WorkoutInstance;
   athleteId: string;
   onClose: () => void;
   onEdit: () => void;
+  onCopy?: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-[#1A1A1A] rounded-xl border border-white/10 w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -1456,7 +1498,7 @@ function WorkoutInstanceModal({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 relative">
           {instance.workouts?.notes && (
             <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
               <p className="text-sm text-gray-300">{instance.workouts.notes}</p>
@@ -1481,6 +1523,29 @@ function WorkoutInstanceModal({
               <span className="ml-2 text-white capitalize">{instance.status.replace('_', ' ')}</span>
             </div>
           </div>
+
+          {/* Copy Button - Bottom Right */}
+          {onCopy && (
+            <button
+              onClick={() => {
+                onCopy();
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+              }}
+              className="absolute bottom-4 right-4 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors group"
+              title="Copy workout"
+            >
+              {copied ? (
+                <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

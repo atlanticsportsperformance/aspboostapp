@@ -26,10 +26,10 @@ const TEST_DESCRIPTIONS: Record<string, { title: string; description: string; wh
     whyItMatters: 'HJ is critical for running speed, agility, and change of direction. High RSI indicates excellent tendon stiffness and reactive strength - key for sprinters, basketball players, and soccer athletes. It\'s also useful for return-to-play assessments after lower limb injuries.',
   },
   ppu: {
-    title: 'Prone Pull-Up (PPU)',
-    description: 'A horizontal pulling test performed on force plates where you pull your body forward from a prone position. This measures upper body pulling strength and power.',
-    whatItMeasures: 'PPU measures peak takeoff force, impulse, and pulling power. It assesses your ability to generate force through horizontal pulling movements, testing lat strength, posterior chain engagement, and core stability.',
-    whyItMatters: 'PPU is important for sports requiring pulling movements (rowing, climbing, grappling sports) and for balancing upper body force production. It complements pressing movements and helps identify asymmetries in upper body strength.',
+    title: 'Plyo Push-Up (PPU)',
+    description: 'An explosive plyometric push-up test performed on force plates where you push explosively off the ground. This measures upper body power and explosiveness.',
+    whatItMeasures: 'PPU measures peak takeoff force, peak power output, and rate of force development during explosive pushing movements. It assesses your ability to generate force rapidly through the chest, shoulders, and triceps, testing upper body explosiveness and fast-twitch fiber recruitment.',
+    whyItMatters: 'PPU is critical for sports requiring explosive upper body movements like boxing, MMA, football (blocking/tackling), basketball (posting up), and volleyball (attacking). It complements pressing strength and identifies power deficits in the upper body kinetic chain.',
   },
   imtp: {
     title: 'Isometric Mid-Thigh Pull (IMTP)',

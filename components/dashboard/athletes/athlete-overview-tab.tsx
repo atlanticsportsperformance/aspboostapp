@@ -457,16 +457,16 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
           </button>
         </div>
 
-        {/* Header Row: Avatar + Name + Physical Stats + Notes */}
-        <div className="flex items-start gap-6 mb-6 pb-6 border-b border-white/10">
-          {/* Left: Avatar + Name + Badges */}
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-3xl flex-shrink-0">
+        {/* Header Row: Avatar + Name + Physical Stats + Notes - Mobile Friendly */}
+        <div className="space-y-4 mb-6 pb-6 border-b border-white/10">
+          {/* Avatar + Name + Badges */}
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="h-16 w-16 lg:h-20 lg:w-20 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl lg:text-3xl flex-shrink-0">
               {profile?.first_name?.[0] || 'A'}
               {profile?.last_name?.[0] || ''}
             </div>
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-2">{fullName}</h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2 truncate">{fullName}</h3>
               <div className="flex flex-wrap gap-1.5">
                 {athlete.primary_position && (
                   <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-xs font-medium">
@@ -492,13 +492,10 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-20 bg-white/10 flex-shrink-0"></div>
-
-          {/* Physical Stats */}
-          <div className="flex-shrink-0">
+          {/* Physical Stats - Horizontal on mobile, same on desktop */}
+          <div>
             <p className="text-xs text-gray-400 mb-2 font-semibold">PHYSICAL</p>
-            <div className="flex gap-6">
+            <div className="flex gap-4 lg:gap-6">
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Height</p>
                 <p className="text-sm text-white font-semibold">
@@ -535,11 +532,8 @@ export default function OverviewTab({ athleteData, onManageTags, onDeleteAthlete
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="w-px h-20 bg-white/10 flex-shrink-0"></div>
-
           {/* Notes Section */}
-          <div className="flex-1 min-w-0">
+          <div>
             <div className="flex items-center gap-2 mb-2">
               <p className="text-xs text-gray-400 font-semibold">NOTES</p>
               {!editingNotes ? (

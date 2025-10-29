@@ -282,7 +282,7 @@ export async function storeHJTest(
 }
 
 /**
- * Store PPU (Prone Push-Up) test data
+ * Store PPU (Plyo Push-Up) test data
  * Averages all trials into a single row
  */
 export async function storePPUTest(

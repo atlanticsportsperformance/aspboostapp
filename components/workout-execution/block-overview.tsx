@@ -189,32 +189,55 @@ export default function BlockOverview({ routines, exerciseInputs, onExerciseClic
 
                         {/* Compact format: 3 × 2 (Red Ball Reps, Blue Ball Reps, ...) */}
                         <div className="text-sm text-gray-300">
-                          {ex.metric_targets && Object.keys(ex.metric_targets).length > 0 ? (
-                            <span>
-                              {ex.sets || 3} × {repsDisplay}
-                              {ex.intensity_targets && ex.intensity_targets.length > 0 && (
-                                <span className="text-[#9BDDFF] font-semibold"> @ {ex.intensity_targets[0].percent}%</span>
-                              )}
-                              <span className="text-gray-400"> (
-                                {Object.entries(ex.metric_targets)
-                                  .filter(([key, value]: [string, any]) => {
-                                    const isPrimary = isPrimaryMetric(key);
+                          {(() => {
+                            // Get metrics from set_configurations or metric_targets
+                            const hasSetConfigurations = ex.set_configurations && ex.set_configurations.length > 0;
+                            const hasMetricTargets = ex.metric_targets && Object.keys(ex.metric_targets).length > 0;
 
-                                    // Always show primary metrics (reps)
-                                    if (isPrimary) return true;
+                            if (!hasSetConfigurations && !hasMetricTargets) {
+                              return <span className="text-yellow-300">Not configured</span>;
+                            }
 
-                                    // For secondary metrics (weight, time, distance, velo), only show if value > 0
-                                    return value && value > 0;
-                                  })
-                                  .map(([key, value]: [string, any], idx: number) => {
-                                    const formattedKey = formatMetricName(key);
-                                    return idx === 0 ? formattedKey : `, ${formattedKey}`;
-                                  }).join('')}
-                              )</span>
-                            </span>
-                          ) : (
-                            <span className="text-yellow-300">Not configured</span>
-                          )}
+                            // Get all unique metric keys from all sets
+                            const allMetricKeys = new Set<string>();
+                            if (hasSetConfigurations) {
+                              ex.set_configurations.forEach((setConfig: any) => {
+                                if (setConfig.metric_values) {
+                                  Object.keys(setConfig.metric_values).forEach(key => allMetricKeys.add(key));
+                                }
+                              });
+                            } else if (hasMetricTargets) {
+                              Object.keys(ex.metric_targets).forEach(key => allMetricKeys.add(key));
+                            }
+
+                            return (
+                              <span>
+                                {ex.sets || 3} × {repsDisplay}
+                                {ex.intensity_targets && ex.intensity_targets.length > 0 && (
+                                  <span className="text-[#9BDDFF] font-semibold"> @ {ex.intensity_targets[0].percent}%</span>
+                                )}
+                                <span className="text-gray-400"> (
+                                  {Array.from(allMetricKeys)
+                                    .filter((key: string) => {
+                                      const isPrimary = isPrimaryMetric(key);
+                                      if (isPrimary) return true;
+
+                                      // Check if any set has a value > 0 for this metric
+                                      if (hasSetConfigurations) {
+                                        return ex.set_configurations.some((s: any) =>
+                                          s.metric_values?.[key] && s.metric_values[key] > 0
+                                        );
+                                      }
+                                      return ex.metric_targets[key] && ex.metric_targets[key] > 0;
+                                    })
+                                    .map((key: string, idx: number) => {
+                                      const formattedKey = formatMetricName(key);
+                                      return idx === 0 ? formattedKey : `, ${formattedKey}`;
+                                    }).join('')}
+                                )</span>
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {/* Exercise Notes */}
@@ -237,6 +260,29 @@ export default function BlockOverview({ routines, exerciseInputs, onExerciseClic
           </div>
         );
       })}
+
+      {/* Start First Exercise Button */}
+      {routines.length > 0 && routines.some(r => r.routine_exercises?.length > 0) && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+          <button
+            onClick={() => {
+              // Find the first exercise in the first routine
+              const firstRoutine = routines.find(r => r.routine_exercises?.length > 0);
+              const firstExercise = firstRoutine?.routine_exercises?.[0];
+              if (firstExercise) {
+                onExerciseClick(firstExercise.id);
+              }
+            }}
+            className="px-5 py-2.5 bg-gradient-to-r from-[#9BDDFF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 active:scale-95 flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">Start First Exercise</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -65,8 +65,7 @@ export default function AthletesPage() {
   const [stats, setStats] = useState({
     total: 0,
     activeThisWeek: 0,
-    avgCompletionRate: 0,
-    atRisk: 0
+    noUpcoming: 0
   });
 
   useEffect(() => {
@@ -220,16 +219,12 @@ export default function AthletesPage() {
 
       // Calculate stats
       const activeThisWeekIds = new Set((thisWeekWorkoutsData || []).map((w: any) => w.athlete_id));
-      const totalCompletionRates = enrichedAthletes.map(a => a.completionRate || 0);
-      const avgRate = totalCompletionRates.length > 0
-        ? Math.round(totalCompletionRates.reduce((sum, rate) => sum + rate, 0) / totalCompletionRates.length)
-        : 0;
+      const noUpcoming = enrichedAthletes.filter(a => (a.upcomingWorkoutsCount || 0) === 0).length;
 
       setStats({
         total: enrichedAthletes.length,
         activeThisWeek: activeThisWeekIds.size,
-        avgCompletionRate: avgRate,
-        atRisk: enrichedAthletes.filter(a => (a.completionRate || 0) < 70).length
+        noUpcoming
       });
 
       setLoading(false);
@@ -418,53 +413,41 @@ export default function AthletesPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-1 lg:mb-2">
-            <p className="text-gray-400 text-xs lg:text-sm font-medium">Total Athletes</p>
-            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
+        <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
+            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">Total</p>
+            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
+          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-1 lg:mb-2">
-            <p className="text-gray-400 text-xs lg:text-sm font-medium">Active This Week</p>
-            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
+            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">Active</p>
+            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
           </div>
-          <p className="text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
+          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
         </div>
 
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-1 lg:mb-2">
-            <p className="text-gray-400 text-xs lg:text-sm font-medium">Avg Completion</p>
-            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
+            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">No WO</p>
+            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center">
+              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           </div>
-          <p className="text-xl lg:text-3xl font-bold text-white">{stats.avgCompletionRate}%</p>
-        </div>
-
-        <div className="bg-white/5 border border-white/10 rounded-xl p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-1 lg:mb-2">
-            <p className="text-gray-400 text-xs lg:text-sm font-medium">Athletes At Risk</p>
-            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 lg:h-5 lg:w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-          <p className="text-xl lg:text-3xl font-bold text-white">{stats.atRisk}</p>
+          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.noUpcoming}</p>
         </div>
       </div>
 

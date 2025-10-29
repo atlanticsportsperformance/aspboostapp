@@ -800,9 +800,24 @@ export default function WorkoutExecutionPage() {
 
               if (!currentExercise) return null;
 
+              // Calculate block label (e.g., "A1", "B2")
+              let blockLabel = '';
+              let routineIndex = 0;
+              for (const routine of routines) {
+                const exercises = routine.routine_exercises || [];
+                const exerciseIndex = exercises.findIndex((ex: any) => ex.id === activeExerciseId);
+                if (exerciseIndex !== -1) {
+                  const blockLetter = String.fromCharCode(65 + routineIndex); // A, B, C, etc.
+                  blockLabel = `${blockLetter}${exerciseIndex + 1}`;
+                  break;
+                }
+                routineIndex++;
+              }
+
               return (
                 <ExerciseDetailView
                   exercise={currentExercise}
+                  blockLabel={blockLabel}
                   exerciseInputs={exerciseInputs[activeExerciseId] || []}
                   completedSetsTracker={completedSets[activeExerciseId] || Array(currentExercise.sets || 3).fill(false)}
                   currentSetIndex={currentSetIndexes[activeExerciseId] || 0}
