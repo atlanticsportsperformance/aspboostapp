@@ -114,6 +114,14 @@ export default function ExercisesPage() {
 
     if (!userId) return;
 
+    console.log('🔍 fetchExercises called with permissions:', {
+      userId,
+      userRole,
+      hasPermissions: !!permissions,
+      allowed_exercise_tags: permissions?.allowed_exercise_tags,
+      exercises_visibility: permissions?.exercises_visibility
+    });
+
     let query = supabase
       .from('exercises')
       .select(`
@@ -131,6 +139,7 @@ export default function ExercisesPage() {
       // Tags are set - ignore visibility settings, just show exercises with matching tags
       console.log(`🏷️ Tag filtering enabled - skipping visibility filter (allowed tags: ${permissions.allowed_exercise_tags.join(', ')})`);
     } else {
+      console.log('⚠️ No tag filtering - using normal visibility rules');
       // No tags set - apply normal visibility filter
       const filter = await getContentFilter(userId, userRole, 'exercises');
       if (filter.filter === 'ids' && filter.creatorIds) {
