@@ -34,12 +34,33 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [displayCount, setDisplayCount] = useState(5);
-  const [compactView, setCompactView] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
+  const [prData, setPrData] = useState<any>(null);
 
   useEffect(() => {
     fetchHistory();
+    fetchPRs();
   }, [athleteId, exerciseId]);
+
+  async function fetchPRs() {
+    const { data, error } = await supabase
+      .from('athlete_maxes')
+      .select('metric_id, max_value, achieved_on')
+      .eq('athlete_id', athleteId)
+      .eq('exercise_id', exerciseId)
+      .order('achieved_on', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      // Group by metric and get the most recent (highest) value
+      const prs: any = {};
+      data.forEach(pr => {
+        if (!prs[pr.metric_id] || pr.max_value > prs[pr.metric_id].max_value) {
+          prs[pr.metric_id] = pr;
+        }
+      });
+      setPrData(prs);
+    }
+  }
 
   async function fetchHistory() {
     setLoading(true);
@@ -127,6 +148,37 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
     return String(value);
   }
 
+  function getSessionStats(session: WorkoutSession) {
+    const totalSets = session.sets.length;
+    const totalReps = session.sets.reduce((sum, s) => sum + (s.actual_reps || 0), 0);
+    const totalVolume = session.sets.reduce((sum, s) => sum + ((s.actual_reps || 0) * (s.actual_weight || 0)), 0);
+
+    // Get max weight in this session
+    const maxWeight = Math.max(...session.sets.map(s => s.actual_weight || 0));
+
+    // Get any custom metrics (like velocities)
+    const customMetrics: { [key: string]: number } = {};
+    session.sets.forEach(s => {
+      if (s.metric_data) {
+        Object.entries(s.metric_data).forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            if (!customMetrics[key] || value > customMetrics[key]) {
+              customMetrics[key] = value;
+            }
+          }
+        });
+      }
+    });
+
+    return {
+      totalSets,
+      totalReps,
+      totalVolume,
+      maxWeight,
+      customMetrics
+    };
+  }
+
   function getDisplayMetrics(log: ExerciseLog): { label: string; value: string }[] {
     const metrics: { label: string; value: string }[] = [];
 
@@ -205,111 +257,103 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
       {/* History List - Expandable */}
       {isExpanded && (
         <div className="border-t border-white/10">
-          {/* View Controls */}
-          {history.length > 5 && (
-            <div className="p-2 border-b border-white/5 flex items-center justify-between bg-black/20">
-              <button
-                onClick={() => setCompactView(!compactView)}
-                className="text-xs text-gray-400 hover:text-white transition-colors"
-              >
-                {compactView ? '📋 Detailed View' : '📊 Compact View'}
-              </button>
-              <span className="text-xs text-gray-500">
-                Showing {Math.min(displayCount, history.length)} of {history.length}
-              </span>
-            </div>
-          )}
+          {/* Scrollable History - One Row Per Workout */}
+          <div className="max-h-64 overflow-y-auto">
+            {history.slice(0, displayCount).map((session, sessionIdx) => {
+              const stats = getSessionStats(session);
 
-          {/* Scrollable History */}
-          <div className="max-h-80 overflow-y-auto">
-            {history.slice(0, displayCount).map((session, sessionIdx) => (
-            <div
-              key={session.workoutId}
-              className={`p-4 ${sessionIdx !== history.length - 1 ? 'border-b border-white/5' : ''}`}
-            >
-              {/* Session Date */}
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-blue-400">
-                  {formatDistanceToNow(new Date(session.date), { addSuffix: true })}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {new Date(session.date).toLocaleDateString()}
-                </span>
-              </div>
-
-              {/* Sets - Detailed or Compact */}
-              {!compactView ? (
-                // Detailed View - Show all sets
-                <div className="space-y-2">
-                  {session.sets.map((log) => {
-                    const metrics = getDisplayMetrics(log);
-
-                    return (
-                      <div
-                        key={log.id}
-                        className="bg-black/30 rounded p-2 border border-white/5"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-400">
-                            Set {log.set_number}
-                          </span>
-                          <div className="flex gap-3">
-                            {metrics.map((metric, idx) => (
-                              <div key={idx} className="text-right">
-                                <div className="text-xs text-gray-500">{metric.label}</div>
-                                <div className="text-sm font-semibold text-white">{metric.value}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                // Compact View - Just show summary
-                <div className="text-xs text-gray-400">
-                  {session.sets.length} sets completed
-                </div>
-              )}
-
-              {/* Summary Stats */}
-              <div className="mt-3 pt-3 border-t border-white/5">
-                <div className="flex gap-4 text-xs">
-                  <div>
-                    <span className="text-gray-500">Total Sets: </span>
-                    <span className="text-white font-medium">{session.sets.length}</span>
+              return (
+                <div
+                  key={session.workoutId}
+                  className={`px-3 py-2 flex items-center justify-between hover:bg-white/5 transition-colors ${
+                    sessionIdx !== history.length - 1 ? 'border-b border-white/5' : ''
+                  }`}
+                >
+                  {/* Date */}
+                  <div className="flex flex-col min-w-[100px]">
+                    <span className="text-xs font-medium text-blue-400">
+                      {formatDistanceToNow(new Date(session.date), { addSuffix: true })}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
                   </div>
-                  {session.sets.some(s => s.actual_reps !== null) && (
-                    <div>
-                      <span className="text-gray-500">Total Reps: </span>
-                      <span className="text-white font-medium">
-                        {session.sets.reduce((sum, s) => sum + (s.actual_reps || 0), 0)}
-                      </span>
-                    </div>
-                  )}
-                  {session.sets.some(s => s.actual_weight !== null && s.actual_reps !== null) && (
-                    <div>
-                      <span className="text-gray-500">Volume: </span>
-                      <span className="text-white font-medium">
-                        {session.sets.reduce((sum, s) => sum + ((s.actual_reps || 0) * (s.actual_weight || 0)), 0)} lbs
-                      </span>
-                    </div>
-                  )}
+
+                  {/* Key Stats */}
+                  <div className="flex gap-4 text-xs">
+                    {stats.totalReps > 0 && (
+                      <div className="text-center">
+                        <div className="text-gray-500">Reps</div>
+                        <div className="text-white font-semibold">{stats.totalReps}</div>
+                      </div>
+                    )}
+                    {stats.maxWeight > 0 && (
+                      <div className="text-center">
+                        <div className="text-gray-500">Max</div>
+                        <div className="text-white font-semibold">{stats.maxWeight} lbs</div>
+                      </div>
+                    )}
+                    {stats.totalVolume > 0 && (
+                      <div className="text-center">
+                        <div className="text-gray-500">Vol</div>
+                        <div className="text-white font-semibold">{stats.totalVolume}</div>
+                      </div>
+                    )}
+                    {Object.entries(stats.customMetrics).slice(0, 2).map(([key, value]) => (
+                      <div key={key} className="text-center">
+                        <div className="text-gray-500">{key.split('_').pop()}</div>
+                        <div className="text-white font-semibold">{value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Sets Count */}
+                  <div className="text-xs text-gray-400">
+                    {stats.totalSets} sets
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              );
+            })}
+          </div>
 
           {/* Load More Button */}
           {displayCount < history.length && (
-            <div className="p-3 border-t border-white/10 text-center">
+            <div className="p-2 border-t border-white/10 text-center">
               <button
-                onClick={() => setDisplayCount(prev => prev + 5)}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium"
+                onClick={() => setDisplayCount(prev => prev + 10)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors font-medium"
               >
-                Load More ({history.length - displayCount} remaining)
+                Show More ({history.length - displayCount} remaining)
               </button>
+            </div>
+          )}
+
+          {/* PR/MAX KPI Section */}
+          {prData && Object.keys(prData).length > 0 && (
+            <div className="border-t-2 border-yellow-500/20 bg-gradient-to-b from-yellow-500/10 to-transparent p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                <span className="text-xs font-bold text-yellow-500 uppercase">Personal Records</span>
+              </div>
+              <div className="flex gap-6">
+                {Object.entries(prData).map(([metricId, pr]: [string, any]) => (
+                  <div key={metricId} className="text-center">
+                    <div className="text-xs text-gray-400 capitalize">
+                      {metricId.replace('_', ' ')}
+                    </div>
+                    <div className="text-lg font-bold text-yellow-400">
+                      {pr.max_value}
+                      {metricId === 'weight' && ' lbs'}
+                      {metricId.includes('velo') && ' mph'}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {new Date(pr.achieved_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
