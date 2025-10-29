@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Coach {
   id: string;
@@ -26,9 +27,38 @@ export default function AthleteCoachesSection({ athleteId }: AthleteCoachesSecti
   const [showAddCoach, setShowAddCoach] = useState(false);
   const [assigning, setAssigning] = useState(false);
 
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
+  const supabase = createClient();
+
+  // Load user and permissions on mount
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
+
   useEffect(() => {
     fetchCoaches();
   }, [athleteId]);
+
+  // Check if user can assign coaches
+  const canAssignCoaches = userRole === 'super_admin' || permissions?.can_assign_coaches;
 
   async function fetchCoaches() {
     const supabase = createClient();
@@ -170,15 +200,17 @@ export default function AthleteCoachesSection({ athleteId }: AthleteCoachesSecti
     <div>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-gray-400 font-semibold">COACHES</p>
-        <button
-          onClick={() => {
-            if (!showAddCoach) fetchAllStaff();
-            setShowAddCoach(!showAddCoach);
-          }}
-          className="px-2 py-1 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-xs font-medium rounded transition-colors border border-[#9BDDFF]/20"
-        >
-          {showAddCoach ? 'Cancel' : '+ Add Coach'}
-        </button>
+        {canAssignCoaches && (
+          <button
+            onClick={() => {
+              if (!showAddCoach) fetchAllStaff();
+              setShowAddCoach(!showAddCoach);
+            }}
+            className="px-2 py-1 bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] text-xs font-medium rounded transition-colors border border-[#9BDDFF]/20"
+          >
+            {showAddCoach ? 'Cancel' : '+ Add Coach'}
+          </button>
+        )}
       </div>
 
       {/* Assigned Coaches */}

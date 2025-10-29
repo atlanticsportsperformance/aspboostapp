@@ -13,6 +13,7 @@ import ForceProfileTab from '@/components/dashboard/athletes/athlete-force-profi
 import AthleteSettingsTab from '@/components/dashboard/athletes/athlete-settings-tab';
 import ManageTagsModal from '@/components/dashboard/athletes/manage-tags-modal';
 import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
+import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
 interface Profile {
   id: string;
@@ -81,6 +82,32 @@ export default function AthleteDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [isAthleteView, setIsAthleteView] = useState(false);
+
+  // Permissions state
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<'super_admin' | 'admin' | 'coach' | 'athlete'>('coach');
+  const { permissions } = useStaffPermissions(userId);
+
+  const supabase = createClient();
+
+  // Load user and permissions on mount
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('app_role')
+          .eq('id', user.id)
+          .single();
+        if (profile) {
+          setUserRole(profile.app_role);
+        }
+      }
+    }
+    loadUser();
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -191,6 +218,9 @@ export default function AthleteDetailPage() {
 
     fetchAthleteData();
   }, [athleteId, router]);
+
+  // Check if user can delete athletes
+  const canDeleteAthletes = userRole === 'super_admin' || permissions?.can_delete_athletes;
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
@@ -374,7 +404,7 @@ export default function AthleteDetailPage() {
           <OverviewTab
             athleteData={athleteData}
             onManageTags={() => setShowManageTagsModal(true)}
-            onDeleteAthlete={() => setShowDeleteModal(true)}
+            onDeleteAthlete={canDeleteAthletes ? () => setShowDeleteModal(true) : undefined}
           />
         )}
         {activeTab === 'calendar' && <CalendarTab athleteId={athleteId} />}
@@ -383,7 +413,7 @@ export default function AthleteDetailPage() {
         {activeTab === 'settings' && (
           <AthleteSettingsTab
             athleteData={athleteData}
-            onDeleteAthlete={() => setShowDeleteModal(true)}
+            onDeleteAthlete={canDeleteAthletes ? () => setShowDeleteModal(true) : undefined}
           />
         )}
       </div>
