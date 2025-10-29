@@ -18,6 +18,16 @@ interface RadarDataPoint {
   previous: { percentile: number; value: number; date: string } | null;
 }
 
+// Cache for radar/overview data
+const overviewCache = new Map<string, {
+  radarData: RadarDataPoint[];
+  compositeScore: any;
+  playLevel: string;
+  timestamp: number;
+}>();
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export default function ForceOverviewSection({ athleteId, isFullscreen = false, onNavigateToTest }: ForceOverviewSectionProps) {
   const [loading, setLoading] = useState(true);
   const [radarData, setRadarData] = useState<RadarDataPoint[]>([]);
@@ -32,8 +42,23 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
   }, [athleteId]);
 
   async function fetchRadarData() {
+    const cacheKey = `overview-${athleteId}`;
+    const now = Date.now();
+
+    // Check cache first
+    const cached = overviewCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      console.log('Using cached overview data');
+      setRadarData(cached.radarData);
+      setCompositeScore(cached.compositeScore);
+      setPlayLevel(cached.playLevel);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      console.log('Fetching fresh overview data');
       const response = await fetch(`/api/athletes/${athleteId}/vald/charts/radar`);
 
       if (!response.ok) {
@@ -41,6 +66,15 @@ export default function ForceOverviewSection({ athleteId, isFullscreen = false, 
       }
 
       const data = await response.json();
+
+      // Store in cache
+      overviewCache.set(cacheKey, {
+        radarData: data.metrics,
+        compositeScore: data.compositeScore,
+        playLevel: data.playLevel,
+        timestamp: now
+      });
+
       setRadarData(data.metrics);
       setCompositeScore(data.compositeScore);
       setPlayLevel(data.playLevel);

@@ -20,6 +20,16 @@ interface IndividualTestSectionProps {
 
 type TimeRange = '1m' | '3m' | '6m' | '1y' | 'all';
 
+// In-memory cache to prevent redundant API calls - persists across component re-renders
+const dataCache = new Map<string, {
+  metrics: TestMetric[];
+  eliteThresholds: Record<string, number>;
+  eliteStdDev: Record<string, number>;
+  timestamp: number;
+}>();
+
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 export default function IndividualTestSection({ athleteId, testType, playLevel }: IndividualTestSectionProps) {
   const [metrics, setMetrics] = useState<TestMetric[]>([]);
   const [eliteThresholds, setEliteThresholds] = useState<Record<string, number>>({});
@@ -30,11 +40,35 @@ export default function IndividualTestSection({ athleteId, testType, playLevel }
 
   useEffect(() => {
     async function fetchTestHistory() {
+      const cacheKey = `${athleteId}-${testType}`;
+      const now = Date.now();
+
+      // Check if we have fresh cached data
+      const cached = dataCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+        console.log(`Using cached data for ${testType}`);
+        setMetrics(cached.metrics);
+        setSelectedMetric(cached.metrics[0]?.metric_name || null);
+        setEliteThresholds(cached.eliteThresholds);
+        setEliteStdDev(cached.eliteStdDev);
+        setLoading(false);
+        return;
+      }
+
       try {
+        console.log(`Fetching fresh data for ${testType}`);
         const response = await fetch(`/api/athletes/${athleteId}/vald/percentile-history?test_type=${testType}`);
         const data = await response.json();
 
         if (data.metrics && data.metrics.length > 0) {
+          // Store in cache with timestamp
+          dataCache.set(cacheKey, {
+            metrics: data.metrics,
+            eliteThresholds: data.elite_thresholds || {},
+            eliteStdDev: data.elite_std_dev || {},
+            timestamp: now
+          });
+
           setMetrics(data.metrics);
           setSelectedMetric(data.metrics[0].metric_name);
           setEliteThresholds(data.elite_thresholds || {});
