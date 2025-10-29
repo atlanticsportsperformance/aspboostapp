@@ -261,7 +261,7 @@ export default function DashboardLayout({
           </div>
 
           {/* Hitting Link */}
-          <div className="pt-4">
+          <div className="pt-2">
             <Link
               href="/dashboard/hitting"
               onClick={() => setSidebarOpen(false)}
