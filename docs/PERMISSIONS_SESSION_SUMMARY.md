@@ -25,10 +25,11 @@ This session successfully implemented comprehensive permissions systems for both
 
 **Database Security**:
 - [database/rls-policies-workouts.sql](../database/rls-policies-workouts.sql)
-  - SELECT: Template visibility + athlete access + staff monitoring
+  - SELECT: Template visibility + athlete access + all staff can view athlete workouts
   - INSERT: Based on can_create_workouts permission
   - UPDATE: Staff can edit templates & athlete workouts (athletes CANNOT edit)
   - DELETE: Only templates can be deleted, not athlete workouts
+  - **Note**: All staff members (with staff_permissions record) can view/edit athlete workouts
 
 **Helper Scripts**:
 - [database/assign-old-workouts-to-owner.sql](../database/assign-old-workouts-to-owner.sql)

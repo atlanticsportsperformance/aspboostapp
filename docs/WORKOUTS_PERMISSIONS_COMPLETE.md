@@ -66,7 +66,7 @@ This implementation follows the same proven pattern as Exercises permissions.
 1. **SELECT Policy** (`workouts_select_policy`)
    - **For TEMPLATES** (is_template=true): Enforces visibility based on "workouts_visibility" permission
    - **For ATHLETES**: Can view workouts assigned to them (athlete_id = their ID)
-   - **For STAFF**: Can view all athlete-assigned workouts if they have `can_view_athletes` permission
+   - **For STAFF**: All staff can view athlete-assigned workouts (having staff_permissions record grants access)
    - Prevents unauthorized data from even reaching the client
 
 2. **INSERT Policy** (`workouts_insert_policy`)
@@ -75,7 +75,7 @@ This implementation follows the same proven pattern as Exercises permissions.
 
 3. **UPDATE Policy** (`workouts_update_policy`)
    - **For TEMPLATES**: Only allows UPDATE based on ownership and permissions (`can_edit_own_workouts`, `can_edit_admin_workouts`)
-   - **For ATHLETE WORKOUTS**: Staff with `can_view_athletes` can update athlete-assigned workouts
+   - **For ATHLETE WORKOUTS**: All staff can update athlete-assigned workouts (having staff_permissions record grants access)
    - **IMPORTANT**: Athletes do NOT have UPDATE permission on workouts table - they only log exercises via `exercise_logs` table
 
 4. **DELETE Policy** (`workouts_delete_policy`)

@@ -89,13 +89,12 @@ USING (
     )
   )
   OR
-  -- STAFF: Can view workouts assigned to their athletes
+  -- STAFF: Can view workouts assigned to athletes (all staff can view athlete workouts)
   (
     workouts.athlete_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM public.staff_permissions sp
       WHERE sp.staff_id = auth.uid()
-      AND sp.can_view_athletes = true
     )
   )
 );
@@ -159,13 +158,12 @@ USING (
     )
   )
   OR
-  -- STAFF: Can update athlete-assigned workouts if they have athlete view permission
+  -- STAFF: Can update athlete-assigned workouts (all staff can edit athlete workouts)
   (
     workouts.athlete_id IS NOT NULL
     AND EXISTS (
       SELECT 1 FROM public.staff_permissions sp
       WHERE sp.staff_id = auth.uid()
-      AND sp.can_view_athletes = true
     )
   )
 );
