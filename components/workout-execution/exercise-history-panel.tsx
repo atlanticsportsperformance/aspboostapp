@@ -35,11 +35,24 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [prData, setPrData] = useState<any>(null);
+  const [customMeasurements, setCustomMeasurements] = useState<any[]>([]);
 
   useEffect(() => {
+    fetchCustomMeasurements();
     fetchHistory();
     fetchPRs();
   }, [athleteId, exerciseId]);
+
+  async function fetchCustomMeasurements() {
+    const { data, error } = await supabase
+      .from('custom_measurements')
+      .select('*');
+
+    if (!error && data) {
+      setCustomMeasurements(data);
+      console.log('📐 Custom measurements loaded:', data);
+    }
+  }
 
   async function fetchPRs() {
     const { data, error } = await supabase
@@ -128,6 +141,36 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
 
     setHistory(sessions);
     setLoading(false);
+  }
+
+  function getMetricLabel(metricId: string): string {
+    // For basic metrics
+    if (metricId === 'reps') return 'Reps';
+    if (metricId === 'weight') return 'Weight';
+    if (metricId === 'time') return 'Time';
+    if (metricId === 'rpe') return 'RPE';
+
+    // For custom measurements, find the definition
+    const customMeasurement = customMeasurements.find(m =>
+      m.secondary_metric_id === metricId || m.primary_metric_id === metricId
+    );
+
+    if (customMeasurement) {
+      // If this is a secondary metric (like green_ball_velo), use the secondary name
+      if (metricId === customMeasurement.secondary_metric_id) {
+        return customMeasurement.secondary_metric_name || metricId;
+      }
+      // If this is a primary metric (like green_ball_reps), use the primary name
+      if (metricId === customMeasurement.primary_metric_id) {
+        return customMeasurement.primary_metric_name || metricId;
+      }
+    }
+
+    // Fallback: Clean up the metric ID
+    return metricId
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   }
 
   function formatMetricValue(value: any, metricId: string): string {
@@ -300,7 +343,7 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
                     )}
                     {Object.entries(stats.customMetrics).slice(0, 2).map(([key, value]) => (
                       <div key={key} className="text-center">
-                        <div className="text-gray-500">{key.split('_').pop()}</div>
+                        <div className="text-gray-500">{getMetricLabel(key)}</div>
                         <div className="text-white font-semibold">{value}</div>
                       </div>
                     ))}
@@ -327,8 +370,8 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
               <div className="flex gap-6">
                 {Object.entries(prData).map(([metricId, pr]: [string, any]) => (
                   <div key={metricId} className="text-center">
-                    <div className="text-xs text-gray-400 capitalize">
-                      {metricId.replace('_', ' ')}
+                    <div className="text-xs text-gray-400">
+                      {getMetricLabel(metricId)}
                     </div>
                     <div className="text-lg font-bold text-yellow-400">
                       {pr.max_value}
