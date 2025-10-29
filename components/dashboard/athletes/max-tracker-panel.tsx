@@ -26,6 +26,7 @@ export function MaxTrackerPanel({ athleteId }: MaxTrackerPanelProps) {
   const supabase = createClient();
   const [maxes, setMaxes] = useState<AthleteMax[]>([]);
   const [exercises, setExercises] = useState<any[]>([]);
+  const [availableMetrics, setAvailableMetrics] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -47,28 +48,26 @@ export function MaxTrackerPanel({ athleteId }: MaxTrackerPanelProps) {
   // Get available metrics from selected exercise
   const selectedExercise = exercises.find(ex => ex.id === newMax.exercise_id);
 
-  // Get ALL possible metrics from all exercises, not just the selected one
-  // This allows tracking any metric even if not enabled for this specific exercise
-  const allMetricsSet = new Map<string, any>();
-
-  // Collect unique metrics from all exercises
-  exercises.forEach(ex => {
-    ex.metric_schema?.measurements?.forEach((metric: any) => {
-      if (!allMetricsSet.has(metric.id)) {
-        allMetricsSet.set(metric.id, metric);
-      }
-    });
-  });
-
-  // Convert to array and sort by name
-  const availableMetrics = Array.from(allMetricsSet.values()).sort((a, b) =>
-    (a.name || a.id).localeCompare(b.name || b.id)
-  );
-
   useEffect(() => {
     fetchMaxes();
     fetchExercises();
+    fetchAvailableMetrics();
   }, [athleteId]);
+
+  async function fetchAvailableMetrics() {
+    const { data, error } = await supabase
+      .from('custom_measurements')
+      .select('*')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching measurements:', error);
+      return;
+    }
+
+    console.log('Available metrics loaded:', data);
+    setAvailableMetrics(data || []);
+  }
 
   async function fetchMaxes() {
     const { data, error } = await supabase
@@ -115,7 +114,7 @@ export function MaxTrackerPanel({ athleteId }: MaxTrackerPanelProps) {
         exercise_id: newMax.exercise_id,
         metric_id: newMax.metric_id,
         max_value: parseFloat(newMax.max_value),
-        reps_at_max: selectedMetric?.type === 'reps' ? parseInt(newMax.reps_at_max) : null,
+        reps_at_max: selectedMetric?.id === 'reps' ? parseInt(newMax.reps_at_max) : null,
         achieved_on: newMax.achieved_on,
         source: 'manual',
         notes: newMax.notes || null
@@ -556,7 +555,7 @@ export function MaxTrackerPanel({ athleteId }: MaxTrackerPanelProps) {
                   />
                 </div>
 
-                {selectedMetric?.type === 'reps' && (
+                {selectedMetric?.id === 'reps' && (
                   <div className="w-24">
                     <label className="block text-sm font-medium mb-2">Reps</label>
                     <input

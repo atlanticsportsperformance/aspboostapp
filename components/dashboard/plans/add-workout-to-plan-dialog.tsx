@@ -185,25 +185,38 @@ export default function AddWorkoutToPlanDialog({
 
         // Step 4: Copy all exercises for this routine
         if (routine.routine_exercises && routine.routine_exercises.length > 0) {
-          const exercisesToCopy = routine.routine_exercises.map((ex: any) => ({
-            routine_id: newRoutine.id,
-            exercise_id: ex.exercise_id,
-            is_placeholder: ex.is_placeholder || false,
-            placeholder_id: ex.placeholder_id,
-            placeholder_name: ex.placeholder_name,
-            order_index: ex.order_index,
-            sets: ex.sets,
-            reps_min: ex.reps_min,
-            reps_max: ex.reps_max,
-            rest_seconds: ex.rest_seconds,
-            notes: ex.notes,
-            metric_targets: ex.metric_targets,
-            intensity_targets: ex.intensity_targets,
-            set_configurations: ex.set_configurations,
-            enabled_measurements: ex.enabled_measurements,
-            tracked_max_metrics: ex.tracked_max_metrics,
-            is_amrap: ex.is_amrap
-          }));
+          const exercisesToCopy = routine.routine_exercises.map((ex: any) => {
+            const exerciseCopy: any = {
+              routine_id: newRoutine.id,
+              exercise_id: ex.exercise_id,
+              is_placeholder: ex.is_placeholder || false,
+              placeholder_id: ex.placeholder_id,
+              placeholder_name: ex.placeholder_name,
+              order_index: ex.order_index,
+              sets: ex.sets,
+              reps_min: ex.reps_min,
+              reps_max: ex.reps_max,
+              rest_seconds: ex.rest_seconds,
+              notes: ex.notes,
+              metric_targets: ex.metric_targets,
+              intensity_targets: ex.intensity_targets,
+              set_configurations: ex.set_configurations,
+              tracked_max_metrics: ex.tracked_max_metrics,
+              is_amrap: ex.is_amrap
+            };
+
+            // Handle enabled_measurements - auto-populate from metric_targets if missing
+            if (ex.enabled_measurements && ex.enabled_measurements.length > 0) {
+              exerciseCopy.enabled_measurements = ex.enabled_measurements;
+            } else if (ex.metric_targets && Object.keys(ex.metric_targets).length > 0) {
+              // CRITICAL FIX: If enabled_measurements is missing but metric_targets exists,
+              // auto-populate enabled_measurements from metric_targets keys
+              exerciseCopy.enabled_measurements = Object.keys(ex.metric_targets);
+              console.log('🔧 Auto-populated enabled_measurements from metric_targets:', exerciseCopy.enabled_measurements);
+            }
+
+            return exerciseCopy;
+          });
 
           await supabase
             .from('routine_exercises')

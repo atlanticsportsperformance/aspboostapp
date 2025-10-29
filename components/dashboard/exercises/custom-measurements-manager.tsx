@@ -7,9 +7,15 @@ interface CustomMeasurementUsage {
   id: string;
   name: string;
   unit: string;
-  type: 'reps' | 'performance_decimal' | 'performance_integer';
+  type: 'reps' | 'performance_decimal' | 'performance_integer' | 'paired';
+  category?: 'single' | 'paired';
   usedBy: string[]; // Array of exercise names
   isLocked?: boolean; // True for predefined measurements that can't be edited/deleted
+  // For paired measurements
+  primary_metric_id?: string;
+  primary_metric_name?: string;
+  secondary_metric_id?: string;
+  secondary_metric_name?: string;
 }
 
 interface TagUsage {
@@ -50,8 +56,12 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   // Edit states
   const [editingMeasurement, setEditingMeasurement] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
-  const [editUnit, setEditUnit] = useState('');
   const [editType, setEditType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
+  const [editCategory, setEditCategory] = useState<'single' | 'paired'>('single');
+  const [editPrimaryName, setEditPrimaryName] = useState('');
+  const [editPrimaryType, setEditPrimaryType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
+  const [editSecondaryName, setEditSecondaryName] = useState('');
+  const [editSecondaryType, setEditSecondaryType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
 
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [editTagName, setEditTagName] = useState('');
@@ -60,7 +70,13 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   const [showCreateMeasurement, setShowCreateMeasurement] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [createMeasurementName, setCreateMeasurementName] = useState('');
-  const [createMeasurementType, setCreateMeasurementType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
+  const [createMeasurementCategory, setCreateMeasurementCategory] = useState<'single' | 'paired'>('single');
+  // For single measurements - name and type
+  const [createPrimaryMetricName, setCreatePrimaryMetricName] = useState('');
+  const [createPrimaryMetricType, setCreatePrimaryMetricType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
+  // For paired measurements - secondary name and type
+  const [createSecondaryMetricName, setCreateSecondaryMetricName] = useState('');
+  const [createSecondaryMetricType, setCreateSecondaryMetricType] = useState<'reps' | 'performance_decimal' | 'performance_integer'>('performance_decimal');
   const [createTagName, setCreateTagName] = useState('');
 
   const [showCreatePlaceholder, setShowCreatePlaceholder] = useState(false);
@@ -80,54 +96,67 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
   async function fetchCustomMeasurements() {
     const supabase = createClient();
 
-    // Fetch all exercises with their metric_schemas
-    const { data: exercises, error } = await supabase
-      .from('exercises')
-      .select('id, name, metric_schema')
-      .eq('is_active', true);
+    // Fetch all measurements from custom_measurements table
+    const { data: customMeasurements, error } = await supabase
+      .from('custom_measurements')
+      .select('*')
+      .order('name');
 
     if (error) {
-      console.error('Error fetching exercises:', error);
+      console.error('Error fetching custom measurements:', error);
       setLoading(false);
       return;
     }
 
-    console.log('Fetched exercises:', exercises?.length);
-    console.log('Sample exercise:', exercises?.[0]);
+    console.log('Fetched custom measurements:', customMeasurements?.length);
 
-    // Extract ALL measurements (both predefined and custom)
-    const measurementsMap = new Map<string, CustomMeasurementUsage>();
+    // Fetch exercises to check usage
+    const { data: exercises } = await supabase
+      .from('exercises')
+      .select('id, name, metric_schema')
+      .eq('is_active', true);
 
-    exercises?.forEach((exercise) => {
-      const measurements = exercise.metric_schema?.measurements || [];
-      console.log(`Exercise "${exercise.name}" has ${measurements.length} measurements:`, measurements);
+    // Map measurements with usage info
+    const measurementsList = (customMeasurements || []).map((m: any) => {
+      // Find which exercises use this measurement
+      const usedBy: string[] = [];
 
-      measurements.forEach((m: any) => {
-        const isLocked = LOCKED_MEASUREMENTS.includes(m.id);
+      exercises?.forEach((ex) => {
+        const measurements = ex.metric_schema?.measurements || [];
 
-        if (measurementsMap.has(m.id)) {
-          // Add this exercise to the usage list
-          const existing = measurementsMap.get(m.id)!;
-          existing.usedBy.push(exercise.name);
-        } else {
-          // Create new entry
-          measurementsMap.set(m.id, {
-            id: m.id,
-            name: m.name,
-            unit: m.unit || '',
-            type: m.type || 'decimal',
-            usedBy: [exercise.name],
-            isLocked: isLocked,
-          });
+        if (m.category === 'single') {
+          // Check if single measurement is used
+          if (measurements.some((em: any) => em.id === m.id)) {
+            usedBy.push(ex.name);
+          }
+        } else if (m.category === 'paired') {
+          // Check if either metric in the pair is used
+          if (measurements.some((em: any) =>
+            em.id === m.primary_metric_id || em.id === m.secondary_metric_id
+          )) {
+            usedBy.push(ex.name);
+          }
         }
       });
+
+      return {
+        id: m.id,
+        name: m.name,
+        unit: m.category === 'single' ? m.primary_metric_name : '',
+        type: m.category === 'single' ? m.primary_metric_type : 'paired',
+        category: m.category,
+        usedBy,
+        isLocked: m.is_locked || false,
+        // For paired measurements
+        primary_metric_id: m.primary_metric_id,
+        primary_metric_name: m.primary_metric_name,
+        secondary_metric_id: m.secondary_metric_id,
+        secondary_metric_name: m.secondary_metric_name,
+      };
     });
 
-    console.log('Total unique measurements found:', measurementsMap.size);
-    console.log('Measurements map:', Array.from(measurementsMap.entries()));
-
-    // Sort: locked measurements first, then custom measurements
-    const measurementsList = Array.from(measurementsMap.values()).sort((a, b) => {
+    // Sort: locked first, then by name
+    measurementsList.sort((a, b) => {
       if (a.isLocked && !b.isLocked) return -1;
       if (!a.isLocked && b.isLocked) return 1;
       return a.name.localeCompare(b.name);
@@ -152,6 +181,11 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
     const supabase = createClient();
 
+    // For paired measurements, need to remove both metrics from exercises
+    const metricsToRemove = measurement.category === 'paired'
+      ? [measurement.primary_metric_id!, measurement.secondary_metric_id!]
+      : [measurementId];
+
     // Fetch all exercises that use this measurement
     const { data: exercises, error: fetchError } = await supabase
       .from('exercises')
@@ -168,14 +202,14 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     const updates = exercises
       ?.filter((ex) => {
         const measurements = ex.metric_schema?.measurements || [];
-        return measurements.some((m: any) => m.id === measurementId);
+        return measurements.some((m: any) => metricsToRemove.includes(m.id));
       })
       .map(async (ex) => {
         const updatedMeasurements = ex.metric_schema.measurements.filter(
-          (m: any) => m.id !== measurementId
+          (m: any) => !metricsToRemove.includes(m.id)
         );
 
-        const { error } = await supabase
+        const { error} = await supabase
           .from('exercises')
           .update({
             metric_schema: { measurements: updatedMeasurements },
@@ -193,11 +227,24 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
     if (hasErrors) {
       alert('Some exercises failed to update. Please try again.');
-    } else {
-      // Refresh the list
-      fetchCustomMeasurements();
-      onUpdate(); // Refresh parent exercise list
+      return;
     }
+
+    // Delete from custom_measurements table
+    const { error: deleteError } = await supabase
+      .from('custom_measurements')
+      .delete()
+      .eq('id', measurementId);
+
+    if (deleteError) {
+      console.error('Error deleting from custom_measurements:', deleteError);
+      alert('Failed to delete measurement from database');
+      return;
+    }
+
+    // Refresh the list
+    fetchCustomMeasurements();
+    onUpdate(); // Refresh parent exercise list
   }
 
   async function fetchTags() {
@@ -416,70 +463,170 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
 
   function startEditMeasurement(measurement: CustomMeasurementUsage) {
     setEditingMeasurement(measurement.id);
-    setEditName(measurement.name);
-    setEditUnit(measurement.unit);
-    setEditType(measurement.type);
+    setEditCategory(measurement.category || 'single');
+
+    if (measurement.category === 'paired') {
+      setEditPrimaryName(measurement.primary_metric_name || '');
+      setEditPrimaryType(measurement.type === 'reps' ? 'reps' : 'performance_decimal');
+      setEditSecondaryName(measurement.secondary_metric_name || '');
+      setEditSecondaryType('performance_decimal');
+    } else {
+      setEditName(measurement.primary_metric_name || measurement.name);
+      setEditType(measurement.type as any);
+    }
   }
 
   async function saveEditMeasurement(oldId: string) {
-    if (!editName.trim()) {
-      alert('Measurement name is required');
+    const supabase = createClient();
+
+    // Get the current measurement from custom_measurements table
+    const { data: currentMeasurement, error: fetchError } = await supabase
+      .from('custom_measurements')
+      .select('*')
+      .eq('id', oldId)
+      .single();
+
+    if (fetchError || !currentMeasurement) {
+      console.error('Error fetching measurement:', fetchError);
+      alert('Failed to fetch measurement');
       return;
     }
 
-    const supabase = createClient();
+    // Validate based on category
+    if (editCategory === 'single') {
+      if (!editName.trim()) {
+        alert('Measurement name/unit is required');
+        return;
+      }
+    } else {
+      if (!editPrimaryName.trim() || !editSecondaryName.trim()) {
+        alert('Both primary and secondary metric names are required');
+        return;
+      }
+    }
 
-    // Fetch all exercises that use this measurement
-    const { data: exercises, error: fetchError } = await supabase
-      .from('exercises')
-      .select('id, metric_schema')
-      .eq('is_active', true);
+    // Update the custom_measurements table
+    let updateData: any = {};
 
-    if (fetchError) {
-      console.error('Error fetching exercises:', fetchError);
+    if (editCategory === 'single') {
+      updateData = {
+        primary_metric_name: editName.trim(),
+        primary_metric_type: editType
+      };
+    } else {
+      updateData = {
+        primary_metric_name: editPrimaryName.trim(),
+        primary_metric_type: editPrimaryType,
+        secondary_metric_name: editSecondaryName.trim(),
+        secondary_metric_type: editSecondaryType
+      };
+    }
+
+    const { error: updateError } = await supabase
+      .from('custom_measurements')
+      .update(updateData)
+      .eq('id', oldId);
+
+    if (updateError) {
+      console.error('Error updating measurement:', updateError);
       alert('Failed to update measurement');
       return;
     }
 
-    // Update each exercise's metric_schema
-    const updates = exercises
-      ?.filter((ex) => {
-        const measurements = ex.metric_schema?.measurements || [];
-        return measurements.some((m: any) => m.id === oldId);
-      })
-      .map(async (ex) => {
-        const updatedMeasurements = ex.metric_schema.measurements.map((m: any) => {
-          if (m.id === oldId) {
-            return {
-              ...m,
-              name: editName.trim(),
-              unit: editUnit.trim(),
-              type: editType,
-            };
-          }
-          return m;
+    // Update exercises that use this measurement
+    const { data: exercises } = await supabase
+      .from('exercises')
+      .select('id, metric_schema')
+      .eq('is_active', true);
+
+    if (editCategory === 'single') {
+      // Update single measurement in exercises
+      const updates = exercises
+        ?.filter((ex) => {
+          const measurements = ex.metric_schema?.measurements || [];
+          return measurements.some((m: any) => m.id === oldId);
+        })
+        .map(async (ex) => {
+          const updatedMeasurements = ex.metric_schema.measurements.map((m: any) => {
+            if (m.id === oldId) {
+              return {
+                ...m,
+                name: editName.trim(),
+                unit: editName.trim(),
+                type: editType,
+              };
+            }
+            return m;
+          });
+
+          const { error } = await supabase
+            .from('exercises')
+            .update({
+              metric_schema: { measurements: updatedMeasurements },
+            })
+            .eq('id', ex.id);
+
+          return error;
         });
 
-        const { error } = await supabase
-          .from('exercises')
-          .update({
-            metric_schema: { measurements: updatedMeasurements },
-          })
-          .eq('id', ex.id);
+      const results = await Promise.all(updates || []);
+      const hasErrors = results.some((err) => err !== undefined);
 
-        return error;
-      });
-
-    const results = await Promise.all(updates || []);
-    const hasErrors = results.some((err) => err !== undefined);
-
-    if (hasErrors) {
-      alert('Some exercises failed to update');
+      if (hasErrors) {
+        alert('Some exercises failed to update');
+      }
     } else {
-      setEditingMeasurement(null);
-      fetchCustomMeasurements();
-      onUpdate();
+      // For paired measurements, update both primary and secondary in exercises
+      const updates = exercises
+        ?.filter((ex) => {
+          const measurements = ex.metric_schema?.measurements || [];
+          return measurements.some((m: any) =>
+            m.id === currentMeasurement.primary_metric_id ||
+            m.id === currentMeasurement.secondary_metric_id
+          );
+        })
+        .map(async (ex) => {
+          const updatedMeasurements = ex.metric_schema.measurements.map((m: any) => {
+            if (m.id === currentMeasurement.primary_metric_id) {
+              return {
+                ...m,
+                name: editPrimaryName.trim(),
+                unit: editPrimaryName.trim(),
+                type: editPrimaryType,
+              };
+            }
+            if (m.id === currentMeasurement.secondary_metric_id) {
+              return {
+                ...m,
+                name: editSecondaryName.trim(),
+                unit: editSecondaryName.trim(),
+                type: editSecondaryType,
+              };
+            }
+            return m;
+          });
+
+          const { error } = await supabase
+            .from('exercises')
+            .update({
+              metric_schema: { measurements: updatedMeasurements },
+            })
+            .eq('id', ex.id);
+
+          return error;
+        });
+
+      const results = await Promise.all(updates || []);
+      const hasErrors = results.some((err) => err !== undefined);
+
+      if (hasErrors) {
+        alert('Some exercises failed to update');
+      }
     }
+
+    setEditingMeasurement(null);
+    fetchCustomMeasurements();
+    onUpdate();
   }
 
   function startEditTag(tagName: string) {
@@ -544,30 +691,55 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
       return;
     }
 
+    if (!createPrimaryMetricName.trim()) {
+      alert('Primary metric name is required');
+      return;
+    }
+
+    if (createMeasurementCategory === 'paired' && !createSecondaryMetricName.trim()) {
+      alert('Secondary metric name is required for paired measurements');
+      return;
+    }
+
     const supabase = createClient();
 
-    const newMeasurement: CustomMeasurement = {
-      id: `custom_${Date.now()}`,
+    const measurementId = `custom_${Date.now()}`;
+    const baseId = measurementId.replace('custom_', '');
+
+    let newMeasurement: any = {
+      id: measurementId,
       name: createMeasurementName.trim(),
-      unit: '', // No longer collecting unit from user
-      type: createMeasurementType,
+      category: createMeasurementCategory,
+      is_locked: false
     };
 
-    // Create a "system" exercise to hold this measurement definition
-    // This ensures the measurement persists in the database
-    const systemExerciseName = `_measurement_definition_${newMeasurement.id}`;
+    if (createMeasurementCategory === 'single') {
+      // Single measurement - use primary metric fields
+      newMeasurement = {
+        ...newMeasurement,
+        primary_metric_id: measurementId,
+        primary_metric_name: createPrimaryMetricName.trim(),
+        primary_metric_type: createPrimaryMetricType,
+        secondary_metric_id: null,
+        secondary_metric_name: null,
+        secondary_metric_type: null
+      };
+    } else {
+      // Paired measurement - use both primary and secondary fields
+      newMeasurement = {
+        ...newMeasurement,
+        primary_metric_id: `${baseId}_primary`,
+        primary_metric_name: createPrimaryMetricName.trim(),
+        primary_metric_type: createPrimaryMetricType,
+        secondary_metric_id: `${baseId}_secondary`,
+        secondary_metric_name: createSecondaryMetricName.trim(),
+        secondary_metric_type: createSecondaryMetricType
+      };
+    }
 
     const { error } = await supabase
-      .from('exercises')
-      .insert({
-        name: systemExerciseName,
-        category: 'strength_conditioning',
-        is_active: true,
-        metric_schema: {
-          measurements: [{ ...newMeasurement, enabled: true }]
-        },
-        tags: ['_system'] // Special tag to exclude from main exercise list
-      });
+      .from('custom_measurements')
+      .insert(newMeasurement);
 
     if (error) {
       console.error('Error creating custom measurement:', error);
@@ -578,13 +750,18 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
     // Reset form
     setShowCreateMeasurement(false);
     setCreateMeasurementName('');
-    setCreateMeasurementType('decimal');
+    setCreateMeasurementCategory('single');
+    setCreatePrimaryMetricName('');
+    setCreatePrimaryMetricType('performance_decimal');
+    setCreateSecondaryMetricName('');
+    setCreateSecondaryMetricType('performance_decimal');
 
     // Refresh measurements
     await fetchCustomMeasurements();
     onUpdate();
 
-    alert(`Custom measurement "${newMeasurement.name}" created! Now you can use it in exercises.`);
+    const typeLabel = createMeasurementCategory === 'paired' ? 'paired measurement' : 'measurement';
+    alert(`Custom ${typeLabel} "${newMeasurement.name}" created! Now you can use it in exercises.`);
   }
 
   async function createCustomTag() {
@@ -753,52 +930,155 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                 <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4">
                   <h4 className="text-white font-semibold mb-2">Create New Custom Measurement</h4>
                   <p className="text-xs text-gray-400 mb-4">
-                    Custom measurements will be available in the exercise creator for all exercises.
+                    Custom measurements will be available in all exercises.
                   </p>
                   <div className="space-y-3">
+                    {/* Measurement Name */}
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Name *</label>
                       <input
                         type="text"
                         value={createMeasurementName}
                         onChange={(e) => setCreateMeasurementName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                        placeholder="e.g., Bar Speed, Jump Height, Ball Color"
+                        className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                        placeholder="e.g., Blue Ball (450g), Jump Height"
                       />
                     </div>
+
+                    {/* Category */}
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                      <label className="block text-xs text-gray-400 mb-1">Category *</label>
                       <select
-                        value={createMeasurementType}
-                        onChange={(e) => setCreateMeasurementType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                        value={createMeasurementCategory}
+                        onChange={(e) => setCreateMeasurementCategory(e.target.value as 'single' | 'paired')}
+                        className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
                       >
-                        <option value="reps">Reps (counting only, no intensity %)</option>
-                        <option value="performance_decimal">Performance - Decimal (velocity, weight, distance)</option>
-                        <option value="performance_integer">Performance - Integer (time in seconds)</option>
+                        <option value="single" className="bg-neutral-900 text-white">Single Metric</option>
+                        <option value="paired" className="bg-neutral-900 text-white">Paired Metrics (e.g., Reps + MPH)</option>
                       </select>
                     </div>
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded p-2">
-                      <p className="text-xs text-blue-300">
-                        <strong>Type Guide:</strong><br/>
-                        • <strong>Reps</strong>: Counting only - no intensity % (Blue Ball Reps, Sets, Throws)<br/>
-                        • <strong>Performance - Decimal</strong>: Can track intensity % (Blue Ball MPH, Weight, Distance)<br/>
-                        • <strong>Performance - Integer</strong>: Can track intensity % (Time in seconds)
-                      </p>
-                    </div>
+
+                    {/* Single Metric Form */}
+                    {createMeasurementCategory === 'single' && (
+                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Measurement Name/Unit *</label>
+                            <input
+                              type="text"
+                              value={createPrimaryMetricName}
+                              onChange={(e) => setCreatePrimaryMetricName(e.target.value)}
+                              className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                              placeholder="e.g., lbs, mph, inches"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                            <select
+                              value={createPrimaryMetricType}
+                              onChange={(e) => setCreatePrimaryMetricType(e.target.value as any)}
+                              className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                            >
+                              <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                              <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                              <option value="time" className="bg-neutral-900 text-white">Time</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Paired Metrics Form */}
+                    {createMeasurementCategory === 'paired' && (
+                      <>
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Primary Metric */}
+                          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                            <p className="text-xs text-blue-400 font-semibold mb-2">Primary Metric</p>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                                <input
+                                  type="text"
+                                  value={createPrimaryMetricName}
+                                  onChange={(e) => setCreatePrimaryMetricName(e.target.value)}
+                                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                                  placeholder="e.g., Reps"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                                <select
+                                  value={createPrimaryMetricType}
+                                  onChange={(e) => setCreatePrimaryMetricType(e.target.value as any)}
+                                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                                >
+                                  <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                                  <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                                  <option value="time" className="bg-neutral-900 text-white">Time</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Secondary Metric */}
+                          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                            <p className="text-xs text-purple-400 font-semibold mb-2">Secondary Metric (Intensity Target)</p>
+                            <div className="space-y-2">
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                                <input
+                                  type="text"
+                                  value={createSecondaryMetricName}
+                                  onChange={(e) => setCreateSecondaryMetricName(e.target.value)}
+                                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                                  placeholder="e.g., MPH"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                                <select
+                                  value={createSecondaryMetricType}
+                                  onChange={(e) => setCreateSecondaryMetricType(e.target.value as any)}
+                                  className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                                >
+                                  <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                                  <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                                  <option value="time" className="bg-neutral-900 text-white">Time</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2">
+                          <p className="text-xs text-yellow-300">
+                            <strong>Example:</strong> For "Blue Ball (450g)", use Primary: "Reps" | Secondary: "MPH"
+                          </p>
+                        </div>
+
+                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+                          <p className="text-xs text-blue-300">
+                            <strong>Note:</strong> The secondary metric is the one affected by intensity % targets (only applies to decimal/time types, not integer)
+                          </p>
+                        </div>
+                      </>
+                    )}
+
                     <div className="flex gap-2 pt-2">
                       <button
                         onClick={createCustomMeasurement}
                         className="flex-1 px-4 py-2 bg-green-500/20 text-green-300 rounded-lg hover:bg-green-500/30 transition-all text-sm font-medium"
                       >
-                        Create
+                        Create {createMeasurementCategory === 'paired' ? 'Paired Measurement' : 'Measurement'}
                       </button>
                       <button
                         onClick={() => {
                           setShowCreateMeasurement(false);
                           setCreateMeasurementName('');
+                          setCreateMeasurementCategory('single');
+                          setCreateMeasurementType('performance_decimal');
                           setCreateMeasurementUnit('');
-                          setCreateMeasurementType('decimal');
                         }}
                         className="flex-1 px-4 py-2 bg-white/10 text-gray-300 rounded-lg hover:bg-white/20 transition-all text-sm font-medium"
                       >
@@ -834,39 +1114,94 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                     {editingMeasurement === measurement.id ? (
                       // Edit Mode
                       <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">Name</label>
-                          <input
-                            type="text"
-                            value={editName}
-                            onChange={(e) => setEditName(e.target.value)}
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-400 mb-1">Unit</label>
-                            <input
-                              type="text"
-                              value={editUnit}
-                              onChange={(e) => setEditUnit(e.target.value)}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                              placeholder="lbs, mph, etc"
-                            />
+                        {editCategory === 'single' ? (
+                          // Single Measurement Edit
+                          <>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Measurement Name/Unit</label>
+                              <input
+                                type="text"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                                placeholder="e.g., lbs, mph, inches"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">Type</label>
+                              <select
+                                value={editType}
+                                onChange={(e) => setEditType(e.target.value as any)}
+                                className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
+                              >
+                                <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                                <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                                <option value="time" className="bg-neutral-900 text-white">Time</option>
+                              </select>
+                            </div>
+                          </>
+                        ) : (
+                          // Paired Measurement Edit
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Primary Metric */}
+                            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                              <p className="text-xs text-blue-400 font-semibold mb-2">Primary Metric</p>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                                  <input
+                                    type="text"
+                                    value={editPrimaryName}
+                                    onChange={(e) => setEditPrimaryName(e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-neutral-900 border border-white/10 rounded text-white text-xs"
+                                    placeholder="e.g., Reps"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                                  <select
+                                    value={editPrimaryType}
+                                    onChange={(e) => setEditPrimaryType(e.target.value as any)}
+                                    className="w-full px-2 py-1.5 bg-neutral-900 border border-white/10 rounded text-white text-xs"
+                                  >
+                                    <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                                    <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                                    <option value="time" className="bg-neutral-900 text-white">Time</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Secondary Metric */}
+                            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
+                              <p className="text-xs text-purple-400 font-semibold mb-2">Secondary Metric</p>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Name *</label>
+                                  <input
+                                    type="text"
+                                    value={editSecondaryName}
+                                    onChange={(e) => setEditSecondaryName(e.target.value)}
+                                    className="w-full px-2 py-1.5 bg-neutral-900 border border-white/10 rounded text-white text-xs"
+                                    placeholder="e.g., MPH"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-gray-400 mb-1">Type *</label>
+                                  <select
+                                    value={editSecondaryType}
+                                    onChange={(e) => setEditSecondaryType(e.target.value as any)}
+                                    className="w-full px-2 py-1.5 bg-neutral-900 border border-white/10 rounded text-white text-xs"
+                                  >
+                                    <option value="integer" className="bg-neutral-900 text-white">Integer</option>
+                                    <option value="decimal" className="bg-neutral-900 text-white">Decimal</option>
+                                    <option value="time" className="bg-neutral-900 text-white">Time</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-xs text-gray-400 mb-1">Type</label>
-                            <select
-                              value={editType}
-                              onChange={(e) => setEditType(e.target.value as 'reps' | 'performance_decimal' | 'performance_integer')}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
-                            >
-                              <option value="reps">Reps</option>
-                              <option value="performance_decimal">Performance - Decimal</option>
-                              <option value="performance_integer">Performance - Integer</option>
-                            </select>
-                          </div>
-                        </div>
+                        )}
                         <div className="flex gap-2 pt-2">
                           <button
                             onClick={() => saveEditMeasurement(measurement.id)}
@@ -961,7 +1296,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                         type="text"
                         value={createPlaceholderName}
                         onChange={(e) => setCreatePlaceholderName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                        className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
                         placeholder="e.g., Main Throwing Exercise, Corrective Exercise 1"
                       />
                     </div>
@@ -970,11 +1305,11 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                       <select
                         value={createPlaceholderCategory}
                         onChange={(e) => setCreatePlaceholderCategory(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm [&>option]:bg-neutral-900 [&>option]:text-white"
+                        className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
                       >
-                        <option value="strength_conditioning">Strength + Conditioning</option>
-                        <option value="hitting">Hitting</option>
-                        <option value="throwing">Throwing</option>
+                        <option value="strength_conditioning" className="bg-neutral-900 text-white">Strength + Conditioning</option>
+                        <option value="hitting" className="bg-neutral-900 text-white">Hitting</option>
+                        <option value="throwing" className="bg-neutral-900 text-white">Throwing</option>
                       </select>
                       <p className="mt-1 text-xs text-gray-500">This helps filter exercises when replacing the placeholder</p>
                     </div>
@@ -983,7 +1318,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                       <textarea
                         value={createPlaceholderDescription}
                         onChange={(e) => setCreatePlaceholderDescription(e.target.value)}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm resize-none"
+                        className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm resize-none"
                         rows={2}
                         placeholder="e.g., Athlete selects their primary throwing movement"
                       />
@@ -1041,7 +1376,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                               type="text"
                               value={editPlaceholderName}
                               onChange={(e) => setEditPlaceholderName(e.target.value)}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm"
+                              className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
                             />
                           </div>
                           <div>
@@ -1049,11 +1384,11 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                             <select
                               value={editPlaceholderCategory}
                               onChange={(e) => setEditPlaceholderCategory(e.target.value)}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm [&>option]:bg-neutral-900 [&>option]:text-white"
+                              className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm"
                             >
-                              <option value="strength_conditioning">Strength + Conditioning</option>
-                              <option value="hitting">Hitting</option>
-                              <option value="throwing">Throwing</option>
+                              <option value="strength_conditioning" className="bg-neutral-900 text-white">Strength + Conditioning</option>
+                              <option value="hitting" className="bg-neutral-900 text-white">Hitting</option>
+                              <option value="throwing" className="bg-neutral-900 text-white">Throwing</option>
                             </select>
                           </div>
                           <div>
@@ -1061,7 +1396,7 @@ export function CustomMeasurementsManager({ onClose, onUpdate }: CustomMeasureme
                             <textarea
                               value={editPlaceholderDescription}
                               onChange={(e) => setEditPlaceholderDescription(e.target.value)}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded text-white text-sm resize-none"
+                              className="w-full px-3 py-2 bg-neutral-900 border border-white/10 rounded text-white text-sm resize-none"
                               rows={2}
                             />
                           </div>

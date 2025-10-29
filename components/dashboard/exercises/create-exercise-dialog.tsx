@@ -18,8 +18,14 @@ interface Exercise {
 interface CustomMeasurement {
   id: string;
   name: string;
-  unit: string;
-  type: 'reps' | 'performance_decimal' | 'performance_integer';
+  category: 'single' | 'paired';
+  primary_metric_id: string;
+  primary_metric_name: string;
+  primary_metric_type: 'integer' | 'decimal' | 'time';
+  secondary_metric_id: string | null;
+  secondary_metric_name: string | null;
+  secondary_metric_type: 'integer' | 'decimal' | 'time' | null;
+  is_locked: boolean;
 }
 
 interface CreateExerciseDialogProps {
@@ -54,40 +60,30 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
 
   const [loading, setLoading] = useState(false);
 
-  // Fetch ALL measurements from library on mount
+  // Fetch ALL measurements from custom_measurements table
   useEffect(() => {
     async function fetchLibraryMeasurements() {
       const supabase = createClient();
 
-      const { data: exercises } = await supabase
-        .from('exercises')
-        .select('metric_schema')
-        .eq('is_active', true);
+      console.log('[Exercise Creator] Fetching measurements from custom_measurements table...');
 
-      if (!exercises) return;
+      const { data: measurements, error } = await supabase
+        .from('custom_measurements')
+        .select('*')
+        .order('name');
 
-      console.log('[Exercise Creator] Fetching measurements from DB...');
+      if (error) {
+        console.error('[Exercise Creator] Error fetching measurements:', error);
+        return;
+      }
 
-      // Extract ALL unique measurements from the database
-      const measurementsMap = new Map<string, CustomMeasurement>();
+      if (!measurements) {
+        console.log('[Exercise Creator] No measurements found');
+        return;
+      }
 
-      exercises.forEach((ex) => {
-        const measurements = ex.metric_schema?.measurements || [];
-        measurements.forEach((m: any) => {
-          if (!measurementsMap.has(m.id)) {
-            measurementsMap.set(m.id, {
-              id: m.id,
-              name: m.name,
-              unit: m.unit || '',
-              type: m.type || 'decimal',
-            });
-          }
-        });
-      });
-
-      const allMeasurements = Array.from(measurementsMap.values());
-      console.log('[Exercise Creator] Found measurements:', allMeasurements);
-      setLibraryCustomMeasurements(allMeasurements);
+      console.log('[Exercise Creator] Found measurements:', measurements);
+      setLibraryCustomMeasurements(measurements);
     }
 
     fetchLibraryMeasurements();
@@ -378,22 +374,56 @@ export function CreateExerciseDialog({ exercise, onClose, onSuccess }: CreateExe
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-white mb-2">AVAILABLE MEASUREMENTS:</h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {libraryCustomMeasurements.map((measurement) => (
-                    <label
-                      key={measurement.id}
-                      className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedMeasurements.includes(measurement.id)}
-                        onChange={() => toggleMeasurement(measurement.id)}
-                        className="rounded"
-                      />
-                      <span className="text-sm text-white">
-                        {measurement.name} {measurement.unit && `(${measurement.unit})`}
-                      </span>
-                    </label>
-                  ))}
+                  {(() => {
+                    // Separate locked and custom measurements
+                    const lockedOrder = ['reps', 'weight', 'time', 'distance'];
+                    const lockedMeasurements = lockedOrder
+                      .map(id => libraryCustomMeasurements.find(m => m.id === id))
+                      .filter(Boolean);
+
+                    const customMeasurements = libraryCustomMeasurements.filter(m => !m.is_locked);
+
+                    const renderMeasurement = (measurement: any) => {
+                      const displayUnit = measurement.category === 'paired'
+                        ? `${measurement.primary_metric_name} + ${measurement.secondary_metric_name}`
+                        : measurement.primary_metric_name;
+
+                      return (
+                        <label
+                          key={measurement.id}
+                          className="flex items-center gap-2 p-2 rounded hover:bg-white/5 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedMeasurements.includes(measurement.id)}
+                            onChange={() => toggleMeasurement(measurement.id)}
+                            className="rounded"
+                          />
+                          <span className="text-sm text-white flex-1">
+                            {measurement.name}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {displayUnit}
+                          </span>
+                        </label>
+                      );
+                    };
+
+                    return (
+                      <>
+                        {/* Locked measurements */}
+                        {lockedMeasurements.map(renderMeasurement)}
+
+                        {/* Divider if there are custom measurements */}
+                        {customMeasurements.length > 0 && (
+                          <div className="col-span-2 border-t border-white/10 my-1" />
+                        )}
+
+                        {/* Custom measurements */}
+                        {customMeasurements.map(renderMeasurement)}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (

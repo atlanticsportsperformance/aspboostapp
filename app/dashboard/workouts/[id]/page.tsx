@@ -747,6 +747,29 @@ export default function WorkoutBuilderPage() {
   async function handleUpdateExercise(updates: Partial<RoutineExercise>) {
     if (!selectedExerciseId || !workout) return;
 
+    // 🔧 FIX: When set_configurations is provided, also extract and populate metric_targets
+    // This ensures summary views can display metrics without parsing set_configurations
+    if (updates.set_configurations && Array.isArray(updates.set_configurations) && updates.set_configurations.length > 0) {
+      // Extract all metric_values from set_configurations
+      const extractedMetrics: Record<string, any> = {};
+      updates.set_configurations.forEach((setConfig: any) => {
+        if (setConfig.metric_values) {
+          Object.entries(setConfig.metric_values).forEach(([key, value]) => {
+            // Use first non-empty value found for each metric
+            if (value && !extractedMetrics[key]) {
+              extractedMetrics[key] = value;
+            }
+          });
+        }
+      });
+
+      // Auto-populate metric_targets if we found any metrics
+      if (Object.keys(extractedMetrics).length > 0) {
+        updates.metric_targets = extractedMetrics;
+        console.log('🔧 Auto-populated metric_targets from set_configurations:', extractedMetrics);
+      }
+    }
+
     // Optimistically update local state first for immediate UI feedback
     setWorkout({
       ...workout,
@@ -1257,7 +1280,18 @@ export default function WorkoutBuilderPage() {
                 if (ex.metric_targets) exerciseData.metric_targets = ex.metric_targets;
                 if (ex.intensity_targets) exerciseData.intensity_targets = ex.intensity_targets;
                 if (ex.set_configurations) exerciseData.set_configurations = ex.set_configurations;
-                if (ex.enabled_measurements) exerciseData.enabled_measurements = ex.enabled_measurements;
+                if (ex.tracked_max_metrics) exerciseData.tracked_max_metrics = ex.tracked_max_metrics;
+
+                // Handle enabled_measurements - auto-populate from metric_targets if missing
+                if (ex.enabled_measurements && ex.enabled_measurements.length > 0) {
+                  exerciseData.enabled_measurements = ex.enabled_measurements;
+                } else if (ex.metric_targets && Object.keys(ex.metric_targets).length > 0) {
+                  // CRITICAL FIX: If enabled_measurements is missing but metric_targets exists,
+                  // auto-populate enabled_measurements from metric_targets keys
+                  exerciseData.enabled_measurements = Object.keys(ex.metric_targets);
+                  console.log('🔧 Auto-populated enabled_measurements from metric_targets:', exerciseData.enabled_measurements);
+                }
+
                 if (ex.is_amrap != null) exerciseData.is_amrap = ex.is_amrap;
 
                 return exerciseData;

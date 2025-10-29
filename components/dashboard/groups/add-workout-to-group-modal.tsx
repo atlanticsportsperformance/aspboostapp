@@ -160,26 +160,41 @@ export function AddWorkoutToGroupModal({
 
           // Copy routine exercises
           if (routine.routine_exercises && routine.routine_exercises.length > 0) {
-            const exerciseCopies = routine.routine_exercises.map(ex => ({
-              routine_id: newRoutine.id,
-              exercise_id: ex.exercise_id,
-              order_index: ex.order_index,
-              sets: ex.sets,
-              reps_min: ex.reps_min,
-              reps_max: ex.reps_max,
-              time_seconds: ex.time_seconds,
-              percent_1rm: ex.percent_1rm,
-              rpe_target: ex.rpe_target,
-              rest_seconds: ex.rest_seconds,
-              metric_targets: ex.metric_targets,
-              intensity_targets: ex.intensity_targets,
-              set_configurations: ex.set_configurations,
-              notes: ex.notes,
-              is_amrap: ex.is_amrap,
-              is_placeholder: ex.is_placeholder,
-              placeholder_id: ex.placeholder_id,
-              placeholder_name: ex.placeholder_name
-            }));
+            const exerciseCopies = routine.routine_exercises.map(ex => {
+              const exerciseCopy: any = {
+                routine_id: newRoutine.id,
+                exercise_id: ex.exercise_id,
+                order_index: ex.order_index,
+                sets: ex.sets,
+                reps_min: ex.reps_min,
+                reps_max: ex.reps_max,
+                time_seconds: ex.time_seconds,
+                percent_1rm: ex.percent_1rm,
+                rpe_target: ex.rpe_target,
+                rest_seconds: ex.rest_seconds,
+                metric_targets: ex.metric_targets,
+                intensity_targets: ex.intensity_targets,
+                set_configurations: ex.set_configurations,
+                tracked_max_metrics: ex.tracked_max_metrics,
+                notes: ex.notes,
+                is_amrap: ex.is_amrap,
+                is_placeholder: ex.is_placeholder,
+                placeholder_id: ex.placeholder_id,
+                placeholder_name: ex.placeholder_name
+              };
+
+              // Handle enabled_measurements - auto-populate from metric_targets if missing
+              if (ex.enabled_measurements && ex.enabled_measurements.length > 0) {
+                exerciseCopy.enabled_measurements = ex.enabled_measurements;
+              } else if (ex.metric_targets && Object.keys(ex.metric_targets).length > 0) {
+                // CRITICAL FIX: If enabled_measurements is missing but metric_targets exists,
+                // auto-populate enabled_measurements from metric_targets keys
+                exerciseCopy.enabled_measurements = Object.keys(ex.metric_targets);
+                console.log('🔧 Auto-populated enabled_measurements from metric_targets:', exerciseCopy.enabled_measurements);
+              }
+
+              return exerciseCopy;
+            });
 
             const { error: exercisesError } = await supabase
               .from('routine_exercises')

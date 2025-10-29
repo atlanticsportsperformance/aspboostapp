@@ -1,5 +1,6 @@
 'use client';
 
+// Updated to always fetch metric_targets data
 import { useEffect, useState, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import Link from 'next/link';
@@ -20,6 +21,8 @@ import { CreateWorkoutForAthleteModal } from './create-workout-for-athlete-modal
 import { AddWorkoutToAthleteModal } from './add-workout-to-athlete-modal';
 import { AddRoutineToAthleteModal } from './add-routine-to-athlete-modal';
 import { FullscreenCalendarModal } from './fullscreen-calendar-modal';
+import ResumeWorkoutModal from './resume-workout-modal';
+import { hasActiveWorkout, getActiveWorkoutInfo, loadWorkoutState } from '@/lib/workout-persistence';
 
 interface CalendarTabProps {
   athleteId: string;
@@ -77,6 +80,8 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [copiedWorkout, setCopiedWorkout] = useState<{ instanceId: string; workoutName: string } | null>(null);
   const [renderVersion, setRenderVersion] = useState(0); // Force re-render counter
   const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
+  const [resumeWorkoutInfo, setResumeWorkoutInfo] = useState<any>(null);
 
   const supabase = createClient();
 
@@ -87,6 +92,23 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
       },
     })
   );
+
+  // Check for active workout on mount
+  useEffect(() => {
+    if (hasActiveWorkout()) {
+      const info = getActiveWorkoutInfo();
+      const state = loadWorkoutState();
+      if (info && state && state.athleteId === athleteId) {
+        setResumeWorkoutInfo({
+          workoutInstanceId: state.workoutInstanceId,
+          athleteId: state.athleteId,
+          workoutName: info.workoutName,
+          startedAt: info.startedAt
+        });
+        setShowResumeModal(true);
+      }
+    }
+  }, [athleteId]);
 
   useEffect(() => {
     fetchWorkoutInstances();
@@ -108,40 +130,38 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
     const startStr = firstDay.toISOString().split('T')[0];
     const endStr = lastDay.toISOString().split('T')[0];
 
-    // Fetch with or without routine details based on toggle
-    const selectQuery = showWorkoutDetails
-      ? `
-        *,
-        workouts (
+    // Always fetch routine details with metric data - we need this for display
+    const selectQuery = `
+      *,
+      workouts (
+        id,
+        name,
+        category,
+        estimated_duration_minutes,
+        notes,
+        athlete_id,
+        routines (
           id,
           name,
-          category,
-          estimated_duration_minutes,
-          notes,
-          athlete_id,
-          routines (
+          scheme,
+          order_index,
+          routine_exercises (
             id,
-            name,
-            scheme,
             order_index,
-            routine_exercises (
+            sets,
+            metric_targets,
+            set_configurations,
+            intensity_targets,
+            is_amrap,
+            notes,
+            exercises (
               id,
-              order_index,
-              sets,
-              reps_min,
-              reps_max,
-              exercises (
-                id,
-                name
-              )
+              name
             )
           )
         )
-      `
-      : `
-        *,
-        workouts (id, name, category, estimated_duration_minutes, notes, athlete_id)
-      `;
+      )
+    `;
 
     const { data, error } = await supabase
       .from('workout_instances')
@@ -875,6 +895,17 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
           />
         )}
 
+        {/* Resume Workout Modal */}
+        {showResumeModal && resumeWorkoutInfo && (
+          <ResumeWorkoutModal
+            workoutInstanceId={resumeWorkoutInfo.workoutInstanceId}
+            athleteId={resumeWorkoutInfo.athleteId}
+            workoutName={resumeWorkoutInfo.workoutName}
+            startedAt={resumeWorkoutInfo.startedAt}
+            onClose={() => setShowResumeModal(false)}
+          />
+        )}
+
         {/* Import Plan Modal */}
         {showImportPlan && (
           <AssignPlanModal
@@ -1226,20 +1257,68 @@ function DraggableWorkoutChip({
 
                                 {/* Sets, Reps, and Metrics */}
                                 <div className="pl-[20px] text-white/60 space-y-0.5">
-                                  {/* Sets and Reps */}
-                                  {routineExercise.sets && (
-                                    <div>
-                                      {routineExercise.sets} Sets, {' '}
-                                      {routineExercise.reps_min && routineExercise.reps_max
-                                        ? `${routineExercise.reps_min}-${routineExercise.reps_max} reps`
-                                        : routineExercise.reps_min
-                                        ? `${routineExercise.reps_min} reps`
-                                        : routineExercise.time_seconds
-                                        ? `${Math.floor(routineExercise.time_seconds / 60)}:${String(routineExercise.time_seconds % 60).padStart(2, '0')}`
-                                        : '~ reps'}
-                                      {routineExercise.percent_1rm && `, ${routineExercise.percent_1rm}%`}
-                                    </div>
-                                  )}
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    {/* Sets */}
+                                    {routineExercise.sets && (
+                                      <span className="text-[9px]">{routineExercise.sets} Sets</span>
+                                    )}
+
+                                    {/* Show metrics from metric_targets */}
+                                    {routineExercise.metric_targets && Object.entries(routineExercise.metric_targets).map(([key, value]) => {
+                                      if (!key) return null;
+
+                                      // Helper: check if metric is primary (reps-based)
+                                      const isPrimaryMetric = key === 'reps' || key.toLowerCase().endsWith('_reps');
+
+                                      // Skip secondary metrics with 0/null values
+                                      if (!isPrimaryMetric && (!value || value === 0)) return null;
+
+                                      // Format metric name
+                                      const formatMetricName = (metricKey: string): string => {
+                                        if (metricKey.includes('_')) {
+                                          const parts = metricKey.split('_');
+                                          const lastPart = parts[parts.length - 1];
+                                          if (['reps', 'velo', 'mph', 'weight', 'time', 'distance'].includes(lastPart.toLowerCase())) {
+                                            const baseName = parts.slice(0, -1).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                            const metricType = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+                                            return `${baseName} ${metricType}`;
+                                          }
+                                        }
+                                        return metricKey.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                      };
+
+                                      const formattedKey = formatMetricName(key);
+
+                                      // Check if reps with per-set config
+                                      if (key === 'reps') {
+                                        const hasPerSetReps = routineExercise.set_configurations &&
+                                                             Array.isArray(routineExercise.set_configurations) &&
+                                                             routineExercise.set_configurations.length > 0 &&
+                                                             routineExercise.set_configurations.some((s: any) => s.metric_values?.reps || s.reps);
+
+                                        if (hasPerSetReps) {
+                                          const repsArray = routineExercise.set_configurations.map((s: any) => s.metric_values?.reps || s.reps || '—');
+                                          return <span key={key} className="text-[9px]">{repsArray.join(', ')}</span>;
+                                        } else if (routineExercise.is_amrap) {
+                                          return <span key={key} className="text-[9px] text-purple-300">AMRAP</span>;
+                                        }
+                                      }
+
+                                      // Display value or "—" if null/undefined (for primary metrics only at this point)
+                                      const displayValue = (value === null || value === undefined) ? '—' : value;
+                                      return <span key={key} className="text-[9px]">{formattedKey}: {displayValue}</span>;
+                                    })}
+
+                                    {/* Intensity */}
+                                    {routineExercise.intensity_targets && routineExercise.intensity_targets.length > 0 && (
+                                      <span className="text-[9px] text-blue-300">@{routineExercise.intensity_targets[0].percent}%</span>
+                                    )}
+
+                                    {/* Not configured badge */}
+                                    {(!routineExercise.metric_targets || Object.keys(routineExercise.metric_targets).length === 0) && (
+                                      <span className="text-[9px] text-yellow-300">Not configured</span>
+                                    )}
+                                  </div>
 
                                   {/* Special notes from notes field */}
                                   {routineExercise.notes && (

@@ -78,18 +78,44 @@ export default function WorkoutSidebar({
   onMoveRoutine
 }: WorkoutSidebarProps) {
   const [linkingExerciseId, setLinkingExerciseId] = useState<string | null>(null);
+
+  // Check if exercise is tracking any PRs
+  const isTrackingPRs = (exercise: RoutineExercise) => {
+    return exercise.tracked_max_metrics && exercise.tracked_max_metrics.length > 0;
+  };
+
   const getExerciseSummary = (exercise: RoutineExercise) => {
     const parts: string[] = [];
 
     // Sets
     if (exercise.sets) parts.push(`${exercise.sets} ${exercise.sets === 1 ? 'Set' : 'Sets'}`);
 
-    // Metrics from metric_targets
+    // Reps - Check for per-set configuration first
+    const hasPerSetReps = exercise.set_configurations &&
+                         Array.isArray(exercise.set_configurations) &&
+                         exercise.set_configurations.length > 0 &&
+                         exercise.set_configurations.some((s: any) => s.metric_values?.reps || s.reps);
+
+    if (hasPerSetReps) {
+      // Show per-set reps (e.g., "5, 8, 10 reps")
+      // Check both metric_values.reps (new format) and direct reps (old format)
+      const repsArray = exercise.set_configurations.map((s: any) => s.metric_values?.reps || s.reps || '—');
+      parts.push(`${repsArray.join(', ')} reps`);
+    } else if (exercise.metric_targets?.reps) {
+      // Show simple reps from metric_targets
+      parts.push(`${exercise.metric_targets.reps} reps`);
+    }
+
+    // Other metrics from metric_targets (skip reps since we handled it above)
+    // Show ALL metrics the same way - locked and custom measurements treated identically
     if (exercise.metric_targets) {
       Object.entries(exercise.metric_targets).forEach(([key, value]) => {
-        if (value != null && value !== '') {
-          // Format the metric name and value
-          const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+        if (key !== 'reps' && value != null && value !== '') {
+          // Format the metric name - convert snake_case to Title Case
+          const formattedKey = key
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
           parts.push(`${value} ${formattedKey}`);
         }
       });
@@ -279,6 +305,11 @@ export default function WorkoutSidebar({
                                   ? exercise.placeholder_name || 'Placeholder Exercise'
                                   : exercise.exercises?.name || 'Exercise'}
                               </h4>
+                              {isTrackingPRs(exercise) && (
+                                <span className="text-yellow-400 text-sm shrink-0" title="Tracking Personal Records">
+                                  🏆
+                                </span>
+                              )}
                               {exercise.is_placeholder && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-semibold bg-blue-500/20 border border-blue-500/30 text-blue-300 shrink-0">
                                   PH
@@ -369,6 +400,11 @@ export default function WorkoutSidebar({
                           ? exercise.placeholder_name || 'Placeholder Exercise'
                           : exercise.exercises?.name || 'Exercise'}
                       </h4>
+                      {isTrackingPRs(exercise) && (
+                        <span className="text-yellow-400 text-sm shrink-0" title="Tracking Personal Records">
+                          🏆
+                        </span>
+                      )}
                       {exercise.is_placeholder && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-xs font-semibold bg-blue-500/20 border border-blue-500/30 text-blue-300 shrink-0">
                           PH

@@ -232,35 +232,53 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
       placeholderId = newPlaceholderId;
     }
 
-    const newRoutineOrder = workout.routines.length;
+    let targetRoutineId = selectedRoutineId;
+    let newRoutine: any = null;
 
-    const { data: newRoutine, error: routineError } = await supabase
-      .from('routines')
-      .insert({
-        workout_id: workoutId,
-        name: 'Exercise',
-        scheme: 'straight',
-        order_index: newRoutineOrder,
-        is_standalone: false,
-        plan_id: planId,
-        athlete_id: null
-      })
-      .select()
-      .single();
+    // If a routine is selected (Add to Block), use that routine
+    // Otherwise, create a new straight-set routine
+    if (selectedRoutineId) {
+      console.log('📍 Adding to existing block:', selectedRoutineId);
+      targetRoutineId = selectedRoutineId;
+    } else {
+      console.log('📍 Creating new straight-set routine');
+      const newRoutineOrder = workout.routines.length;
 
-    if (routineError || !newRoutine) {
-      console.error('Error creating routine:', routineError);
-      alert('Failed to add exercise');
-      return;
+      const { data, error: routineError } = await supabase
+        .from('routines')
+        .insert({
+          workout_id: workoutId,
+          name: 'Exercise',
+          scheme: 'straight',
+          order_index: newRoutineOrder,
+          is_standalone: false,
+          plan_id: planId,
+          athlete_id: athleteId || null
+        })
+        .select()
+        .single();
+
+      if (routineError || !data) {
+        console.error('Error creating routine:', routineError);
+        alert('Failed to add exercise');
+        return;
+      }
+
+      newRoutine = data;
+      targetRoutineId = newRoutine.id;
     }
 
+    // Get the next order_index for this routine
+    const targetRoutine = workout.routines.find(r => r.id === targetRoutineId);
+    const nextOrderIndex = targetRoutine?.routine_exercises?.length || 0;
+
     const exerciseData: any = {
-      routine_id: newRoutine.id,
+      routine_id: targetRoutineId,
       exercise_id: isPlaceholder ? null : exerciseId,
       is_placeholder: isPlaceholder,
       placeholder_id: placeholderId || null,
       placeholder_name: isPlaceholder ? placeholderName : null,
-      order_index: 0
+      order_index: nextOrderIndex
     };
 
     if (sets) exerciseData.sets = parseInt(sets) || null;
@@ -287,7 +305,7 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
     await fetchWorkout();
 
     if (newExercise) {
-      setSelectedRoutineId(newRoutine.id);
+      setSelectedRoutineId(targetRoutineId!);
       setSelectedExerciseId(newExercise.id);
     }
   }
@@ -295,56 +313,102 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
   async function handleAddMultipleExercises(exerciseIds: string[]) {
     if (!workout || exerciseIds.length === 0) return;
 
-    // Create routines and exercises for each selected exercise
-    const routinesToCreate = exerciseIds.map((_, index) => ({
-      workout_id: workoutId,
-      name: 'Exercise',
-      scheme: 'straight',
-      order_index: workout.routines.length + index,
-      is_standalone: false,
-      plan_id: planId,
-      athlete_id: null
-    }));
+    let targetRoutineId = selectedRoutineId;
+    let newRoutines: any[] = [];
 
-    const { data: newRoutines, error: routineError } = await supabase
-      .from('routines')
-      .insert(routinesToCreate)
-      .select();
+    // If a routine is selected (Add to Block), add all exercises to that block
+    if (selectedRoutineId) {
+      console.log('📍 Adding', exerciseIds.length, 'exercises to existing block:', selectedRoutineId);
 
-    if (routineError || !newRoutines) {
-      console.error('Error creating routines:', routineError);
-      alert('Failed to add exercises');
-      return;
-    }
+      // Get the target routine to determine starting order_index
+      const targetRoutine = workout.routines.find(r => r.id === selectedRoutineId);
+      const startOrderIndex = targetRoutine?.routine_exercises?.length || 0;
 
-    // Create routine_exercises for each
-    const exercisesToInsert = exerciseIds.map((exerciseId, index) => ({
-      routine_id: newRoutines[index].id,
-      exercise_id: exerciseId,
-      is_placeholder: false,
-      placeholder_id: null,
-      placeholder_name: null,
-      order_index: 0
-    }));
+      // Create routine_exercises for each, all in the same block
+      const exercisesToInsert = exerciseIds.map((exerciseId, index) => ({
+        routine_id: selectedRoutineId,
+        exercise_id: exerciseId,
+        is_placeholder: false,
+        placeholder_id: null,
+        placeholder_name: null,
+        order_index: startOrderIndex + index
+      }));
 
-    const { data: newExercises, error: exerciseError } = await supabase
-      .from('routine_exercises')
-      .insert(exercisesToInsert)
-      .select();
+      const { data: newExercises, error: exerciseError } = await supabase
+        .from('routine_exercises')
+        .insert(exercisesToInsert)
+        .select();
 
-    if (exerciseError) {
-      console.error('Error adding exercises:', exerciseError);
-      alert('Failed to add exercises');
-      return;
-    }
+      if (exerciseError) {
+        console.error('Error adding exercises:', exerciseError);
+        alert('Failed to add exercises');
+        return;
+      }
 
-    setShowAddExercise(false);
-    await fetchWorkout();
+      setShowAddExercise(false);
+      await fetchWorkout();
 
-    // Auto-select the first newly added exercise
-    if (newRoutines.length > 0 && newExercises && newExercises.length > 0) {
-      setSelectedRoutineId(newRoutines[0].id);
-      setSelectedExerciseId(newExercises[0].id);
+      // Auto-select the first newly added exercise
+      if (newExercises && newExercises.length > 0) {
+        setSelectedRoutineId(selectedRoutineId);
+        setSelectedExerciseId(newExercises[0].id);
+      }
+    } else {
+      console.log('📍 Creating new straight-set routines for', exerciseIds.length, 'exercises');
+
+      // Create separate routines for each selected exercise
+      const routinesToCreate = exerciseIds.map((_, index) => ({
+        workout_id: workoutId,
+        name: 'Exercise',
+        scheme: 'straight',
+        order_index: workout.routines.length + index,
+        is_standalone: false,
+        plan_id: planId,
+        athlete_id: athleteId || null
+      }));
+
+      const { data, error: routineError } = await supabase
+        .from('routines')
+        .insert(routinesToCreate)
+        .select();
+
+      if (routineError || !data) {
+        console.error('Error creating routines:', routineError);
+        alert('Failed to add exercises');
+        return;
+      }
+
+      newRoutines = data;
+
+      // Create routine_exercises for each
+      const exercisesToInsert = exerciseIds.map((exerciseId, index) => ({
+        routine_id: newRoutines[index].id,
+        exercise_id: exerciseId,
+        is_placeholder: false,
+        placeholder_id: null,
+        placeholder_name: null,
+        order_index: 0
+      }));
+
+      const { data: newExercises, error: exerciseError } = await supabase
+        .from('routine_exercises')
+        .insert(exercisesToInsert)
+        .select();
+
+      if (exerciseError) {
+        console.error('Error adding exercises:', exerciseError);
+        alert('Failed to add exercises');
+        return;
+      }
+
+      setShowAddExercise(false);
+      await fetchWorkout();
+
+      // Auto-select the first newly added exercise
+      if (newRoutines.length > 0 && newExercises && newExercises.length > 0) {
+        setSelectedRoutineId(newRoutines[0].id);
+        setSelectedExerciseId(newExercises[0].id);
+      }
     }
   }
 
@@ -481,8 +545,19 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
         if (ex.metric_targets) exerciseData.metric_targets = ex.metric_targets;
         if (ex.intensity_targets) exerciseData.intensity_targets = ex.intensity_targets;
         if (ex.set_configurations) exerciseData.set_configurations = ex.set_configurations;
-        if (ex.enabled_measurements) exerciseData.enabled_measurements = ex.enabled_measurements;
+        if (ex.tracked_max_metrics) exerciseData.tracked_max_metrics = ex.tracked_max_metrics;
         if (ex.is_amrap != null) exerciseData.is_amrap = ex.is_amrap;
+
+        // Handle enabled_measurements
+        if (ex.enabled_measurements && ex.enabled_measurements.length > 0) {
+          // Copy existing enabled_measurements
+          exerciseData.enabled_measurements = ex.enabled_measurements;
+        } else if (ex.metric_targets && Object.keys(ex.metric_targets).length > 0) {
+          // CRITICAL FIX: If enabled_measurements is missing but metric_targets exists,
+          // auto-populate enabled_measurements from metric_targets keys
+          exerciseData.enabled_measurements = Object.keys(ex.metric_targets);
+          console.log('🔧 Auto-populated enabled_measurements from metric_targets:', exerciseData.enabled_measurements);
+        }
 
         return exerciseData;
       });
@@ -516,7 +591,16 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
   async function handleCreateBlock() {
     if (!workout) return;
 
-    const maxOrderIndex = Math.max(...(workout.routines.map(r => r.order_index) || [0]));
+    // Calculate max order index, handling empty array case
+    const orderIndexes = workout.routines.map(r => r.order_index);
+    const maxOrderIndex = orderIndexes.length > 0 ? Math.max(...orderIndexes) : -1;
+
+    console.log('🔵 [Create Block] Attempting to create block with:', {
+      workout_id: workoutId,
+      plan_id: planId,
+      athlete_id: athleteId,
+      maxOrderIndex
+    });
 
     const { data: newRoutine, error: routineError } = await supabase
       .from('routines')
@@ -527,17 +611,25 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
         order_index: maxOrderIndex + 1,
         is_standalone: false,
         plan_id: planId,
-        athlete_id: null
+        athlete_id: athleteId || null,
+        placeholder_definitions: { placeholders: [] }
       })
       .select()
       .single();
 
     if (routineError || !newRoutine) {
-      console.error('Error creating block:', routineError);
-      alert('Failed to create block');
+      console.error('❌ [Create Block] Error details:', {
+        error: routineError,
+        errorMessage: routineError?.message,
+        errorDetails: routineError?.details,
+        errorHint: routineError?.hint,
+        errorCode: routineError?.code
+      });
+      alert(`Failed to create block: ${routineError?.message || 'Unknown error'}`);
       return;
     }
 
+    console.log('✅ [Create Block] Block created successfully:', newRoutine.id);
     await fetchWorkout();
     setSelectedRoutineId(newRoutine.id);
     setSelectedExerciseId(null);
@@ -848,10 +940,35 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
   async function handleDeleteRoutine() {
     if (!selectedRoutineId || !confirm('Delete this block and all its exercises?')) return;
 
-    await supabase
+    console.log('🗑️ Deleting routine:', selectedRoutineId);
+
+    // Delete routine exercises first
+    const { error: exercisesError } = await supabase
+      .from('routine_exercises')
+      .delete()
+      .eq('routine_id', selectedRoutineId);
+
+    if (exercisesError) {
+      console.error('❌ Error deleting routine exercises:', exercisesError);
+      alert('Failed to delete exercises: ' + exercisesError.message);
+      return;
+    }
+
+    console.log('✅ Deleted routine exercises');
+
+    // Then delete the routine
+    const { error: routineError } = await supabase
       .from('routines')
       .delete()
       .eq('id', selectedRoutineId);
+
+    if (routineError) {
+      console.error('❌ Error deleting routine:', routineError);
+      alert('Failed to delete block: ' + routineError.message);
+      return;
+    }
+
+    console.log('✅ Deleted routine successfully');
 
     setSelectedRoutineId(null);
     setSelectedExerciseId(null);
@@ -1022,11 +1139,14 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
             }}
             onDeleteExercise={handleDeleteExercise}
             onDeleteRoutine={(id) => {
-              if (!confirm('Delete this block?')) return;
-              supabase.from('routines').delete().eq('id', id);
-              fetchWorkout();
+              setSelectedRoutineId(id);
+              handleDeleteRoutine();
             }}
             onAddExercise={() => setShowAddExercise(true)}
+            onAddExerciseToBlock={(routineId) => {
+              setSelectedRoutineId(routineId);
+              setShowAddExercise(true);
+            }}
             onImportRoutine={() => setShowImportRoutine(true)}
             onCreateBlock={handleCreateBlock}
             onLinkExerciseToBlock={handleLinkExerciseToBlock}
@@ -1070,11 +1190,15 @@ export function WorkoutBuilderModal({ workoutId, planId, athleteId, onClose, onS
                   }}
                   onDeleteExercise={handleDeleteExercise}
                   onDeleteRoutine={(id) => {
-                    if (!confirm('Delete this block?')) return;
-                    supabase.from('routines').delete().eq('id', id);
-                    fetchWorkout();
+                    setSelectedRoutineId(id);
+                    handleDeleteRoutine();
                   }}
                   onAddExercise={() => {
+                    setShowAddExercise(true);
+                    setShowMobileSidebar(false);
+                  }}
+                  onAddExerciseToBlock={(routineId) => {
+                    setSelectedRoutineId(routineId);
                     setShowAddExercise(true);
                     setShowMobileSidebar(false);
                   }}

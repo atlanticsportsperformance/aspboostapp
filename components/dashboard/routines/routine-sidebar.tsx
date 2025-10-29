@@ -154,9 +154,12 @@ export default function RoutineSidebar({
       <div className="p-4 border-t border-neutral-800">
         <button
           onClick={onAddExercise}
-          className="w-full px-4 py-2.5 bg-neutral-800/50 border border-neutral-600 hover:bg-neutral-700/50 text-white rounded-md font-medium text-sm transition-all"
+          className="w-full px-3 py-2 bg-neutral-900/30 hover:bg-neutral-800/50 border border-dashed border-neutral-700 hover:border-neutral-600 rounded-md text-neutral-400 hover:text-white transition-all flex items-center justify-center gap-2"
         >
-          Add Exercise
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          <span className="text-xs font-medium">Add Exercise</span>
         </button>
       </div>
     </div>

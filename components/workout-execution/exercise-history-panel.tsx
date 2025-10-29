@@ -34,6 +34,8 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
   const [history, setHistory] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [displayCount, setDisplayCount] = useState(5);
+  const [compactView, setCompactView] = useState(false);
 
   useEffect(() => {
     fetchHistory();
@@ -41,6 +43,12 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
 
   async function fetchHistory() {
     setLoading(true);
+
+    console.log('📜 Fetching exercise history:', {
+      athleteId,
+      exerciseId,
+      exerciseName
+    });
 
     // Fetch last 10 workout sessions for this exercise
     const { data, error } = await supabase
@@ -63,10 +71,12 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
       .limit(100);
 
     if (error) {
-      console.error('Error fetching exercise history:', error);
+      console.error('❌ Error fetching exercise history:', error);
       setLoading(false);
       return;
     }
+
+    console.log(`✅ Found ${data?.length || 0} exercise logs for history`);
 
     // Group by workout session
     const sessionMap = new Map<string, WorkoutSession>();
@@ -194,8 +204,25 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
 
       {/* History List - Expandable */}
       {isExpanded && (
-        <div className="border-t border-white/10 max-h-96 overflow-y-auto">
-          {history.map((session, sessionIdx) => (
+        <div className="border-t border-white/10">
+          {/* View Controls */}
+          {history.length > 5 && (
+            <div className="p-2 border-b border-white/5 flex items-center justify-between bg-black/20">
+              <button
+                onClick={() => setCompactView(!compactView)}
+                className="text-xs text-gray-400 hover:text-white transition-colors"
+              >
+                {compactView ? '📋 Detailed View' : '📊 Compact View'}
+              </button>
+              <span className="text-xs text-gray-500">
+                Showing {Math.min(displayCount, history.length)} of {history.length}
+              </span>
+            </div>
+          )}
+
+          {/* Scrollable History */}
+          <div className="max-h-80 overflow-y-auto">
+            {history.slice(0, displayCount).map((session, sessionIdx) => (
             <div
               key={session.workoutId}
               className={`p-4 ${sessionIdx !== history.length - 1 ? 'border-b border-white/5' : ''}`}
@@ -210,33 +237,41 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
                 </span>
               </div>
 
-              {/* Sets */}
-              <div className="space-y-2">
-                {session.sets.map((log) => {
-                  const metrics = getDisplayMetrics(log);
+              {/* Sets - Detailed or Compact */}
+              {!compactView ? (
+                // Detailed View - Show all sets
+                <div className="space-y-2">
+                  {session.sets.map((log) => {
+                    const metrics = getDisplayMetrics(log);
 
-                  return (
-                    <div
-                      key={log.id}
-                      className="bg-black/30 rounded p-2 border border-white/5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-gray-400">
-                          Set {log.set_number}
-                        </span>
-                        <div className="flex gap-3">
-                          {metrics.map((metric, idx) => (
-                            <div key={idx} className="text-right">
-                              <div className="text-xs text-gray-500">{metric.label}</div>
-                              <div className="text-sm font-semibold text-white">{metric.value}</div>
-                            </div>
-                          ))}
+                    return (
+                      <div
+                        key={log.id}
+                        className="bg-black/30 rounded p-2 border border-white/5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-gray-400">
+                            Set {log.set_number}
+                          </span>
+                          <div className="flex gap-3">
+                            {metrics.map((metric, idx) => (
+                              <div key={idx} className="text-right">
+                                <div className="text-xs text-gray-500">{metric.label}</div>
+                                <div className="text-sm font-semibold text-white">{metric.value}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                // Compact View - Just show summary
+                <div className="text-xs text-gray-400">
+                  {session.sets.length} sets completed
+                </div>
+              )}
 
               {/* Summary Stats */}
               <div className="mt-3 pt-3 border-t border-white/5">
@@ -265,6 +300,18 @@ export function ExerciseHistoryPanel({ athleteId, exerciseId, exerciseName }: Ex
               </div>
             </div>
           ))}
+
+          {/* Load More Button */}
+          {displayCount < history.length && (
+            <div className="p-3 border-t border-white/10 text-center">
+              <button
+                onClick={() => setDisplayCount(prev => prev + 5)}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors font-medium"
+              >
+                Load More ({history.length - displayCount} remaining)
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

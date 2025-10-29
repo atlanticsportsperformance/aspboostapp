@@ -6,9 +6,19 @@ import SetBySetEditor from './set-by-set-editor';
 interface Measurement {
   id: string;
   name: string;
-  type: string;
-  unit: string;
+  category: 'single' | 'paired';
+  primary_metric_id: string;
+  primary_metric_name: string;
+  primary_metric_type: 'integer' | 'decimal' | 'time';
+  secondary_metric_id?: string | null;
+  secondary_metric_name?: string | null;
+  secondary_metric_type?: 'integer' | 'decimal' | 'time' | null;
+  is_locked?: boolean;
   enabled: boolean;
+
+  // Legacy fields for backwards compatibility
+  type?: string;
+  unit?: string;
 }
 
 interface Exercise {
@@ -199,29 +209,34 @@ export default function SimpleExerciseCard({
                     </div>
 
                     {/* Dynamic metric fields based on metric_schema */}
-                    {getEnabledMeasurements().map((measurement) => (
-                      <div key={measurement.id} className="flex flex-col">
-                        <label className="block text-xs text-gray-400 mb-1">
-                          {measurement.name} {measurement.unit && `(${measurement.unit})`}
-                        </label>
-                        <input
-                          type={measurement.type === 'integer' || measurement.type === 'decimal' ? 'number' : 'text'}
-                          step={measurement.type === 'decimal' ? '0.01' : '1'}
-                          value={getMetricValue(measurement.id) || ''}
-                          onChange={(e) => {
-                            if (measurement.type === 'integer') {
-                              updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
-                            } else if (measurement.type === 'decimal') {
-                              updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
-                            } else {
-                              updateMetricValue(measurement.id, e.target.value || null);
-                            }
-                          }}
-                          className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder={measurement.type === 'text' ? 'Enter value' : '0'}
-                        />
-                      </div>
-                    ))}
+                    {getEnabledMeasurements().map((measurement) => {
+                      const metricType = measurement.primary_metric_type || measurement.type;
+                      const metricName = measurement.primary_metric_name || measurement.unit;
+
+                      return (
+                        <div key={measurement.id} className="flex flex-col">
+                          <label className="block text-xs text-gray-400 mb-1">
+                            {measurement.name} {metricName && `(${metricName})`}
+                          </label>
+                          <input
+                            type={metricType === 'integer' || metricType === 'decimal' ? 'number' : 'text'}
+                            step={metricType === 'decimal' ? '0.01' : '1'}
+                            value={getMetricValue(measurement.id) || ''}
+                            onChange={(e) => {
+                              if (metricType === 'integer') {
+                                updateMetricValue(measurement.id, e.target.value ? parseInt(e.target.value) : null);
+                              } else if (metricType === 'decimal') {
+                                updateMetricValue(measurement.id, e.target.value ? parseFloat(e.target.value) : null);
+                              } else {
+                                updateMetricValue(measurement.id, e.target.value || null);
+                              }
+                            }}
+                            className="w-20 px-2 py-2 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder={metricType === 'time' ? 'HH:MM:SS' : '0'}
+                          />
+                        </div>
+                      );
+                    })}
 
                     {/* Intensity % - Inline with other fields */}
                     {getEnabledMeasurements().length > 0 && (

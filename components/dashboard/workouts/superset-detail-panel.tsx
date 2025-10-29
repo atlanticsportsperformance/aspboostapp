@@ -55,10 +55,12 @@ export default function SupersetDetailPanel({
   onSelectExercise
 }: SupersetDetailPanelProps) {
   const [localName, setLocalName] = useState(routine.name);
+  const [localNotes, setLocalNotes] = useState(routine.notes || '');
 
   useEffect(() => {
     setLocalName(routine.name);
-  }, [routine.id, routine.name]);
+    setLocalNotes(routine.notes || '');
+  }, [routine.id, routine.name, routine.notes]);
 
   const getExerciseSummary = (exercise: RoutineExercise) => {
     const parts: string[] = [];
@@ -117,8 +119,9 @@ export default function SupersetDetailPanel({
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">Block Notes & Instructions</label>
           <textarea
-            value={routine.notes || ''}
-            onChange={(e) => onUpdate({ notes: e.target.value })}
+            value={localNotes}
+            onChange={(e) => setLocalNotes(e.target.value)}
+            onBlur={(e) => onUpdate({ notes: e.target.value })}
             rows={3}
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             placeholder="Add instructions for this block (e.g., 'Rest 90 seconds between rounds', 'Perform as a superset with no rest between exercises')..."

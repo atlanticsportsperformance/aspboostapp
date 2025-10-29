@@ -201,7 +201,7 @@ export default function ExerciseDetailView({
       {/* Exercise History Panel */}
       <div className="px-2 py-2 flex-shrink-0">
         <ExerciseHistoryPanel
-          athleteId={exercise.athlete_id || ''}
+          athleteId={athleteId}
           exerciseId={exercise.exercise_id}
           exerciseName={exerciseData?.name || 'Exercise'}
         />
