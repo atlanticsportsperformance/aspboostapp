@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CreateExerciseDialog } from '@/components/dashboard/exercises/create-exercise-dialog';
 import { CustomMeasurementsManager } from '@/components/dashboard/exercises/custom-measurements-manager';
@@ -79,11 +79,21 @@ export default function ExercisesPage() {
     loadUser();
   }, []);
 
+  // Use a ref to track the previous tags value to prevent unnecessary re-fetches
+  const prevTagsRef = useRef<string | undefined>();
+
   useEffect(() => {
-    if (userId) {
+    const currentTags = JSON.stringify(permissions?.allowed_exercise_tags);
+
+    if (userId && currentTags !== prevTagsRef.current) {
+      console.log('🔄 Tags changed, triggering fetchExercises', {
+        prev: prevTagsRef.current,
+        current: currentTags
+      });
+      prevTagsRef.current = currentTags;
       fetchExercises();
     }
-  }, [userId, userRole, JSON.stringify(permissions?.allowed_exercise_tags)]);
+  }, [userId, userRole, permissions?.allowed_exercise_tags]);
 
   useEffect(() => {
     console.log('📊 Filtering exercises:', {
