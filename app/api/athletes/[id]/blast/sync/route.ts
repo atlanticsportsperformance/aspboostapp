@@ -186,8 +186,14 @@ export async function POST(
           });
 
         if (insertError) {
-          console.error(`Error inserting swing ${swing.blast_id}:`, insertError);
-          errors.push(`Swing ${swing.blast_id}: ${insertError.message}`);
+          // Check if it's a duplicate key violation (unique constraint)
+          if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
+            // Silently skip duplicates - this is expected behavior
+            skippedCount++;
+          } else {
+            console.error(`Error inserting swing ${swing.blast_id}:`, insertError);
+            errors.push(`Swing ${swing.blast_id}: ${insertError.message}`);
+          }
         } else {
           insertedCount++;
         }
