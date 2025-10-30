@@ -30,6 +30,7 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
   const [selectedValdProfile, setSelectedValdProfile] = useState<string>('');
   const [valdMessage, setValdMessage] = useState('');
   const [valdLinking, setValdLinking] = useState(false);
+  const [valdCreating, setValdCreating] = useState(false);
 
   // Blast Motion linking state
   const [blastSearching, setBlastSearching] = useState(false);
@@ -166,6 +167,61 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
       setValdMessage('❌ Failed to search VALD');
     } finally {
       setValdSearching(false);
+      setTimeout(() => setValdMessage(''), 5000);
+    }
+  }
+
+  async function handleCreateVALD() {
+    // Validate required fields
+    if (!athlete.first_name || !athlete.last_name) {
+      setValdMessage('❌ Athlete must have first and last name');
+      setTimeout(() => setValdMessage(''), 3000);
+      return;
+    }
+
+    if (!athlete.date_of_birth) {
+      setValdMessage('❌ Birth date is required to create VALD profile');
+      setTimeout(() => setValdMessage(''), 3000);
+      return;
+    }
+
+    if (!athlete.email) {
+      setValdMessage('❌ Email is required to create VALD profile');
+      setTimeout(() => setValdMessage(''), 3000);
+      return;
+    }
+
+    setValdCreating(true);
+    setValdMessage('Creating VALD profile...');
+
+    try {
+      const response = await fetch('/api/athletes/create-vald-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          athleteId: athlete.id,
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setValdMessage('✅ VALD profile created successfully!');
+        // Update local athlete data
+        athlete.vald_profile_id = data.vald_profile_id;
+
+        // Refresh page to show updated VALD status
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        setValdMessage('❌ Error creating VALD profile: ' + (data.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error creating VALD profile:', error);
+      setValdMessage('❌ Failed to create VALD profile');
+    } finally {
+      setValdCreating(false);
       setTimeout(() => setValdMessage(''), 5000);
     }
   }
@@ -538,22 +594,61 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
             </div>
           )}
 
-          {/* Search Button */}
+          {/* Search and Create Buttons */}
           {!athlete.vald_profile_id && canEditProfile && (
-            <button
-              onClick={handleSearchVALD}
-              disabled={valdSearching || !athlete.first_name || !athlete.last_name}
-              className="w-full px-3 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs mb-3"
-            >
-              {valdSearching ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-black border-r-transparent"></div>
-                  Searching...
-                </span>
-              ) : (
-                `Search VALD`
+            <div className="space-y-2 mb-3">
+              <button
+                onClick={handleSearchVALD}
+                disabled={valdSearching || !athlete.first_name || !athlete.last_name}
+                className="w-full px-3 py-2 bg-[#9BDDFF] text-black rounded-lg hover:bg-[#7BC5F0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs"
+              >
+                {valdSearching ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-black border-r-transparent"></div>
+                    Searching...
+                  </span>
+                ) : (
+                  `Search VALD`
+                )}
+              </button>
+
+              <button
+                onClick={handleCreateVALD}
+                disabled={valdCreating || !athlete.first_name || !athlete.last_name || !athlete.date_of_birth || !athlete.email}
+                className="w-full px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs flex items-center justify-center gap-2"
+              >
+                {valdCreating ? (
+                  <>
+                    <div className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-solid border-white border-r-transparent"></div>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create VALD Account
+                  </>
+                )}
+              </button>
+
+              {/* Info message for required fields */}
+              {(!athlete.first_name || !athlete.last_name || !athlete.date_of_birth || !athlete.email) && (
+                <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded text-xs text-blue-300">
+                  <p className="flex items-start gap-1.5">
+                    <svg className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      To create a VALD account, please ensure the athlete has:
+                      {!athlete.first_name || !athlete.last_name ? ' name,' : ''}
+                      {!athlete.email ? ' email,' : ''}
+                      {!athlete.date_of_birth ? ' birth date' : ''}
+                    </span>
+                  </p>
+                </div>
               )}
-            </button>
+            </div>
           )}
 
           {/* Permission denied message */}

@@ -353,6 +353,11 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
 
   return (
     <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-white">Hitting Overview</h2>
+      </div>
+
       {/* Content */}
       {!blastPlayerId ? (
         // Not Linked State

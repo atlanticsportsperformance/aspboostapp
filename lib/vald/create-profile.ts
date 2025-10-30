@@ -101,6 +101,18 @@ export async function createAndLinkVALDProfile(
       }
 
       console.log(`✅ Linked existing VALD profile ${existingProfile.profileId} to athlete ${params.athleteId}`);
+
+      // Check if the VALD profile needs email update (edge case: profile exists but no email)
+      if (!existingProfile.email && params.email) {
+        try {
+          console.log(`📧 Updating VALD profile email to: ${params.email}`);
+          await valdProfileApi.updateProfileEmail(existingProfile.profileId, params.email);
+          console.log(`✅ Successfully updated VALD profile email`);
+        } catch (emailError) {
+          console.error('⚠️  Error updating VALD profile email (non-fatal):', emailError);
+        }
+      }
+
       return existingProfile.profileId;
     }
 
@@ -261,17 +273,33 @@ export async function resolveVALDProfileId(
 /**
  * Manually link an existing VALD profile to an athlete
  * Use this if an athlete already has a VALD profile
+ * Also syncs the athlete's email to VALD if the profile doesn't have one
  *
  * @param supabase - Supabase client
  * @param athleteId - Athlete ID in your system
  * @param valdProfileId - Existing VALD profile ID
+ * @param syncEmail - Whether to sync the athlete's email to VALD (default: true)
  */
 export async function linkExistingVALDProfile(
   supabase: SupabaseClient,
   athleteId: string,
-  valdProfileId: string
+  valdProfileId: string,
+  syncEmail: boolean = true
 ): Promise<boolean> {
   try {
+    // Get the athlete's email
+    const { data: athlete, error: athleteError } = await supabase
+      .from('athletes')
+      .select('email')
+      .eq('id', athleteId)
+      .single();
+
+    if (athleteError) {
+      console.error('Error fetching athlete for email sync:', athleteError);
+      return false;
+    }
+
+    // Link the profile
     const { error } = await supabase
       .from('athletes')
       .update({
@@ -286,6 +314,29 @@ export async function linkExistingVALDProfile(
     }
 
     console.log(`✅ Linked existing VALD profile ${valdProfileId} to athlete ${athleteId}`);
+
+    // Sync email to VALD if requested and athlete has an email
+    if (syncEmail && athlete?.email) {
+      try {
+        console.log(`🔄 Syncing email ${athlete.email} to VALD profile ${valdProfileId}...`);
+        const valdProfileApi = new ValdProfileApi();
+
+        // Get current profile to check if it has an email
+        const currentProfile = await valdProfileApi.getProfileById(valdProfileId);
+
+        if (currentProfile && !currentProfile.email) {
+          console.log(`📧 VALD profile has no email, updating to: ${athlete.email}`);
+          await valdProfileApi.updateProfileEmail(valdProfileId, athlete.email);
+          console.log(`✅ Successfully synced email to VALD profile`);
+        } else if (currentProfile && currentProfile.email) {
+          console.log(`ℹ️  VALD profile already has email: ${currentProfile.email}`);
+        }
+      } catch (emailError) {
+        console.error('⚠️  Error syncing email to VALD (non-fatal):', emailError);
+        // Don't fail the whole operation if email sync fails
+      }
+    }
+
     return true;
   } catch (error) {
     console.error('Error linking VALD profile:', error);
