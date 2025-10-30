@@ -38,6 +38,7 @@ interface Athlete {
   is_active: boolean;
   created_at: string;
   vald_profile_id?: string | null;
+  blast_player_id?: number | null;
   profile?: Profile | null;
   teams?: Team[];
   currentPlan?: Plan | null;
@@ -108,10 +109,10 @@ export default function AthletesPage() {
       // Apply athlete visibility filtering
       const filter = await getAthleteFilter(userId, userRole);
 
-      // Step 1: Get all active athletes (include VALD profile status)
+      // Step 1: Get all active athletes (include VALD and Blast Motion profile status)
       let query = supabase
         .from('athletes')
-        .select('*, vald_profile_id')
+        .select('*, vald_profile_id, blast_player_id')
         .eq('is_active', true);
 
       // Apply visibility filter
@@ -463,38 +464,41 @@ export default function AthletesPage() {
       <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">Total</p>
-            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">Total</p>
+            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center">
+              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
           </div>
-          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
+          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">Active</p>
-            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">Active</p>
+            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center">
+              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
           </div>
-          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
+          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-[10px] sm:text-xs lg:text-sm font-medium">No WO</p>
-            <div className="h-5 w-5 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center">
-              <svg className="h-3 w-3 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">
+              <span className="hidden sm:inline">No Workout</span>
+              <span className="sm:hidden">No WO</span>
+            </p>
+            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center">
+              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
           </div>
-          <p className="text-lg sm:text-xl lg:text-3xl font-bold text-white">{stats.noUpcoming}</p>
+          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.noUpcoming}</p>
         </div>
       </div>
 
@@ -602,8 +606,7 @@ export default function AthletesPage() {
                                   </div>
                                 </div>
                               )}
-                              {/* Blast Motion - Coming Soon */}
-                              {false && (
+                              {athlete.blast_player_id && (
                                 <div className="group relative">
                                   <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center">
                                     <span className="text-blue-500 font-bold text-xs">B</span>
@@ -714,8 +717,7 @@ export default function AthletesPage() {
                             <span className="text-white font-bold text-[10px]">V</span>
                           </div>
                         )}
-                        {/* Blast Motion - Coming Soon */}
-                        {false && (
+                        {athlete.blast_player_id && (
                           <div className="h-4 w-4 rounded-full bg-white flex items-center justify-center flex-shrink-0">
                             <span className="text-blue-500 font-bold text-[10px]">B</span>
                           </div>
