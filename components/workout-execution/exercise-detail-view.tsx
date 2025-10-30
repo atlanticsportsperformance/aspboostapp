@@ -71,8 +71,32 @@ export default function ExerciseDetailView({
   }, [currentSetIndex]);
 
   // Fallback to metric_targets if set_configurations is not available
+  // IMPORTANT: Include ALL enabled measurements, even if they have null values
   const metricTargets = exercise.metric_targets || {};
-  const hasMetrics = setConfigurations.length > 0 || Object.keys(metricTargets).length > 0;
+
+  console.log('🔍 [Exercise Logger] Loading exercise:', {
+    name: exercise.exercises?.name || exercise.placeholder_name,
+    metric_targets: metricTargets,
+    enabled_measurements: exercise.enabled_measurements,
+    set_configurations: exercise.set_configurations
+  });
+
+  // Build complete metrics object from enabled_measurements to ensure null values are included
+  const enabledMeasurements = exercise.enabled_measurements || [];
+  const completeMetrics: Record<string, any> = { ...metricTargets };
+
+  // Add any enabled measurements that might be missing from metricTargets
+  enabledMeasurements.forEach((measurementId: string) => {
+    // For each enabled measurement, ensure it exists in completeMetrics
+    if (!(measurementId in completeMetrics)) {
+      completeMetrics[measurementId] = null;
+      console.log(`➕ [Exercise Logger] Added missing metric from enabled_measurements: ${measurementId}`);
+    }
+  });
+
+  console.log('✅ [Exercise Logger] Complete metrics:', completeMetrics);
+
+  const hasMetrics = setConfigurations.length > 0 || Object.keys(completeMetrics).length > 0;
 
   // Calculate completion
   const completedSets = exerciseInputs.filter((input: any) =>
@@ -96,7 +120,7 @@ export default function ExerciseDetailView({
   const handleNextSet = () => {
     // Check if current set has any data
     const currentSetData = exerciseInputs[currentSetIndex] || {};
-    const hasAnyData = Object.keys(metricTargets).some(key => {
+    const hasAnyData = Object.keys(completeMetrics).some(key => {
       const val = currentSetData[key];
       return val && val !== '' && val !== 0;
     });
@@ -104,7 +128,7 @@ export default function ExerciseDetailView({
     // If no data entered, save the placeholder/target values as the actual values
     if (!hasAnyData) {
       // Save all target values as the actual values (auto-fill from placeholders)
-      Object.entries(metricTargets).forEach(([key, targetValue]) => {
+      Object.entries(completeMetrics).forEach(([key, targetValue]) => {
         // Only save if there's a target value and no current value
         if (targetValue && !currentSetData[key]) {
           onInputChange(currentSetIndex, key, targetValue);
@@ -304,9 +328,9 @@ export default function ExerciseDetailView({
                 {/* All Metrics - 2 Column Layout (per-set or global) */}
                 {hasMetrics && (() => {
                   // Get metrics for this specific set
-                  // Priority: set_configurations[idx].metric_values > metric_targets
+                  // Priority: set_configurations[idx].metric_values > completeMetrics
                   const setConfig = setConfigurations[idx];
-                  const currentSetMetrics = setConfig?.metric_values || metricTargets;
+                  const currentSetMetrics = setConfig?.metric_values || completeMetrics;
 
                   // Separate primary and secondary metrics
                   const primaryMetrics: [string, any][] = [];
@@ -314,6 +338,7 @@ export default function ExerciseDetailView({
 
                   Object.entries(currentSetMetrics).forEach(([key, value]) => {
                     if (!key) return;
+                    // Include metric even if value is null/undefined/0/empty - the key existing means it's enabled
                     const isPrimary = key === 'reps' || key.toLowerCase().endsWith('_reps');
                     if (isPrimary) {
                       primaryMetrics.push([key, value]);

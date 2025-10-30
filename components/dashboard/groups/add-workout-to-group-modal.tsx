@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { X, Search, Calendar, Clock } from 'lucide-react';
+import { X, Search, Calendar } from 'lucide-react';
 import { getContentFilter } from '@/lib/auth/permissions';
 import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
@@ -34,7 +34,6 @@ export function AddWorkoutToGroupModal({
   const [selectedWorkoutId, setSelectedWorkoutId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [scheduledDate, setScheduledDate] = useState(initialDate);
-  const [scheduledTime, setScheduledTime] = useState('');
   const [notes, setNotes] = useState('');
   const [autoAssign, setAutoAssign] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -102,7 +101,8 @@ export function AddWorkoutToGroupModal({
         routines(id)
       `)
       .eq('is_template', true)
-      .eq('is_active', true);
+      .is('plan_id', null)
+      .is('athlete_id', null);
 
     // Apply visibility filter
     if (filter.filter === 'ids' && filter.creatorIds) {
@@ -163,6 +163,13 @@ export function AddWorkoutToGroupModal({
       }
 
       // Step 2: Create a group-owned copy of the workout
+      console.log('Creating workout copy with data:', {
+        name: templateWorkout.name,
+        category: templateWorkout.category,
+        group_id: groupId,
+        source_workout_id: templateWorkout.id
+      });
+
       const { data: newWorkout, error: createError } = await supabase
         .from('workouts')
         .insert({
@@ -180,13 +187,20 @@ export function AddWorkoutToGroupModal({
         .single();
 
       if (createError || !newWorkout) {
-        throw new Error('Failed to create workout copy');
+        console.error('Failed to create workout copy:', createError);
+        console.error('Error details:', JSON.stringify(createError, null, 2));
+        console.error('Error message:', createError?.message);
+        console.error('Error code:', createError?.code);
+        throw new Error(`Failed to create workout copy: ${createError?.message || 'Unknown error'}`);
       }
+
+      console.log('Successfully created workout copy:', newWorkout.id);
 
       // Step 3: Copy all routines and exercises
       if (templateWorkout.routines && templateWorkout.routines.length > 0) {
         for (const routine of templateWorkout.routines) {
           // Copy routine
+          console.log('Copying routine:', routine.name);
           const { data: newRoutine, error: routineError } = await supabase
             .from('routines')
             .insert({
@@ -202,8 +216,14 @@ export function AddWorkoutToGroupModal({
             .single();
 
           if (routineError || !newRoutine) {
-            throw new Error('Failed to copy routine');
+            console.error('Failed to copy routine:', routineError);
+            console.error('Error details:', JSON.stringify(routineError, null, 2));
+            console.error('Error message:', routineError?.message);
+            console.error('Error code:', routineError?.code);
+            throw new Error(`Failed to copy routine: ${routineError?.message || 'Unknown error'}`);
           }
+
+          console.log('Successfully copied routine:', newRoutine.id);
 
           // Copy routine exercises
           if (routine.routine_exercises && routine.routine_exercises.length > 0) {
@@ -258,21 +278,33 @@ export function AddWorkoutToGroupModal({
       // The database trigger will auto-create instances for all group members
       const { data: { user } } = await supabase.auth.getUser();
 
+      console.log('Creating group workout schedule:', {
+        group_id: groupId,
+        workout_id: newWorkout.id,
+        scheduled_date: scheduledDate,
+        auto_assign: autoAssign
+      });
+
       const { error: scheduleError } = await supabase
         .from('group_workout_schedules')
         .insert({
           group_id: groupId,
           workout_id: newWorkout.id,
           scheduled_date: scheduledDate,
-          scheduled_time: scheduledTime || null,
           notes: notes || null,
           auto_assign: autoAssign,
           created_by: user?.id
         });
 
       if (scheduleError) {
-        throw new Error('Failed to create schedule');
+        console.error('Failed to create schedule:', scheduleError);
+        console.error('Error details:', JSON.stringify(scheduleError, null, 2));
+        console.error('Error message:', scheduleError?.message);
+        console.error('Error code:', scheduleError?.code);
+        throw new Error(`Failed to create schedule: ${scheduleError?.message || 'Unknown error'}`);
       }
+
+      console.log('✅ Successfully created group workout schedule!');
 
       // Success!
       console.log('✅ Workout added to group calendar successfully');
@@ -395,36 +427,19 @@ export function AddWorkoutToGroupModal({
           </div>
 
           {/* Schedule Details */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  Date *
-                </div>
-              </label>
-              <input
-                type="date"
-                value={scheduledDate}
-                onChange={(e) => setScheduledDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} />
-                  Time (optional)
-                </div>
-              </label>
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              <div className="flex items-center gap-2">
+                <Calendar size={16} />
+                Date *
+              </div>
+            </label>
+            <input
+              type="date"
+              value={scheduledDate}
+              onChange={(e) => setScheduledDate(e.target.value)}
+              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
+            />
           </div>
 
           {/* Notes */}

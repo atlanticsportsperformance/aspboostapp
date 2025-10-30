@@ -12,6 +12,8 @@ import {
   DragStartEvent,
   closestCenter,
   PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -75,6 +77,7 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
   const [selectedInstance, setSelectedInstance] = useState<WorkoutInstance | null>(null);
   const [showImportPlan, setShowImportPlan] = useState(false);
+  const [showGroupWorkoutWarning, setShowGroupWorkoutWarning] = useState<{ instance: WorkoutInstance; workoutId: string } | null>(null);
   const [showWorkoutDetails, setShowWorkoutDetails] = useState(true); // Toggle for month overview
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copiedWorkout, setCopiedWorkout] = useState<{ instanceId: string; workoutName: string } | null>(null);
@@ -86,7 +89,14 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const supabase = createClient();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    // Mouse sensor for desktop - no activation constraint for easy dragging
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 8, // Small distance to prevent accidental drags on click
+      },
+    }),
+    // Touch sensor for mobile - stricter constraint to prevent accidental drags
+    useSensor(TouchSensor, {
       activationConstraint: {
         distance: 15,
         tolerance: 5,
@@ -615,8 +625,9 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
 
         {/* Header */}
         <div className="mb-4 md:mb-6">
-          {/* Month Navigation - Mobile Optimized */}
-          <div className="flex items-center justify-between mb-3 md:mb-4">
+          {/* Month Navigation and Action Buttons - Single Row */}
+          <div className="flex items-center justify-between gap-2 md:gap-4">
+            {/* Left: Month Navigation */}
             <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={goToPreviousMonth}
@@ -651,53 +662,48 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
               </button>
             </div>
 
-            {/* Mobile: Workout count */}
-            <div className="md:hidden text-xs text-neutral-400">
-              {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''}
-            </div>
-          </div>
-
-          {/* Action Buttons - Mobile Optimized */}
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
-            <button
-              onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
-              className={`px-3 py-1.5 md:px-4 md:py-2 border text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation ${
-                showWorkoutDetails
-                  ? 'bg-purple-600 border-purple-600 text-white hover:bg-purple-700'
-                  : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
-              }`}
-              title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
-            >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span className="hidden sm:inline">{showWorkoutDetails ? 'Hide' : 'Show'}</span>
-              <span className="sm:hidden">{showWorkoutDetails ? '−' : '+'}</span>
-            </button>
-            <button
-              onClick={() => setShowImportPlan(true)}
-              className="hidden md:flex px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium items-center gap-1.5 md:gap-2 touch-manipulation"
-            >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Import Plan</span>
-            </button>
-            {!isFullscreenView && (
+            {/* Right: Action Buttons */}
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <button
-                onClick={() => setIsFullscreen(true)}
-                className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
-                title="Expand Calendar"
+                onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
+                className={`px-3 py-1.5 md:px-4 md:py-2 border text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation ${
+                  showWorkoutDetails
+                    ? 'bg-purple-600 border-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
+                }`}
+                title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
               >
                 <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
-                <span className="hidden md:inline">Expand</span>
+                <span className="hidden sm:inline">{showWorkoutDetails ? 'Hide' : 'Show'}</span>
+                <span className="sm:hidden">{showWorkoutDetails ? '−' : '+'}</span>
               </button>
-            )}
-            {/* Desktop: Workout count */}
-            <div className="hidden md:block text-sm text-neutral-400 ml-auto">
-              {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
+              <button
+                onClick={() => setShowImportPlan(true)}
+                className="hidden md:flex px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium items-center gap-1.5 md:gap-2 touch-manipulation"
+              >
+                <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Import Plan</span>
+              </button>
+              {!isFullscreenView && (
+                <button
+                  onClick={() => setIsFullscreen(true)}
+                  className="px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation"
+                  title="Expand Calendar"
+                >
+                  <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                  <span className="hidden md:inline">Expand</span>
+                </button>
+              )}
+              {/* Desktop: Workout count */}
+              <div className="hidden md:block text-sm text-neutral-400 ml-auto">
+                {workoutInstances.length} workout{workoutInstances.length !== 1 ? 's' : ''} this month
+              </div>
             </div>
           </div>
         </div>
@@ -927,11 +933,68 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
             athleteId={athleteId}
             onClose={() => setSelectedInstance(null)}
             onEdit={() => {
-              setEditingWorkoutId(selectedInstance.workout_id);
-              setSelectedInstance(null);
+              // Check if this is a synced group workout
+              if (selectedInstance.source_type === 'group' && selectedInstance.is_synced_with_group) {
+                setShowGroupWorkoutWarning({ instance: selectedInstance, workoutId: selectedInstance.workout_id });
+                setSelectedInstance(null);
+              } else {
+                setEditingWorkoutId(selectedInstance.workout_id);
+                setSelectedInstance(null);
+              }
             }}
             onCopy={() => handleCopyWorkout(selectedInstance.id, selectedInstance.workouts?.name || 'Workout')}
           />
+        )}
+
+        {/* Group Workout Edit Warning Modal */}
+        {showGroupWorkoutWarning && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1A1A1A] rounded-xl border border-white/10 w-full max-w-md p-6">
+              <h3 className="text-xl font-bold text-white mb-4">Edit Group Workout</h3>
+              <div className="space-y-4 mb-6">
+                <p className="text-gray-300">
+                  This workout is synced with the group <span className="text-[#9BDDFF] font-semibold">{showGroupWorkoutWarning.instance.group?.name}</span>.
+                </p>
+                <p className="text-gray-300">
+                  Editing this workout will <span className="text-amber-400 font-semibold">unlink it from the group</span>, meaning:
+                </p>
+                <ul className="list-disc list-inside text-gray-400 space-y-2 ml-2">
+                  <li>Future changes to the group workout won't affect this athlete's version</li>
+                  <li>This creates a personalized copy for this athlete only</li>
+                  <li>The athlete can still see the group workout on their calendar</li>
+                </ul>
+                <p className="text-gray-400 text-sm">
+                  To edit the workout for all athletes in the group, edit it from the group calendar instead.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowGroupWorkoutWarning(null)}
+                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    // Detach from group
+                    const supabase = createClient();
+                    await supabase
+                      .from('workout_instances')
+                      .update({ is_synced_with_group: false })
+                      .eq('id', showGroupWorkoutWarning.instance.id);
+
+                    // Open workout builder
+                    setEditingWorkoutId(showGroupWorkoutWarning.workoutId);
+                    setShowGroupWorkoutWarning(null);
+                    fetchWorkoutInstances();
+                  }}
+                  className="flex-1 px-4 py-2 bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-black rounded-lg transition-colors font-semibold"
+                >
+                  Unlink & Edit
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>
@@ -1199,12 +1262,12 @@ function DraggableWorkoutChip({
             </span>
           </div>
 
-          {/* Group Indicator */}
-          {workoutInstance.group && (
+          {/* Group Indicator - Only show if synced with group */}
+          {workoutInstance.group && workoutInstance.is_synced_with_group && (
             <div
               className="mt-1 text-[9px] px-1.5 py-0.5 rounded inline-flex items-center gap-1 font-medium"
               style={{ backgroundColor: workoutInstance.group.color + '30', color: workoutInstance.group.color }}
-              title={`From group: ${workoutInstance.group.name}`}
+              title={`Synced with group: ${workoutInstance.group.name}`}
             >
               <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
@@ -1321,15 +1384,29 @@ function DraggableWorkoutChip({
 
                                         // Check for per-set values for THIS metric
                                         if (hasSetConfigurations) {
+                                          // Only show primary metrics (reps-based) in viewer, not secondary metrics like weight
+                                          if (!isPrimaryMetric(key)) return null;
+
                                           const hasPerSetValues = routineExercise.set_configurations.some((s: any) =>
                                             s.metric_values?.[key] !== undefined && s.metric_values?.[key] !== null
                                           );
 
                                           if (hasPerSetValues) {
-                                            const valuesArray = routineExercise.set_configurations.map((s: any) =>
-                                              s.metric_values?.[key] ?? '—'
+                                            const valuesArray = routineExercise.set_configurations.map((s: any) => {
+                                              const val = s.metric_values?.[key];
+                                              return (val === null || val === undefined) ? 0 : val;
+                                            });
+                                            const isTrackedForPR = routineExercise.tracked_max_metrics?.includes(key);
+                                            return (
+                                              <span key={key} className="text-[9px] flex items-center gap-0.5">
+                                                {formattedKey}: {valuesArray.join(', ')}
+                                                {isTrackedForPR && (
+                                                  <svg className="w-2 h-2 text-[#9BDDFF] inline" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                                  </svg>
+                                                )}
+                                              </span>
                                             );
-                                            return <span key={key} className="text-[9px]">{formattedKey}: {valuesArray.join(', ')}</span>;
                                           }
                                         }
 
@@ -1339,8 +1416,18 @@ function DraggableWorkoutChip({
                                         }
 
                                         const value = routineExercise.metric_targets?.[key];
-                                        const displayValue = (value === null || value === undefined) ? '—' : value;
-                                        return <span key={key} className="text-[9px]">{formattedKey}: {displayValue}</span>;
+                                        const displayValue = (value === null || value === undefined) ? 0 : value;
+                                        const isTrackedForPR = routineExercise.tracked_max_metrics?.includes(key);
+                                        return (
+                                          <span key={key} className="text-[9px] flex items-center gap-0.5">
+                                            {formattedKey}: {displayValue}
+                                            {isTrackedForPR && (
+                                              <svg className="w-2 h-2 text-[#9BDDFF] inline" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                              </svg>
+                                            )}
+                                          </span>
+                                        );
                                       });
                                     })()}
 

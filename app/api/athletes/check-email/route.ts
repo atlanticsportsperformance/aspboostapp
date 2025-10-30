@@ -43,6 +43,31 @@ export async function POST(request: NextRequest) {
 
     if (authUser) {
       // Email has an existing auth account
+      console.log(`🔍 Found existing auth user: ${authUser.id} (${email})`);
+
+      // Check if this user is a staff/admin/coach by checking profiles table
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('app_role, first_name, last_name')
+        .eq('id', authUser.id)
+        .single();
+
+      if (userProfile) {
+        console.log(`👤 User profile found - Role: ${userProfile.app_role}`);
+
+        // Prevent creating athlete profiles for staff/admin/coach accounts
+        if (userProfile.app_role && ['staff', 'coach', 'admin', 'super_admin'].includes(userProfile.app_role)) {
+          return NextResponse.json({
+            hasAuthAccount: true,
+            isStaffAccount: true,
+            staffRole: userProfile.app_role,
+            staffName: `${userProfile.first_name} ${userProfile.last_name}`,
+            message: `This email belongs to a ${userProfile.app_role} account (${userProfile.first_name} ${userProfile.last_name}). Staff accounts cannot be converted to athlete profiles.`,
+            cannotCreateAthlete: true
+          });
+        }
+      }
+
       // Check if it's already linked to an athlete
       const { data: existingAthlete } = await supabase
         .from('athletes')
@@ -55,7 +80,8 @@ export async function POST(request: NextRequest) {
           hasAuthAccount: true,
           isLinkedToAthlete: true,
           athleteName: `${existingAthlete.first_name} ${existingAthlete.last_name}`,
-          message: 'This email already has a login account and is linked to an athlete.'
+          message: 'This email already has a login account and is linked to an athlete.',
+          cannotCreateAthlete: true
         });
       } else {
         return NextResponse.json({
@@ -66,7 +92,24 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // No existing auth account
+    // Check if email exists in athletes table (without auth account)
+    const { data: athleteWithEmail } = await supabase
+      .from('athletes')
+      .select('id, first_name, last_name, email')
+      .eq('email', email)
+      .single();
+
+    if (athleteWithEmail) {
+      return NextResponse.json({
+        hasAuthAccount: false,
+        isLinkedToAthlete: true,
+        athleteName: `${athleteWithEmail.first_name} ${athleteWithEmail.last_name}`,
+        message: `This email is already used by athlete: ${athleteWithEmail.first_name} ${athleteWithEmail.last_name}`,
+        cannotCreateAthlete: true
+      });
+    }
+
+    // No existing auth account or athlete
     return NextResponse.json({
       hasAuthAccount: false,
       message: 'No existing login account found for this email.'

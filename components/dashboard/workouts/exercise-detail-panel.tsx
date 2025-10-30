@@ -192,6 +192,41 @@ export default function ExerciseDetailPanel({
     return initialSets;
   };
 
+  // Convert per-set configuration back to simple mode (consolidate values)
+  const convertPerSetToSimpleMode = (setConfigs: any[]) => {
+    if (!setConfigs || setConfigs.length === 0) return null;
+
+    const metric_targets: Record<string, any> = {};
+
+    // For each metric, collect all values from all sets
+    const metricValuesBySet: Record<string, any[]> = {};
+
+    setConfigs.forEach(setConfig => {
+      if (setConfig.metric_values) {
+        Object.entries(setConfig.metric_values).forEach(([key, value]) => {
+          if (!metricValuesBySet[key]) {
+            metricValuesBySet[key] = [];
+          }
+          metricValuesBySet[key].push(value);
+        });
+      }
+    });
+
+    // For each metric, create a display string (e.g., "10,8,10" for reps)
+    Object.entries(metricValuesBySet).forEach(([key, values]) => {
+      // If all values are the same, just use that value
+      const uniqueValues = [...new Set(values.filter(v => v !== null && v !== undefined && v !== ''))];
+      if (uniqueValues.length === 1) {
+        metric_targets[key] = uniqueValues[0];
+      } else if (values.length > 0) {
+        // Different values across sets - show as comma-separated string
+        metric_targets[key] = values.map(v => v || '-').join(',');
+      }
+    });
+
+    return metric_targets;
+  };
+
   const getMetricValue = (metricId: string) => {
     return exercise.metric_targets?.[metricId] ?? null;
   };
@@ -264,6 +299,21 @@ export default function ExerciseDetailPanel({
 
       // Regular exercises default to their schema measurements
       filteredMeasurements = exercise.exercises?.metric_schema?.measurements || [];
+
+      // AUTO-FIX: If enabled_measurements is null, initialize it with schema measurements
+      if (!exercise.enabled_measurements && filteredMeasurements.length > 0) {
+        const schemaIds = filteredMeasurements.map(m => m.id);
+        const targets: Record<string, any> = {};
+        schemaIds.forEach(id => {
+          targets[id] = exercise.metric_targets?.[id] ?? null;
+        });
+
+        console.log('🔧 [Exercise Detail] Auto-initializing enabled_measurements:', schemaIds);
+        onUpdate({
+          enabled_measurements: schemaIds,
+          metric_targets: targets
+        });
+      }
     }
 
     // Sort measurements: locked first (reps, weight, time, distance), then custom
@@ -376,24 +426,49 @@ export default function ExerciseDetailPanel({
 
       // Initialize metric values in metric_targets for paired measurements
       let updatedTargets = { ...exercise.metric_targets };
+      const metricsToAdd: string[] = [];
+
       if (measurement?.category === 'paired') {
         // For paired measurements, initialize BOTH primary and secondary metrics
         if (measurement.primary_metric_id && !(measurement.primary_metric_id in updatedTargets)) {
           updatedTargets[measurement.primary_metric_id] = null;
+          metricsToAdd.push(measurement.primary_metric_id);
         }
         if (measurement.secondary_metric_id && !(measurement.secondary_metric_id in updatedTargets)) {
           updatedTargets[measurement.secondary_metric_id] = null;
+          metricsToAdd.push(measurement.secondary_metric_id);
         }
       } else {
         // For single measurements, initialize the metric if not already present
         if (!(measurementId in updatedTargets)) {
           updatedTargets[measurementId] = null;
+          metricsToAdd.push(measurementId);
         }
+      }
+
+      // CRITICAL FIX: Also initialize metric values in per-set configurations
+      let updatedSetConfigurations = exercise.set_configurations;
+      if (updatedSetConfigurations && Array.isArray(updatedSetConfigurations) && metricsToAdd.length > 0) {
+        updatedSetConfigurations = updatedSetConfigurations.map((setConfig: any) => {
+          const updatedSet = { ...setConfig };
+          // Ensure metric_values object exists
+          if (!updatedSet.metric_values) {
+            updatedSet.metric_values = {};
+          }
+          // Add ALL related metrics with null value
+          metricsToAdd.forEach(id => {
+            if (!(id in updatedSet.metric_values)) {
+              updatedSet.metric_values[id] = null;
+            }
+          });
+          return updatedSet;
+        });
       }
 
       const updateObj = {
         enabled_measurements: updated,
-        metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null
+        metric_targets: Object.keys(updatedTargets).length > 0 ? updatedTargets : null,
+        set_configurations: updatedSetConfigurations // Update per-set configs
       };
       console.log('🔘 ADDING - Calling onUpdate with:', updateObj);
       onUpdate(updateObj);
@@ -477,13 +552,20 @@ export default function ExerciseDetailPanel({
                   const newPerSetMode = !enablePerSet;
                   setEnablePerSet(newPerSetMode);
 
-                  // Clear opposite configuration when toggling
+                  // Migrate data when toggling instead of clearing
                   if (newPerSetMode) {
-                    // Switching TO per-set mode: clear metric_targets
-                    onUpdate({ metric_targets: null });
+                    // Switching TO per-set mode: convert metric_targets to set_configurations
+                    const initialSets = getInitialSetsFromSimpleMode();
+                    onUpdate({ set_configurations: initialSets });
                   } else {
-                    // Switching TO simple mode: clear set_configurations
-                    onUpdate({ set_configurations: null });
+                    // Switching TO simple mode: consolidate set_configurations back to metric_targets
+                    if (exercise.set_configurations && exercise.set_configurations.length > 0) {
+                      const consolidatedTargets = convertPerSetToSimpleMode(exercise.set_configurations);
+                      onUpdate({
+                        metric_targets: consolidatedTargets,
+                        set_configurations: null
+                      });
+                    }
                   }
                 }}
                 className={`p-2 rounded-lg transition-colors ${
@@ -610,75 +692,88 @@ export default function ExerciseDetailPanel({
                   )}
                 </div>
 
-                {/* Intensity % Checkbox - Inline with dropdown */}
+                {/* Intensity % and AMRAP Checkboxes - Side by side */}
                 {!enablePerSet && getDisplayMeasurements().some((m) => m.primary_metric_type !== 'integer') && (
                   <div className="flex flex-col gap-1">
-                    <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
-                      <input
-                        type="checkbox"
-                        checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            // Enable intensity for all performance measurements (decimal or time)
-                            const performanceMeasurements = getDisplayMeasurements().filter(m => m.primary_metric_type !== 'integer');
-                            const targets: any[] = [];
-
-                            performanceMeasurements.forEach(m => {
-                              // For paired measurements, create targets for BOTH metrics if they're performance types
-                              if (m.category === 'paired') {
-                                if (m.primary_metric_type !== 'integer' && m.primary_metric_id) {
-                                  targets.push({
-                                    id: Date.now().toString() + m.primary_metric_id,
-                                    metric: m.primary_metric_id,
-                                    metric_label: `Max ${m.name} (${m.primary_metric_name})`,
-                                    percent: 75
-                                  });
-                                }
-                                if (m.secondary_metric_type !== 'integer' && m.secondary_metric_id) {
-                                  targets.push({
-                                    id: Date.now().toString() + m.secondary_metric_id,
-                                    metric: m.secondary_metric_id,
-                                    metric_label: `Max ${m.name} (${m.secondary_metric_name})`,
-                                    percent: 75
-                                  });
-                                }
-                              } else {
-                                // Single measurement
-                                targets.push({
-                                  id: Date.now().toString() + m.id,
-                                  metric: m.id,
-                                  metric_label: `Max ${m.name}`,
-                                  percent: 75
-                                });
-                              }
-                            });
-
-                            onUpdate({ intensity_targets: targets });
-                          } else {
-                            // Disable intensity
-                            onUpdate({ intensity_targets: null });
-                          }
-                        }}
-                        className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
-                      />
-                      <span className="text-white text-sm font-medium">Intensity %</span>
-                      {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
+                    <div className="flex gap-2">
+                      <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
                         <input
-                          type="number"
-                          value={exercise.intensity_targets[0]?.percent || 75}
+                          type="checkbox"
+                          checked={!!(exercise.intensity_targets && exercise.intensity_targets.length > 0)}
                           onChange={(e) => {
-                            const newPercent = e.target.value ? parseInt(e.target.value) : 75;
-                            // Update all intensity targets to same percent
-                            const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
-                            onUpdate({ intensity_targets: updatedTargets });
+                            if (e.target.checked) {
+                              // Enable intensity for all performance measurements (decimal or time)
+                              const performanceMeasurements = getDisplayMeasurements().filter(m => m.primary_metric_type !== 'integer');
+                              const targets: any[] = [];
+
+                              performanceMeasurements.forEach(m => {
+                                // For paired measurements, create targets for BOTH metrics if they're performance types
+                                if (m.category === 'paired') {
+                                  if (m.primary_metric_type !== 'integer' && m.primary_metric_id) {
+                                    targets.push({
+                                      id: Date.now().toString() + m.primary_metric_id,
+                                      metric: m.primary_metric_id,
+                                      metric_label: `Max ${m.name} (${m.primary_metric_name})`,
+                                      percent: 75
+                                    });
+                                  }
+                                  if (m.secondary_metric_type !== 'integer' && m.secondary_metric_id) {
+                                    targets.push({
+                                      id: Date.now().toString() + m.secondary_metric_id,
+                                      metric: m.secondary_metric_id,
+                                      metric_label: `Max ${m.name} (${m.secondary_metric_name})`,
+                                      percent: 75
+                                    });
+                                  }
+                                } else {
+                                  // Single measurement
+                                  targets.push({
+                                    id: Date.now().toString() + m.id,
+                                    metric: m.id,
+                                    metric_label: `Max ${m.name}`,
+                                    percent: 75
+                                  });
+                                }
+                              });
+
+                              onUpdate({ intensity_targets: targets });
+                            } else {
+                              // Disable intensity
+                              onUpdate({ intensity_targets: null });
+                            }
                           }}
-                          className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="75"
-                          min="0"
-                          max="200"
+                          className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900"
                         />
-                      )}
-                    </label>
+                        <span className="text-white text-sm font-medium">Intensity %</span>
+                        {exercise.intensity_targets && exercise.intensity_targets.length > 0 && (
+                          <input
+                            type="number"
+                            value={exercise.intensity_targets[0]?.percent || 75}
+                            onChange={(e) => {
+                              const newPercent = e.target.value ? parseInt(e.target.value) : 75;
+                              // Update all intensity targets to same percent
+                              const updatedTargets = exercise.intensity_targets!.map(t => ({ ...t, percent: newPercent }));
+                              onUpdate({ intensity_targets: updatedTargets });
+                            }}
+                            className="w-14 px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="75"
+                            min="0"
+                            max="200"
+                          />
+                        )}
+                      </label>
+
+                      {/* AMRAP Checkbox */}
+                      <label className="flex items-center gap-2 cursor-pointer px-3 py-2 bg-white/5 rounded border border-white/10">
+                        <input
+                          type="checkbox"
+                          checked={!!exercise.is_amrap}
+                          onChange={(e) => toggleAllSetsAMRAP(e.target.checked)}
+                          className="w-4 h-4 rounded border-gray-600 text-purple-500 focus:ring-purple-500 focus:ring-offset-gray-900"
+                        />
+                        <span className="text-white text-sm font-medium">AMRAP</span>
+                      </label>
+                    </div>
                     {/* Perceived Intensity Indicator for Throwing Exercises */}
                     {exercise.intensity_targets && exercise.intensity_targets.length > 0 && shouldUsePerceivedIntensity(exercise.exercises?.category) && (
                       <div className="ml-9 px-2 py-1 bg-blue-500/10 border border-blue-500/30 rounded text-xs">
@@ -707,14 +802,16 @@ export default function ExerciseDetailPanel({
                       <div className="flex gap-3 flex-wrap">
                         {setConfig.metric_values && Object.entries(setConfig.metric_values).map(([key, value]: [string, any]) => {
                           const measurement = getAllAvailableMeasurements().find(m => m.id === key);
-                          if (!value) return null;
 
                           // Format the key as a readable name if measurement not found
                           const displayName = measurement?.name || key.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
+                          // Show metric even if value is empty/null - display as "- Weight" to indicate it's enabled but not set
+                          const displayValue = value || '-';
+
                           return (
                             <span key={key} className="text-white">
-                              {value} {displayName}
+                              {displayValue} {displayName}
                             </span>
                           );
                         })}

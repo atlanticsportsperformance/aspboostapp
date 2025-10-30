@@ -380,11 +380,11 @@ export default function HittingAnalyticsPage() {
           )}
 
           {/* Filters Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 mb-6">
             {/* Athlete Selection */}
-            <div className="glass-card shadow-premium rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">Athletes</h3>
+            <div className="glass-card shadow-premium rounded-xl p-4 lg:p-6">
+              <div className="flex items-center justify-between mb-3 lg:mb-4">
+                <h3 className="text-base lg:text-lg font-semibold text-white">Athletes</h3>
                 <div className="flex gap-2">
                   <button
                     onClick={selectAll}
@@ -401,11 +401,11 @@ export default function HittingAnalyticsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+              <div className="space-y-2 max-h-[200px] lg:max-h-[300px] overflow-y-auto">
                 {athletes.map((athlete, index) => (
                   <label
                     key={athlete.id}
-                    className="flex items-center gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors"
+                    className="flex items-center gap-2 lg:gap-3 p-2 hover:bg-white/5 rounded-lg cursor-pointer transition-colors"
                   >
                     <input
                       type="checkbox"
@@ -415,10 +415,10 @@ export default function HittingAnalyticsPage() {
                     />
                     <div className="flex items-center gap-2 flex-1">
                       <div
-                        className="w-3 h-3 rounded-full"
+                        className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: ATHLETE_COLORS[index % ATHLETE_COLORS.length] }}
                       />
-                      <span className="text-sm text-white">
+                      <span className="text-xs lg:text-sm text-white truncate">
                         {athlete.first_name} {athlete.last_name}
                       </span>
                     </div>
@@ -427,17 +427,17 @@ export default function HittingAnalyticsPage() {
               </div>
 
               {athletes.length === 0 && (
-                <p className="text-sm text-white/50 text-center py-4">
+                <p className="text-xs lg:text-sm text-white/50 text-center py-4">
                   No athletes with paired sensors
                 </p>
               )}
             </div>
 
             {/* Date Filter */}
-            <div className="glass-card shadow-premium rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Date Range</h3>
+            <div className="glass-card shadow-premium rounded-xl p-4 lg:p-6">
+              <h3 className="text-base lg:text-lg font-semibold text-white mb-3 lg:mb-4">Date Range</h3>
 
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-2 mb-3 lg:mb-4">
                 {[
                   { value: '7d', label: '7 Days' },
                   { value: '1m', label: '1 Month' },
@@ -447,7 +447,7 @@ export default function HittingAnalyticsPage() {
                   <button
                     key={option.value}
                     onClick={() => setDateFilter(option.value as DateFilter)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-2 lg:px-3 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors ${
                       dateFilter === option.value
                         ? 'bg-[#9BDDFF] text-black'
                         : 'bg-white/10 text-white hover:bg-white/20'
@@ -460,7 +460,7 @@ export default function HittingAnalyticsPage() {
 
               <button
                 onClick={() => setDateFilter('custom')}
-                className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors mb-3 ${
+                className={`w-full px-3 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors mb-3 ${
                   dateFilter === 'custom'
                     ? 'bg-[#9BDDFF] text-black'
                     : 'bg-white/10 text-white hover:bg-white/20'
@@ -492,7 +492,7 @@ export default function HittingAnalyticsPage() {
                 </div>
               )}
 
-              <div className="mt-4 pt-4 border-t border-white/10">
+              <div className="mt-3 lg:mt-4 pt-3 lg:pt-4 border-t border-white/10">
                 <p className="text-xs text-white/60">
                   {filteredData.length} swings in selected range
                 </p>
@@ -500,16 +500,16 @@ export default function HittingAnalyticsPage() {
             </div>
 
             {/* Chart Settings */}
-            <div className="glass-card shadow-premium rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Chart Settings</h3>
+            <div className="glass-card shadow-premium rounded-xl p-4 lg:p-6">
+              <h3 className="text-base lg:text-lg font-semibold text-white mb-3 lg:mb-4">Chart Settings</h3>
 
-              <div className="space-y-4">
+              <div className="space-y-3 lg:space-y-4">
                 <div>
                   <label className="text-xs text-white/60 mb-2 block">X-Axis</label>
                   <select
                     value={xAxis}
                     onChange={(e) => setXAxis(e.target.value as MetricKey)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                   >
                     {METRICS.map(metric => (
                       <option key={metric.value} value={metric.value} className="bg-[#0A0A0A]">
@@ -524,7 +524,7 @@ export default function HittingAnalyticsPage() {
                   <select
                     value={yAxis}
                     onChange={(e) => setYAxis(e.target.value as MetricKey)}
-                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
                   >
                     {METRICS.map(metric => (
                       <option key={metric.value} value={metric.value} className="bg-[#0A0A0A]">
@@ -541,13 +541,13 @@ export default function HittingAnalyticsPage() {
                     onChange={(e) => setShowRegression(e.target.checked)}
                     className="w-4 h-4 rounded border-white/20 bg-white/10 text-[#9BDDFF] focus:ring-[#9BDDFF] focus:ring-offset-0"
                   />
-                  <span className="text-sm text-white">Show Regression Line</span>
+                  <span className="text-xs lg:text-sm text-white">Show Regression Line</span>
                 </label>
 
                 {regression && (
-                  <div className="mt-4 p-3 bg-white/5 rounded-lg">
+                  <div className="mt-3 lg:mt-4 p-3 bg-white/5 rounded-lg">
                     <p className="text-xs text-white/60 mb-1">Regression Stats</p>
-                    <p className="text-sm text-white">R² = {regression.r2.toFixed(4)}</p>
+                    <p className="text-xs lg:text-sm text-white">R² = {regression.r2.toFixed(4)}</p>
                     <p className="text-xs text-white/50 mt-1">
                       y = {regression.slope.toFixed(3)}x + {regression.intercept.toFixed(3)}
                     </p>
@@ -558,26 +558,31 @@ export default function HittingAnalyticsPage() {
           </div>
 
           {/* Chart */}
-          <div className="glass-card shadow-premium rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-6">
+          <div className="glass-card shadow-premium rounded-xl p-4 lg:p-6">
+            <h3 className="text-base lg:text-lg font-semibold text-white mb-4 lg:mb-6">
               {METRICS.find(m => m.value === yAxis)?.label} vs {METRICS.find(m => m.value === xAxis)?.label}
             </h3>
 
             {chartData.length === 0 ? (
-              <div className="flex items-center justify-center h-[600px]">
+              <div className="flex items-center justify-center h-[300px] lg:h-[600px]">
                 <div className="text-center">
-                  <svg className="w-16 h-16 text-white/20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-12 h-12 lg:w-16 lg:h-16 text-white/20 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
-                  <p className="text-white/60 mb-2">No data to display</p>
-                  <p className="text-sm text-white/40">
+                  <p className="text-sm lg:text-base text-white/60 mb-2">No data to display</p>
+                  <p className="text-xs lg:text-sm text-white/40 px-4">
                     Select athletes and ensure they have swing data in the selected date range
                   </p>
                 </div>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={600}>
-                <ComposedChart margin={{ top: 20, right: 20, bottom: 70, left: 70 }}>
+              <ResponsiveContainer width="100%" height={window.innerWidth < 1024 ? 500 : 600}>
+                <ComposedChart margin={{
+                  top: 20,
+                  right: window.innerWidth < 1024 ? 5 : 20,
+                  bottom: window.innerWidth < 1024 ? 90 : 70,
+                  left: window.innerWidth < 1024 ? 0 : 20
+                }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis
                     type="number"
@@ -585,11 +590,12 @@ export default function HittingAnalyticsPage() {
                     name={METRICS.find(m => m.value === xAxis)?.label}
                     stroke="#fff"
                     domain={['dataMin - 5', 'dataMax + 5']}
+                    tick={{ fontSize: window.innerWidth < 1024 ? 11 : 12 }}
                     label={{
                       value: METRICS.find(m => m.value === xAxis)?.label,
                       position: 'insideBottom',
-                      offset: -50,
-                      style: { fill: '#fff', fontSize: 14 }
+                      offset: window.innerWidth < 1024 ? -10 : -50,
+                      style: { fill: '#fff', fontSize: window.innerWidth < 1024 ? 11 : 14 }
                     }}
                   />
                   <YAxis
@@ -598,12 +604,14 @@ export default function HittingAnalyticsPage() {
                     name={METRICS.find(m => m.value === yAxis)?.label}
                     stroke="#fff"
                     domain={['dataMin - 5', 'dataMax + 5']}
+                    width={window.innerWidth < 1024 ? 45 : 60}
+                    tick={{ fontSize: window.innerWidth < 1024 ? 11 : 12 }}
                     label={{
                       value: METRICS.find(m => m.value === yAxis)?.label,
                       angle: -90,
                       position: 'insideLeft',
-                      offset: -50,
-                      style: { fill: '#fff', fontSize: 14 }
+                      offset: window.innerWidth < 1024 ? 5 : -50,
+                      style: { fill: '#fff', fontSize: window.innerWidth < 1024 ? 11 : 14 }
                     }}
                   />
                   <Tooltip
@@ -611,13 +619,18 @@ export default function HittingAnalyticsPage() {
                       backgroundColor: 'rgba(10, 10, 10, 0.95)',
                       border: '1px solid rgba(255,255,255,0.1)',
                       borderRadius: '8px',
-                      color: '#fff'
+                      color: '#fff',
+                      fontSize: window.innerWidth < 1024 ? '12px' : '13px'
                     }}
                     labelStyle={{ color: '#9BDDFF' }}
                   />
                   <Legend
-                    wrapperStyle={{ paddingTop: '20px' }}
+                    wrapperStyle={{
+                      paddingTop: window.innerWidth < 1024 ? '30px' : '20px',
+                      fontSize: window.innerWidth < 1024 ? '10px' : '13px'
+                    }}
                     iconType="circle"
+                    verticalAlign={window.innerWidth < 1024 ? 'bottom' : 'top'}
                   />
 
                   {/* Scatter plots for each athlete */}
@@ -640,7 +653,7 @@ export default function HittingAnalyticsPage() {
                       dataKey={yAxis}
                       data={regressionLineData}
                       stroke="#9BDDFF"
-                      strokeWidth={3}
+                      strokeWidth={window.innerWidth < 1024 ? 2 : 3}
                       strokeDasharray="8 4"
                       dot={false}
                       name={`Regression (R² = ${regression.r2.toFixed(3)})`}
@@ -650,29 +663,6 @@ export default function HittingAnalyticsPage() {
                 </ComposedChart>
               </ResponsiveContainer>
             )}
-          </div>
-
-          {/* iOS Install Instructions */}
-          <div className="mt-12 pt-8 border-t border-white/5">
-            <div className="max-w-3xl mx-auto text-center">
-              <p className="text-xs text-white/30 mb-3">
-                💡 Tip: Add this app to your home screen for a better experience
-              </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-6 text-xs text-white/40">
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold text-white/50">iOS:</span>
-                  <span>Tap <span className="inline-flex items-center mx-1 px-1.5 py-0.5 bg-white/5 rounded text-[10px]">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/>
-                    </svg>
-                  </span> Share, then "Add to Home Screen"</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="font-semibold text-white/50">Android:</span>
-                  <span>Tap <span className="inline-flex items-center mx-1 px-1.5 py-0.5 bg-white/5 rounded text-[10px]">⋮</span> Menu, then "Add to Home screen"</span>
-                </div>
-              </div>
-            </div>
           </div>
         </main>
       </div>

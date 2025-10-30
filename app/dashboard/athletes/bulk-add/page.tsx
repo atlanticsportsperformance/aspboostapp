@@ -40,6 +40,11 @@ export default function BulkAddAthletesPage() {
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [searchTimers, setSearchTimers] = useState<{ [key: string]: NodeJS.Timeout }>({});
 
+  // Profile selection modal state
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [modalType, setModalType] = useState<'vald' | 'blast' | null>(null);
+
   // Initialize with 3 empty rows
   useEffect(() => {
     const supabase = createClient();
@@ -162,6 +167,78 @@ export default function BulkAddAthletesPage() {
       password += charset.charAt(Math.floor(Math.random() * charset.length));
     }
     return password;
+  }
+
+  function handleSelectValdProfile(rowId: string, profile: any) {
+    // Auto-fill fields from VALD profile
+    setRows(rows.map(row => {
+      if (row.id === rowId) {
+        const updated = { ...row };
+
+        // Always update email from VALD
+        if (profile.email) {
+          updated.email = profile.email;
+        }
+
+        // Always update birth date from VALD
+        if (profile.dateOfBirth) {
+          updated.birthDate = profile.dateOfBirth.split('T')[0];
+        }
+
+        // Fill name fields if empty
+        if (profile.givenName && !row.firstName) {
+          updated.firstName = profile.givenName;
+        }
+        if (profile.familyName && !row.lastName) {
+          updated.lastName = profile.familyName;
+        }
+
+        // Mark VALD as linked
+        updated.valdProfile = profile;
+        updated.valdMatched = true;
+
+        return updated;
+      }
+      return row;
+    }));
+
+    setShowProfileModal(false);
+  }
+
+  function handleSelectBlastProfile(rowId: string, profile: any) {
+    // Auto-fill fields from Blast Motion
+    setRows(rows.map(row => {
+      if (row.id === rowId) {
+        const updated = { ...row };
+
+        // Always update email from Blast if available
+        if (profile.email) {
+          updated.email = profile.email;
+        }
+
+        // Fill name fields if empty
+        if (profile.first_name && !row.firstName) {
+          updated.firstName = profile.first_name;
+        }
+        if (profile.last_name && !row.lastName) {
+          updated.lastName = profile.last_name;
+        }
+
+        // Fill position if empty
+        if (profile.position && !row.primaryPosition) {
+          updated.primaryPosition = profile.position;
+        }
+
+        // Mark Blast as linked
+        updated.blastProfile = profile;
+        updated.blastMatched = true;
+
+        return updated;
+      }
+      return row;
+    }));
+
+    setShowProfileModal(false);
   }
 
   async function checkEmailExists(rowId: string, email: string) {
@@ -430,231 +507,437 @@ export default function BulkAddAthletesPage() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="max-w-[100vw] overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-white/5 border-b border-white/10">
-              <th className="px-4 py-3 text-left text-sm font-semibold">#</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">First Name*</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">Last Name*</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[200px]">Email*</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[140px]">Birth Date</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[80px]">Sex</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">Position</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">Secondary Pos</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[140px]">Play Level*</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[120px]">Grad Year</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">Phone</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[100px]">Login?</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[150px]">Password</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[100px]">VALD</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[100px]">Blast</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold min-w-[80px]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, index) => (
-              <tr
-                key={row.id}
-                className={`border-b border-white/10 hover:bg-white/5 ${row.errors.length > 0 ? 'bg-red-500/10' : ''}`}
+      {/* Two-Row Layout for Athletes */}
+      <div className="max-w-[100vw] space-y-3">
+        {rows.map((row, index) => (
+          <div
+            key={row.id}
+            className={`bg-white/5 border rounded-lg p-3 ${row.errors.length > 0 ? 'border-red-500/50 bg-red-500/10' : 'border-white/10'}`}
+          >
+            {/* Athlete Number Header */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-gray-400">#{index + 1}</span>
+                {row.valdMatched && (
+                  <span className="px-2 py-1 bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 text-xs font-semibold rounded">
+                    VALD ✓
+                  </span>
+                )}
+                {row.blastMatched && (
+                  <span className="px-2 py-1 bg-blue-500/20 border border-blue-500/50 text-blue-400 text-xs font-semibold rounded">
+                    BLAST ✓
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => removeRow(row.id)}
+                disabled={rows.length === 1}
+                className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-400 rounded text-sm font-semibold transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                {/* Row Number */}
-                <td className="px-4 py-2 text-sm text-gray-400">{index + 1}</td>
+                Remove
+              </button>
+            </div>
 
-                {/* First Name */}
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.firstName}
-                    onChange={(e) => updateRow(row.id, 'firstName', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="First name"
-                  />
-                </td>
+            {/* Row 1: Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-3 mb-3">
+              {/* First Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">First Name*</label>
+                <input
+                  type="text"
+                  value={row.firstName}
+                  onChange={(e) => updateRow(row.id, 'firstName', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="First"
+                />
+              </div>
 
-                {/* Last Name */}
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.lastName}
-                    onChange={(e) => updateRow(row.id, 'lastName', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="Last name"
-                  />
-                </td>
+              {/* Last Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Last Name*</label>
+                <input
+                  type="text"
+                  value={row.lastName}
+                  onChange={(e) => updateRow(row.id, 'lastName', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="Last"
+                />
+              </div>
 
-                {/* Email */}
-                <td className="px-4 py-2">
-                  <input
-                    type="email"
-                    value={row.email}
-                    onChange={(e) => updateRow(row.id, 'email', e.target.value)}
-                    className={`w-full bg-white/5 border rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF] ${
-                      row.emailExists ? 'border-red-500' : 'border-white/10'
-                    }`}
-                    placeholder="email@example.com"
-                  />
-                  {row.emailExists && (
-                    <p className="text-xs text-red-400 mt-1">Email exists</p>
-                  )}
-                </td>
+              {/* Email */}
+              <div className="md:col-span-2">
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Email*</label>
+                <input
+                  type="email"
+                  value={row.email}
+                  onChange={(e) => updateRow(row.id, 'email', e.target.value)}
+                  className={`w-full bg-white/5 border rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF] ${
+                    row.emailExists ? 'border-red-500' : 'border-white/10'
+                  }`}
+                  placeholder="email@example.com"
+                />
+                {row.emailExists && (
+                  <p className="text-xs text-red-400 mt-1">Email exists</p>
+                )}
+              </div>
 
-                {/* Birth Date */}
-                <td className="px-4 py-2">
-                  <input
-                    type="date"
-                    value={row.birthDate}
-                    onChange={(e) => updateRow(row.id, 'birthDate', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                  />
-                </td>
+              {/* Birth Date */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Birth Date</label>
+                <input
+                  type="date"
+                  value={row.birthDate}
+                  onChange={(e) => updateRow(row.id, 'birthDate', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                />
+              </div>
+            </div>
 
-                {/* Sex */}
-                <td className="px-4 py-2">
-                  <select
-                    value={row.sex}
-                    onChange={(e) => updateRow(row.id, 'sex', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                  >
-                    <option value="">-</option>
-                    <option value="M">M</option>
-                    <option value="F">F</option>
-                  </select>
-                </td>
+            {/* Row 2: Athletic Info & Account */}
+            <div className="grid grid-cols-1 md:grid-cols-8 gap-3">
+              {/* Sex */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Sex</label>
+                <select
+                  value={row.sex}
+                  onChange={(e) => updateRow(row.id, 'sex', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                >
+                  <option value="">-</option>
+                  <option value="M">M</option>
+                  <option value="F">F</option>
+                </select>
+              </div>
 
-                {/* Primary Position */}
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.primaryPosition}
-                    onChange={(e) => updateRow(row.id, 'primaryPosition', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="Pitcher"
-                  />
-                </td>
+              {/* Primary Position */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Position</label>
+                <input
+                  type="text"
+                  value={row.primaryPosition}
+                  onChange={(e) => updateRow(row.id, 'primaryPosition', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="P"
+                />
+              </div>
 
-                {/* Secondary Position */}
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.secondaryPosition}
-                    onChange={(e) => updateRow(row.id, 'secondaryPosition', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="Outfield"
-                  />
-                </td>
+              {/* Secondary Position */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Secondary</label>
+                <input
+                  type="text"
+                  value={row.secondaryPosition}
+                  onChange={(e) => updateRow(row.id, 'secondaryPosition', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="OF"
+                />
+              </div>
 
-                {/* Play Level */}
-                <td className="px-4 py-2">
-                  <select
-                    value={row.playLevel}
-                    onChange={(e) => updateRow(row.id, 'playLevel', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                  >
-                    <option value="">Select</option>
-                    <option value="Youth">Youth</option>
-                    <option value="High School">High School</option>
-                    <option value="College">College</option>
-                    <option value="Pro">Pro</option>
-                  </select>
-                </td>
+              {/* Play Level */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Play Level*</label>
+                <select
+                  value={row.playLevel}
+                  onChange={(e) => updateRow(row.id, 'playLevel', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                >
+                  <option value="">Select</option>
+                  <option value="Youth">Youth</option>
+                  <option value="High School">HS</option>
+                  <option value="College">College</option>
+                  <option value="Pro">Pro</option>
+                </select>
+              </div>
 
-                {/* Grad Year */}
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    value={row.gradYear}
-                    onChange={(e) => updateRow(row.id, 'gradYear', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="2025"
-                  />
-                </td>
+              {/* Grad Year */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Grad Year</label>
+                <input
+                  type="number"
+                  value={row.gradYear}
+                  onChange={(e) => updateRow(row.id, 'gradYear', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="2025"
+                />
+              </div>
 
-                {/* Phone */}
-                <td className="px-4 py-2">
-                  <input
-                    type="tel"
-                    value={row.phone}
-                    onChange={(e) => updateRow(row.id, 'phone', e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF]"
-                    placeholder="555-1234"
-                  />
-                </td>
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  value={row.phone}
+                  onChange={(e) => updateRow(row.id, 'phone', e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF]"
+                  placeholder="555-1234"
+                />
+              </div>
 
-                {/* Create Login */}
-                <td className="px-4 py-2 text-center">
+              {/* Create Login */}
+              <div className="flex items-center pt-5">
+                <label className="flex items-center gap-1 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={row.createLogin}
                     onChange={(e) => updateRow(row.id, 'createLogin', e.target.checked)}
                     className="w-4 h-4"
                   />
-                </td>
+                  <span className="text-xs text-gray-300">Login</span>
+                </label>
+              </div>
 
-                {/* Password */}
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={row.password}
-                    onChange={(e) => updateRow(row.id, 'password', e.target.value)}
-                    disabled={!row.createLogin}
-                    className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#9BDDFF] disabled:opacity-50"
-                    placeholder="Auto-generated"
-                  />
-                </td>
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1">Password</label>
+                <input
+                  type="text"
+                  value={row.password}
+                  onChange={(e) => updateRow(row.id, 'password', e.target.value)}
+                  disabled={!row.createLogin}
+                  className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 text-sm focus:outline-none focus:border-[#9BDDFF] disabled:opacity-50"
+                  placeholder="Auto"
+                />
+              </div>
+            </div>
 
-                {/* VALD Status */}
-                <td className="px-4 py-2 text-center">
-                  {row.valdSearching ? (
-                    <span className="text-xs text-yellow-400">🔍</span>
-                  ) : row.valdMatched ? (
-                    <span className="text-xs text-green-400" title={`Found: ${row.valdProfile?.name}`}>✓</span>
-                  ) : (
-                    <span className="text-xs text-gray-600">-</span>
-                  )}
-                </td>
-
-                {/* Blast Status */}
-                <td className="px-4 py-2 text-center">
-                  {row.blastSearching ? (
-                    <span className="text-xs text-yellow-400">🔍</span>
-                  ) : row.blastMatched ? (
-                    <span className="text-xs text-green-400" title={`Found: ${row.blastProfile?.name}`}>✓</span>
-                  ) : (
-                    <span className="text-xs text-gray-600">-</span>
-                  )}
-                </td>
-
-                {/* Remove Button */}
-                <td className="px-4 py-2 text-center">
+            {/* Row 3: Integration Status */}
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-white/10">
+              {/* VALD Status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">VALD ForceDecks</label>
+                {row.valdSearching ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="h-4 w-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="ml-2 text-xs text-gray-400">Searching...</span>
+                  </div>
+                ) : row.valdMatched && row.valdProfile ? (
                   <button
-                    onClick={() => removeRow(row.id)}
-                    disabled={rows.length === 1}
-                    className="text-red-400 hover:text-red-300 disabled:opacity-30 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      setSelectedRowId(row.id);
+                      setModalType('vald');
+                      setShowProfileModal(true);
+                    }}
+                    className="w-full px-4 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-400 rounded text-sm font-semibold transition-all"
                   >
-                    ✕
+                    ✓ {row.valdProfile.givenName} {row.valdProfile.familyName}
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                ) : (
+                  <div className="text-sm text-gray-600 py-2">No match found</div>
+                )}
+              </div>
+
+              {/* Blast Motion Status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Blast Motion</label>
+                {row.blastSearching ? (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="h-4 w-4 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="ml-2 text-xs text-gray-400">Searching...</span>
+                  </div>
+                ) : row.blastMatched && row.blastProfile ? (
+                  <button
+                    onClick={() => {
+                      setSelectedRowId(row.id);
+                      setModalType('blast');
+                      setShowProfileModal(true);
+                    }}
+                    className="w-full px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/50 text-blue-400 rounded text-sm font-semibold transition-all"
+                  >
+                    ✓ {row.blastProfile.name}
+                  </button>
+                ) : (
+                  <div className="text-sm text-gray-600 py-2">No match found</div>
+                )}
+              </div>
+            </div>
+
+            {/* Validation Errors */}
+            {row.errors.length > 0 && (
+              <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <p className="text-sm text-red-400">
+                  {row.errors.join(', ')}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
 
-      {/* Validation Errors Summary */}
-      {rows.some(row => row.errors.length > 0) && (
-        <div className="max-w-[100vw] mx-auto mt-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <h3 className="font-semibold text-red-400 mb-2">Validation Errors:</h3>
-          <ul className="space-y-1">
-            {rows.map((row, index) =>
-              row.errors.length > 0 && (
-                <li key={row.id} className="text-sm text-red-300">
-                  Row {index + 1}: {row.errors.join(', ')}
-                </li>
-              )
-            )}
-          </ul>
+      {/* Profile Selection Modal */}
+      {showProfileModal && selectedRowId && modalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowProfileModal(false)}>
+          <div className="bg-[#0A0A0A] border border-white/20 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+                  {modalType === 'vald' ? (
+                    <>
+                      <span className="text-2xl">⚡</span>
+                      VALD Profile Found
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl">⚾</span>
+                      Blast Motion Player Found
+                    </>
+                  )}
+                </h3>
+                <button
+                  onClick={() => setShowProfileModal(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {modalType === 'vald' && (() => {
+                const row = rows.find(r => r.id === selectedRowId);
+                const profile = row?.valdProfile;
+                if (!profile) return null;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="p-6 bg-white/5 border-2 border-emerald-500/50 rounded-xl">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="text-xl font-semibold text-white">
+                              {profile.givenName} {profile.familyName}
+                            </h4>
+                            <span className="px-2 py-0.5 bg-emerald-500 text-white text-xs font-bold rounded">
+                              VALD PROFILE
+                            </span>
+                          </div>
+
+                          {profile.email ? (
+                            <p className="text-emerald-300 text-base font-medium flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              {profile.email}
+                            </p>
+                          ) : (
+                            <p className="text-amber-400 text-base italic flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              No email in VALD
+                            </p>
+                          )}
+
+                          <p className="text-gray-400 text-base flex items-center gap-2 mb-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
+                          </p>
+
+                          <p className="text-gray-500 text-sm font-mono mt-3">
+                            Profile ID: {profile.profileId}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleSelectValdProfile(selectedRowId, profile)}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold rounded-lg transition-all"
+                      >
+                        Link & Auto-Fill Data
+                      </button>
+                      <button
+                        onClick={() => setShowProfileModal(false)}
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {modalType === 'blast' && (() => {
+                const row = rows.find(r => r.id === selectedRowId);
+                const profile = row?.blastProfile;
+                if (!profile) return null;
+
+                return (
+                  <div className="space-y-4">
+                    <div className="p-6 bg-white/5 border-2 border-blue-500/50 rounded-xl">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-3">
+                            <h4 className="text-xl font-semibold text-white">
+                              {profile.name}
+                            </h4>
+                            <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded">
+                              BLAST MOTION
+                            </span>
+                          </div>
+
+                          {profile.email ? (
+                            <p className="text-blue-300 text-base font-medium flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              {profile.email}
+                            </p>
+                          ) : (
+                            <p className="text-amber-400 text-base italic flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                              No email in Blast Motion
+                            </p>
+                          )}
+
+                          {profile.position && (
+                            <p className="text-gray-400 text-base flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                              </svg>
+                              Position: {profile.position}
+                            </p>
+                          )}
+
+                          {profile.total_actions > 0 && (
+                            <p className="text-gray-400 text-base flex items-center gap-2 mb-2">
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                              </svg>
+                              {profile.total_actions} swings recorded
+                            </p>
+                          )}
+
+                          <p className="text-gray-500 text-sm font-mono mt-3">
+                            Blast ID: {profile.blast_user_id}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleSelectBlastProfile(selectedRowId, profile)}
+                        className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg transition-all"
+                      >
+                        Link & Auto-Fill Data
+                      </button>
+                      <button
+                        onClick={() => setShowProfileModal(false)}
+                        className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </div>

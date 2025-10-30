@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
       createValdProfile,
       linkExistingVald,
       existingValdProfileId,
+      blastUserId,
     } = body;
 
     // Validate required fields
@@ -126,6 +127,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if email belongs to a VALD profile that's already linked to another athlete
+    const { data: valdLinkedAthlete } = await supabase
+      .from('athletes')
+      .select('id, first_name, last_name, vald_profile_id')
+      .not('vald_profile_id', 'is', null)
+      .eq('email', email)
+      .single();
+
+    if (valdLinkedAthlete) {
+      return NextResponse.json(
+        {
+          error: `This email is already linked to a VALD profile for athlete: ${valdLinkedAthlete.first_name} ${valdLinkedAthlete.last_name}. Cannot create duplicate.`,
+          existingAthleteId: valdLinkedAthlete.id
+        },
+        { status: 409 }
+      );
+    }
+
     // Check if email already has an auth account (auto-link if it does)
     let authUserId: string | null = null;
     let authAccountCreated = false;
@@ -148,7 +167,30 @@ export async function POST(request: NextRequest) {
     const existingUser = existingAuthUser.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
     if (existingUser) {
-      // Email already has an auth account - link it
+      // Email already has an auth account
+      console.log(`🔍 Found existing auth user: ${existingUser.id} (${email})`);
+
+      // CRITICAL: Check if this is a staff/admin/coach account
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('app_role, first_name, last_name')
+        .eq('id', existingUser.id)
+        .single();
+
+      if (existingProfile && existingProfile.app_role) {
+        if (['staff', 'coach', 'admin', 'super_admin'].includes(existingProfile.app_role)) {
+          return NextResponse.json(
+            {
+              error: `This email belongs to a ${existingProfile.app_role} account (${existingProfile.first_name} ${existingProfile.last_name}). Staff accounts cannot be converted to athlete profiles.`,
+              isStaffAccount: true,
+              staffRole: existingProfile.app_role
+            },
+            { status: 403 } // 403 Forbidden
+          );
+        }
+      }
+
+      // Safe to link - it's an athlete account or unassigned account
       authUserId = existingUser.id;
       authAccountLinked = true;
       console.log(`✅ Linking existing auth account for: ${email}`);
@@ -204,22 +246,29 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the athlete record with name stored directly (like Evan's schema)
+    const athleteInsert: any = {
+      org_id: org_id,
+      user_id: authUserId, // Link to auth user if created
+      first_name: firstName,
+      last_name: lastName,
+      email: email,
+      // Note: phone is not in athletes table - it's in profiles table if needed
+      date_of_birth: birthDate || null,
+      primary_position: primaryPosition || null,
+      secondary_position: secondaryPosition || null,
+      grad_year: gradYear || null,
+      play_level: playLevel, // CRITICAL: Required for percentile calculations
+      is_active: isActive !== undefined ? isActive : true,
+    };
+
+    // Add Blast Motion user ID if provided
+    if (blastUserId) {
+      athleteInsert.blast_user_id = blastUserId;
+    }
+
     const { data: newAthlete, error: athleteError } = await supabase
       .from('athletes')
-      .insert({
-        org_id: org_id,
-        user_id: authUserId, // Link to auth user if created
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        // Note: phone is not in athletes table - it's in profiles table if needed
-        date_of_birth: birthDate || null,
-        primary_position: primaryPosition || null,
-        secondary_position: secondaryPosition || null,
-        grad_year: gradYear || null,
-        play_level: playLevel, // CRITICAL: Required for percentile calculations
-        is_active: isActive !== undefined ? isActive : true,
-      })
+      .insert(athleteInsert)
       .select()
       .single();
 

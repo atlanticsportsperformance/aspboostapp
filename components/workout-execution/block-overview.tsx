@@ -124,7 +124,7 @@ export default function BlockOverview({ routines, exerciseInputs, onExerciseClic
                 const hasMetricTargets = ex.metric_targets && Object.keys(ex.metric_targets).length > 0;
 
                 // Get reps display - check for ANY reps metric (reps, green_ball_reps, etc.)
-                let repsDisplay = '—';
+                let repsDisplay = '0';
                 if (ex.metric_targets) {
                   // Find any metric that ends with "_reps" or is just "reps"
                   const repsKeys = Object.keys(ex.metric_targets).filter((k: string) => k === 'reps' || k.endsWith('_reps'));
@@ -142,7 +142,7 @@ export default function BlockOverview({ routines, exerciseInputs, onExerciseClic
 
                 if (hasPerSetReps) {
                   const repsPerSet = ex.set_configurations.map((setConfig: any) =>
-                    setConfig.metric_values?.reps || setConfig.reps || '—'
+                    setConfig.metric_values?.reps || setConfig.reps || 0
                   );
                   repsDisplay = repsPerSet.join(', ');
                 }
@@ -222,13 +222,14 @@ export default function BlockOverview({ routines, exerciseInputs, onExerciseClic
                                       const isPrimary = isPrimaryMetric(key);
                                       if (isPrimary) return true;
 
-                                      // Check if any set has a value > 0 for this metric
+                                      // Show metric if it exists in any set's metric_values or in metric_targets
+                                      // Don't filter by value - if the metric is enabled, show it
                                       if (hasSetConfigurations) {
                                         return ex.set_configurations.some((s: any) =>
-                                          s.metric_values?.[key] && s.metric_values[key] > 0
+                                          s.metric_values && key in s.metric_values
                                         );
                                       }
-                                      return ex.metric_targets[key] && ex.metric_targets[key] > 0;
+                                      return key in (ex.metric_targets || {});
                                     })
                                     .map((key: string, idx: number) => {
                                       const formattedKey = formatMetricName(key);

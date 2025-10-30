@@ -29,8 +29,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
   // Account Status
   const [isActive, setIsActive] = useState(true);
 
-  // Login Account Options
-  const [createLoginAccount, setCreateLoginAccount] = useState(false);
+  // Login Account Options - Always create login accounts
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,8 +38,12 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
     checking: boolean;
     hasAuthAccount: boolean;
     isLinkedToAthlete: boolean;
+    isStaffAccount?: boolean;
+    staffRole?: string;
+    staffName?: string;
     athleteName?: string;
     message?: string;
+    cannotCreateAthlete?: boolean;
   }>({
     checking: false,
     hasAuthAccount: false,
@@ -55,6 +58,12 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
   const [valdSearchResult, setValdSearchResult] = useState<any>(null);
   const [hasSearchedEmail, setHasSearchedEmail] = useState(false);
   const [valdNameMatches, setValdNameMatches] = useState<any[]>([]);
+  const [selectedValdProfile, setSelectedValdProfile] = useState<any>(null);
+
+  // Blast Motion Integration Options
+  const [blastMotionMatches, setBlastMotionMatches] = useState<any[]>([]);
+  const [searchingBlast, setSearchingBlast] = useState(false);
+  const [selectedBlastProfile, setSelectedBlastProfile] = useState<any>(null);
 
   // DISABLED: Email search causes too many false matches
   // // Auto-search VALD when email is entered (debounced)
@@ -105,13 +114,16 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
             checking: false,
             hasAuthAccount: data.hasAuthAccount,
             isLinkedToAthlete: data.isLinkedToAthlete,
+            isStaffAccount: data.isStaffAccount,
+            staffRole: data.staffRole,
+            staffName: data.staffName,
             athleteName: data.athleteName,
             message: data.message,
+            cannotCreateAthlete: data.cannotCreateAthlete,
           });
 
-          // Auto-disable create login if email already has auth account
-          if (data.hasAuthAccount) {
-            setCreateLoginAccount(false);
+          // Clear password if email already has auth account or is staff account
+          if (data.hasAuthAccount || data.isStaffAccount) {
             setPassword('');
           }
         } else {
@@ -148,6 +160,30 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
 
     return () => clearTimeout(timer);
   }, [firstName, lastName, isOpen]);
+
+  // Auto-search Blast Motion by name (debounced)
+  useEffect(() => {
+    console.log('🔍 Blast Motion Auto-Search Effect Triggered:', { firstName, lastName, email, isOpen });
+
+    if ((!firstName && !lastName && !email) || !isOpen) {
+      console.log('⏸️ Skipping Blast search: missing data or modal closed');
+      setBlastMotionMatches([]);
+      return;
+    }
+
+    console.log('⏰ Setting up Blast Motion search timer (800ms)...');
+
+    // Debounce: wait 800ms after user stops typing
+    const timer = setTimeout(() => {
+      console.log('⏰ Timer fired! Calling handleSearchBlastMotion...');
+      handleSearchBlastMotion(true); // true = silent/auto search
+    }, 800);
+
+    return () => {
+      console.log('🧹 Cleaning up Blast search timer');
+      clearTimeout(timer);
+    };
+  }, [firstName, lastName, email, isOpen]);
 
   if (!isOpen) return null;
 
@@ -205,11 +241,12 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
         throw new Error('Please enter the VALD profile ID to link');
       }
 
-      if (createLoginAccount && !password) {
+      // Password is now required (always create login accounts)
+      if (!password) {
         throw new Error('Please enter a password or generate a random one');
       }
 
-      // Call API endpoint to create athlete
+      // Call API endpoint to create athlete (always create login account)
       const response = await fetch('/api/athletes/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -224,11 +261,12 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
           gradYear: gradYear ? parseInt(gradYear) : null,
           playLevel,
           isActive,
-          createLoginAccount,
-          password: createLoginAccount ? password : null,
+          createLoginAccount: true, // Always create login accounts
+          password: password,
           createValdProfile,
           linkExistingVald,
           existingValdProfileId: existingValdProfileId || null,
+          blastUserId: selectedBlastProfile?.blast_user_id || null,
         }),
       });
 
@@ -244,7 +282,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
       if (data.auth_account_linked) successMessage += '\n🔗 Existing login account linked';
       if (data.vald_profile_created) successMessage += '\n🔗 VALD profile created and linked';
       if (data.vald_profile_linked) successMessage += '\n🔗 Existing VALD profile linked';
-      if (createLoginAccount && password) successMessage += `\n\n🔑 Password: ${password}\n(Make sure to save this!)`;
+      successMessage += `\n\n🔑 Password: ${password}\n(Make sure to save this!)`;
 
       alert(successMessage);
 
@@ -285,6 +323,56 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
       console.error('Error searching VALD profiles by name:', err);
       // Silent failure for auto-search
       setValdNameMatches([]);
+    }
+  };
+
+  const handleSearchBlastMotion = async (isAutoSearch = false) => {
+    // Always search by name - Blast Motion API doesn't support email search
+    // But we can filter results by email after getting them
+    const searchQuery = `${firstName} ${lastName}`.trim();
+
+    if (!searchQuery) {
+      return;
+    }
+
+    console.log(`🔍 Searching Blast Motion for: "${searchQuery}"${email ? ` (will filter by email: ${email})` : ''}`);
+    setSearchingBlast(true);
+
+    try {
+      const response = await fetch(`/api/blast/search-player?query=${encodeURIComponent(searchQuery)}`);
+      const data = await response.json();
+
+      console.log('Blast Motion API response:', data);
+
+      if (response.ok && data.success && data.players && data.players.length > 0) {
+        console.log(`✅ Found ${data.players.length} Blast Motion player(s):`, data.players);
+
+        // If we have an email, prioritize exact email matches
+        if (email && email.trim()) {
+          const emailLower = email.trim().toLowerCase();
+          const exactMatches = data.players.filter((p: any) =>
+            p.email && p.email.toLowerCase() === emailLower
+          );
+
+          if (exactMatches.length > 0) {
+            console.log(`✅ Found ${exactMatches.length} exact email match(es)`);
+            setBlastMotionMatches(exactMatches);
+          } else {
+            console.log(`⚠️ No exact email match, showing all ${data.players.length} name matches`);
+            setBlastMotionMatches(data.players);
+          }
+        } else {
+          setBlastMotionMatches(data.players);
+        }
+      } else {
+        console.log('⚠️ No Blast Motion players found or API returned:', data);
+        setBlastMotionMatches([]);
+      }
+    } catch (err) {
+      console.error('❌ Error searching Blast Motion:', err);
+      setBlastMotionMatches([]);
+    } finally {
+      setSearchingBlast(false);
     }
   };
 
@@ -380,7 +468,6 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
     setGradYear('');
     setPlayLevel('High School');
     setIsActive(true);
-    setCreateLoginAccount(false);
     setPassword('');
     setShowPassword(false);
     setCreateValdProfile(true);
@@ -390,6 +477,10 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
     setValdSearchResult(null);
     setHasSearchedEmail(false);
     setValdNameMatches([]);
+    setSelectedValdProfile(null);
+    setBlastMotionMatches([]);
+    setSearchingBlast(false);
+    setSelectedBlastProfile(null);
     setError(null);
   };
 
@@ -494,7 +585,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                 </div>
 
                 {/* Auth Account Status */}
-                {email && emailAuthStatus.hasAuthAccount && (
+                {email && emailAuthStatus.hasAuthAccount && !emailAuthStatus.isStaffAccount && (
                   <div className="mt-2 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                     <p className="text-xs text-blue-300 flex items-center gap-1.5">
                       <svg className="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -512,6 +603,18 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                         ✅ Will automatically link existing login account to this athlete profile
                       </p>
                     )}
+                  </div>
+                )}
+
+                {/* Staff Account Warning in Email Field */}
+                {email && emailAuthStatus.isStaffAccount && (
+                  <div className="mt-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <p className="text-xs text-red-300 flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <strong>Login account exists:</strong> {emailAuthStatus.message}
+                    </p>
                   </div>
                 )}
 
@@ -598,7 +701,25 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
             </div>
 
             {/* Login Account Status/Options */}
-            {emailAuthStatus.hasAuthAccount && !emailAuthStatus.isLinkedToAthlete ? (
+            {emailAuthStatus.isStaffAccount ? (
+              // Staff/Admin account - cannot create athlete
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-red-400 font-medium">🚫 Staff Account Detected</p>
+                    <p className="text-red-300 text-sm mt-1">
+                      This email belongs to <strong>{emailAuthStatus.staffName}</strong> ({emailAuthStatus.staffRole})
+                    </p>
+                    <p className="text-red-200 text-xs mt-2">
+                      Staff/Admin/Coach accounts cannot be converted to athlete profiles. Please use a different email address.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : emailAuthStatus.hasAuthAccount && !emailAuthStatus.isLinkedToAthlete ? (
               // Existing auth account - will auto-link
               <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                 <div className="flex items-start gap-3">
@@ -631,34 +752,10 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                   </div>
                 </div>
               </div>
-            ) : (
-              // No existing account - show create checkbox
-              <div className="mb-4">
-                <label className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-lg cursor-pointer hover:bg-white/10 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={createLoginAccount}
-                    onChange={(e) => {
-                      setCreateLoginAccount(e.target.checked);
-                      if (!e.target.checked) {
-                        setPassword('');
-                        setShowPassword(false);
-                      }
-                    }}
-                    className="mt-1 w-5 h-5 rounded border-white/20 bg-white/5 text-[#9BDDFF] focus:ring-2 focus:ring-[#9BDDFF] focus:ring-offset-0"
-                  />
-                  <div className="flex-1">
-                    <p className="text-white font-medium">Create login account for this athlete</p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      Allow athlete to log in with email and password (you set the password)
-                    </p>
-                  </div>
-                </label>
-              </div>
-            )}
+            ) : null}
 
-            {/* Password Field (only if creating login account) */}
-            {createLoginAccount && (
+            {/* Password Field (only show if not staff account and no existing auth account) */}
+            {!emailAuthStatus.hasAuthAccount && !emailAuthStatus.isStaffAccount && (
               <div className="space-y-3">
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">
@@ -670,7 +767,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                         type={showPassword ? 'text' : 'password'}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        required={createLoginAccount}
+                        required
                         className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent pr-20"
                         placeholder="Enter password or generate random"
                       />
@@ -827,50 +924,83 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
                               key={profile.profileId}
                               type="button"
                               onClick={() => {
+                                setSelectedValdProfile(profile);
                                 setExistingValdProfileId(profile.profileId);
                                 setLinkExistingVald(true);
                                 setCreateValdProfile(false);
-                                // Auto-fill birth date
-                                if (profile.dateOfBirth && !birthDate) {
-                                  setBirthDate(profile.dateOfBirth.split('T')[0]);
-                                }
-                                // Auto-fill email from VALD profile
+
+                                // Auto-fill ALL available fields from VALD profile
                                 if (profile.email) {
                                   setEmail(profile.email);
                                 }
+                                if (profile.dateOfBirth) {
+                                  setBirthDate(profile.dateOfBirth.split('T')[0]);
+                                }
+                                // VALD profiles might have first/last name - fill if not set
+                                if (profile.givenName && !firstName) {
+                                  setFirstName(profile.givenName);
+                                }
+                                if (profile.familyName && !lastName) {
+                                  setLastName(profile.familyName);
+                                }
                               }}
-                              className={`w-full px-3 py-2.5 rounded text-left transition-colors ${
+                              className={`w-full px-4 py-3 rounded-lg text-left transition-all ${
                                 existingValdProfileId === profile.profileId
-                                  ? 'bg-emerald-500/30 border-2 border-emerald-500'
-                                  : 'bg-white/5 hover:bg-white/10 border border-white/10'
+                                  ? 'bg-emerald-500/30 border-2 border-emerald-400 shadow-lg shadow-emerald-500/20'
+                                  : 'bg-white/5 hover:bg-white/10 border-2 border-white/10 hover:border-white/20'
                               }`}
                             >
-                              <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3">
                                 <div className="flex-1">
-                                  <p className="text-white text-sm font-medium">
-                                    {profile.givenName} {profile.familyName}
-                                  </p>
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <p className="text-white text-base font-semibold">
+                                      {profile.givenName} {profile.familyName}
+                                    </p>
+                                    {existingValdProfileId === profile.profileId && (
+                                      <span className="px-2 py-0.5 bg-emerald-500 text-white text-xs font-bold rounded">
+                                        SELECTED
+                                      </span>
+                                    )}
+                                  </div>
                                   {profile.email ? (
-                                    <p className="text-emerald-300 text-xs mt-1 font-medium">
-                                      📧 {profile.email}
+                                    <p className="text-emerald-300 text-sm mt-1 font-medium flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                      </svg>
+                                      {profile.email}
                                     </p>
                                   ) : (
-                                    <p className="text-amber-400 text-xs mt-1 italic">
-                                      ⚠️ No email in VALD
+                                    <p className="text-amber-400 text-sm mt-1 italic flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                      </svg>
+                                      No email in VALD
                                     </p>
                                   )}
-                                  <p className="text-gray-400 text-xs mt-1">
+                                  <p className="text-gray-400 text-sm mt-1.5 flex items-center gap-1">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
                                     DOB: {new Date(profile.dateOfBirth).toLocaleDateString()}
                                   </p>
                                   <p className="text-gray-500 text-xs font-mono mt-1">
-                                    ID: {profile.profileId}
+                                    Profile ID: {profile.profileId}
                                   </p>
                                 </div>
-                                {existingValdProfileId === profile.profileId && (
-                                  <svg className="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                )}
+                                <div className="flex-shrink-0">
+                                  {existingValdProfileId === profile.profileId ? (
+                                    <div className="px-3 py-1.5 bg-emerald-500 text-white text-sm font-semibold rounded-lg flex items-center gap-1">
+                                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Linked
+                                    </div>
+                                  ) : (
+                                    <div className="px-3 py-1.5 bg-white/10 text-white text-sm font-medium rounded-lg">
+                                      Select
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </button>
                           ))}
@@ -975,6 +1105,189 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
             )}
           </div>
 
+          {/* Blast Motion Integration */}
+          <div className="border-t border-white/10 pt-6">
+            <h3 className="text-white font-semibold text-lg mb-4 flex items-center gap-2">
+              <span className="text-2xl">⚾</span>
+              Blast Motion Integration
+            </h3>
+
+            {blastMotionMatches.length > 0 ? (
+              /* Found matching Blast Motion profiles */
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="flex gap-3">
+                    <svg className="w-6 h-6 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div className="flex-1">
+                      <h4 className="text-blue-400 font-semibold">Blast Motion Player(s) Found</h4>
+                      <p className="text-blue-300 text-sm mt-1">
+                        Found {blastMotionMatches.length} Blast Motion player(s) matching your search
+                      </p>
+                      <p className="text-blue-200 text-xs mt-2">
+                        Select the correct player below to link hitting metrics.
+                      </p>
+
+                      {/* Show Blast Motion matches */}
+                      <div className="mt-3 pt-3 border-t border-blue-500/20">
+                        <p className="text-blue-200 text-xs font-semibold mb-2">
+                          Select player to link:
+                        </p>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {blastMotionMatches.map((player: any) => (
+                            <button
+                              key={player.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedBlastProfile(player);
+
+                                // Auto-fill fields from Blast Motion
+                                if (player.email && !email) {
+                                  setEmail(player.email);
+                                }
+                                if (player.first_name && !firstName) {
+                                  setFirstName(player.first_name);
+                                }
+                                if (player.last_name && !lastName) {
+                                  setLastName(player.last_name);
+                                }
+                                if (player.position && !primaryPosition) {
+                                  setPrimaryPosition(player.position);
+                                }
+                              }}
+                              className={`w-full px-4 py-3 rounded-lg text-left transition-all ${
+                                selectedBlastProfile?.id === player.id
+                                  ? 'bg-blue-500/30 border-2 border-blue-400 shadow-lg shadow-blue-500/20'
+                                  : 'bg-white/5 hover:bg-white/10 border-2 border-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <p className="text-white text-base font-semibold">
+                                      {player.name}
+                                    </p>
+                                    {selectedBlastProfile?.id === player.id && (
+                                      <span className="px-2 py-0.5 bg-blue-500 text-white text-xs font-bold rounded">
+                                        SELECTED
+                                      </span>
+                                    )}
+                                  </div>
+                                  {player.email ? (
+                                    <p className="text-blue-300 text-sm mt-1 font-medium flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                      </svg>
+                                      {player.email}
+                                    </p>
+                                  ) : (
+                                    <p className="text-amber-400 text-sm mt-1 italic flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                      </svg>
+                                      No email in Blast Motion
+                                    </p>
+                                  )}
+                                  {player.position && (
+                                    <p className="text-gray-400 text-sm mt-1.5 flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
+                                      </svg>
+                                      Position: {player.position}
+                                    </p>
+                                  )}
+                                  {player.total_actions > 0 && (
+                                    <p className="text-gray-400 text-sm mt-1 flex items-center gap-1">
+                                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                      </svg>
+                                      {player.total_actions} swings recorded
+                                    </p>
+                                  )}
+                                  <p className="text-gray-500 text-xs font-mono mt-1">
+                                    Blast ID: {player.blast_user_id}
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0">
+                                  {selectedBlastProfile?.id === player.id ? (
+                                    <div className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-lg flex items-center gap-1">
+                                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                      </svg>
+                                      Linked
+                                    </div>
+                                  ) : (
+                                    <div className="px-3 py-1.5 bg-white/10 text-white text-sm font-medium rounded-lg">
+                                      Select
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedBlastProfile(null);
+                          }}
+                          className="w-full mt-3 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-gray-300 text-sm transition-colors"
+                        >
+                          Don't link Blast Motion
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : searchingBlast ? (
+              /* Searching for Blast Motion */
+              <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+                <div className="flex gap-3">
+                  <div className="h-6 w-6 border-2 border-gray-400 border-t-white rounded-full animate-spin flex-shrink-0"></div>
+                  <div className="flex-1">
+                    <h4 className="text-white font-semibold">Searching Blast Motion...</h4>
+                    <p className="text-gray-400 text-sm mt-1">
+                      Looking for players matching your search
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (firstName || lastName || email) ? (
+              /* No Blast Motion matches found */
+              <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+                <div className="flex gap-3">
+                  <svg className="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <h4 className="text-gray-400 font-semibold">No Blast Motion Player Found</h4>
+                    <p className="text-gray-500 text-sm mt-1">
+                      No player found in Blast Motion matching this name or email. Hitting metrics won't be synced automatically.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Waiting for input */
+              <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
+                <div className="flex gap-3">
+                  <svg className="w-6 h-6 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="flex-1">
+                    <h4 className="text-white font-semibold">Enter Name to Check Blast Motion</h4>
+                    <p className="text-gray-400 text-sm mt-1">
+                      We'll automatically search for existing Blast Motion players when you enter a name or email.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
             <button
@@ -987,8 +1300,8 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
             </button>
             <button
               type="submit"
-              disabled={loading}
-              className="px-6 py-2.5 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-all disabled:opacity-50 font-semibold flex items-center gap-2"
+              disabled={loading || emailAuthStatus.cannotCreateAthlete}
+              className="px-6 py-2.5 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center gap-2"
             >
               {loading ? (
                 <>

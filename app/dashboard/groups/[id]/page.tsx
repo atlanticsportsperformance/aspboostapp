@@ -19,7 +19,8 @@ import {
   Maximize2,
   Library,
   ClipboardList,
-  Dumbbell
+  Dumbbell,
+  Edit
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -29,6 +30,8 @@ import {
   DragStartEvent,
   closestCenter,
   PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
@@ -36,6 +39,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { AddWorkoutToGroupModal } from '@/components/dashboard/groups/add-workout-to-group-modal';
 import { AddRoutineToGroupModal } from '@/components/dashboard/groups/add-routine-to-group-modal';
 import { AssignPlanToGroupModal } from '@/components/dashboard/groups/assign-plan-to-group-modal';
+import { WorkoutBuilderModal } from '@/components/dashboard/plans/workout-builder-modal';
 
 interface Profile {
   id: string;
@@ -135,13 +139,30 @@ export default function GroupDetailPage() {
   const [showAddRoutineModal, setShowAddRoutineModal] = useState(false);
   const [showAssignPlanModal, setShowAssignPlanModal] = useState(false);
   const [showCreateWorkoutModal, setShowCreateWorkoutModal] = useState(false);
+  const [editingWorkoutId, setEditingWorkoutId] = useState<string | null>(null);
+
+  // Workout details visibility
+  const [showWorkoutDetails, setShowWorkoutDetails] = useState(true);
+
+  // Clone modal state
+  const [showCloneModal, setShowCloneModal] = useState(false);
+  const [cloneSchedule, setCloneSchedule] = useState<GroupWorkoutSchedule | null>(null);
+  const [cloneDate, setCloneDate] = useState('');
 
   const supabase = createClient();
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    // Mouse sensor for desktop - no activation constraint for easy dragging
+    useSensor(MouseSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // Small distance to prevent accidental drags on click
+      },
+    }),
+    // Touch sensor for mobile - stricter constraint to prevent accidental drags
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        distance: 15,
+        tolerance: 5,
       },
     })
   );
@@ -234,10 +255,37 @@ export default function GroupDetailPage() {
       // Fetch workout details and sync counts for each schedule
       const enrichedSchedules = await Promise.all(
         (schedulesData || []).map(async (schedule) => {
-          // Fetch workout details
+          // Fetch workout details with routines and exercises (same structure as athlete calendar)
           const { data: workout } = await supabase
             .from('workouts')
-            .select('id, name, category, estimated_duration_minutes, notes, group_id')
+            .select(`
+              id,
+              name,
+              category,
+              estimated_duration_minutes,
+              notes,
+              group_id,
+              routines (
+                id,
+                name,
+                scheme,
+                order_index,
+                routine_exercises (
+                  id,
+                  order_index,
+                  sets,
+                  metric_targets,
+                  set_configurations,
+                  intensity_targets,
+                  is_amrap,
+                  notes,
+                  exercises (
+                    id,
+                    name
+                  )
+                )
+              )
+            `)
             .eq('id', schedule.workout_id)
             .single();
 
@@ -317,6 +365,63 @@ export default function GroupDetailPage() {
     fetchGroupDetails();
   }
 
+  function handleEditWorkout(workoutId: string) {
+    setEditingWorkoutId(workoutId);
+  }
+
+  function handleCloneWorkout(scheduleId: string) {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    if (!schedule || !schedule.workout_id) {
+      alert('Could not find workout to clone');
+      return;
+    }
+
+    // Open modal with schedule data
+    setCloneSchedule(schedule);
+    setCloneDate(schedule.scheduled_date);
+    setShowCloneModal(true);
+  }
+
+  async function confirmCloneWorkout() {
+    if (!cloneSchedule || !cloneDate) return;
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(cloneDate)) {
+      alert('Invalid date format. Please use YYYY-MM-DD');
+      return;
+    }
+
+    // Create new schedule with same workout
+    const { data, error } = await supabase
+      .from('group_workout_schedules')
+      .insert({
+        group_id: groupId,
+        workout_id: cloneSchedule.workout_id,
+        scheduled_date: cloneDate,
+        scheduled_time: cloneSchedule.scheduled_time,
+        notes: cloneSchedule.notes,
+        auto_assign: cloneSchedule.auto_assign
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error cloning workout:', error);
+      alert('Failed to clone workout');
+      return;
+    }
+
+    console.log('✅ Cloned workout schedule:', data);
+    console.log('✅ Database trigger should auto-create workout instances for group members');
+
+    // Close modal and refresh
+    setShowCloneModal(false);
+    setCloneSchedule(null);
+    setCloneDate('');
+    fetchGroupDetails();
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
 
@@ -345,6 +450,23 @@ export default function GroupDetailPage() {
       console.error('Error updating schedule:', error);
       alert('Failed to move workout');
     } else {
+      console.log('✅ Updated group schedule, now syncing to athlete calendars...');
+
+      // SYNC TO ATHLETES: Update all workout_instances for this group workout
+      const { error: syncError } = await supabase
+        .from('workout_instances')
+        .update({ scheduled_date: newDate })
+        .eq('source_type', 'group')
+        .eq('source_id', scheduleId)
+        .in('status', ['not_started', 'in_progress']);
+
+      if (syncError) {
+        console.error('Error syncing to athletes:', syncError);
+        alert('Group workout moved but failed to sync to some athletes');
+      } else {
+        console.log('✅ Successfully synced workout to all athletes!');
+      }
+
       // Refresh to show updated sync status
       fetchGroupDetails();
     }
@@ -418,9 +540,7 @@ export default function GroupDetailPage() {
     return member.athlete?.profile?.email || 'Unknown';
   }
 
-  if (!mounted) return null;
-
-  if (loading) {
+  if (loading || !mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
         <div className="text-center">
@@ -537,38 +657,61 @@ export default function GroupDetailPage() {
             onDragEnd={handleDragEnd}
           >
             <div>
-              {/* Calendar Header */}
-              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-4 gap-4">
-                <h2 className="text-xl font-semibold text-white">{formatDate(currentMonth)}</h2>
-                <div className="flex items-center gap-2 flex-wrap">
+              {/* Calendar Header - Single Row */}
+              <div className="flex items-center justify-between mb-4 gap-2 md:gap-4">
+                {/* Left: Month Navigation */}
+                <div className="flex items-center gap-2 md:gap-4">
                   <button
                     onClick={previousMonth}
-                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white transition-colors"
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
                   >
-                    <ChevronLeft size={18} />
+                    <ChevronLeft size={20} className="text-white" />
                   </button>
+
+                  <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-white">
+                    <span className="md:hidden">{currentMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</span>
+                    <span className="hidden md:inline">{formatDate(currentMonth)}</span>
+                  </h2>
+
+                  <button
+                    onClick={nextMonth}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors touch-manipulation"
+                  >
+                    <ChevronRight size={20} className="text-white" />
+                  </button>
+
                   <button
                     onClick={goToToday}
-                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white transition-colors"
+                    className="px-3 py-1.5 md:px-4 md:py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs md:text-sm rounded-lg transition-all font-medium touch-manipulation"
                   >
                     Today
                   </button>
+                </div>
+
+                {/* Right: Action Buttons */}
+                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                   <button
-                    onClick={nextMonth}
-                    className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 text-white transition-colors"
+                    onClick={() => setShowWorkoutDetails(!showWorkoutDetails)}
+                    className={`px-3 py-1.5 md:px-4 md:py-2 border text-xs md:text-sm rounded-lg transition-all font-medium flex items-center gap-1.5 md:gap-2 touch-manipulation ${
+                      showWorkoutDetails
+                        ? 'bg-purple-600 border-purple-600 text-white hover:bg-purple-700'
+                        : 'bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700'
+                    }`}
+                    title={showWorkoutDetails ? 'Hide Workout Details' : 'Show Workout Details'}
                   >
-                    <ChevronRight size={18} />
+                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <span className="hidden sm:inline">{showWorkoutDetails ? 'Hide' : 'Show'}</span>
+                    <span className="sm:hidden">{showWorkoutDetails ? '−' : '+'}</span>
                   </button>
 
-                  <div className="w-px h-8 bg-white/10 mx-2"></div>
-
-                  {/* Action Buttons */}
                   <button
                     onClick={() => {
                       setSelectedDate(new Date().toISOString().split('T')[0]);
                       setShowCreateWorkoutModal(true);
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
+                    className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black text-xs md:text-sm rounded-lg transition-colors font-medium touch-manipulation"
                   >
                     <Plus size={18} />
                     <span className="hidden sm:inline">Create</span>
@@ -578,47 +721,49 @@ export default function GroupDetailPage() {
                       setSelectedDate(new Date().toISOString().split('T')[0]);
                       setShowAddWorkoutModal(true);
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors"
+                    className="hidden md:flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-colors font-medium touch-manipulation"
                   >
                     <Library size={18} />
-                    <span className="hidden sm:inline">Workout</span>
+                    <span>Workout</span>
                   </button>
                   <button
                     onClick={() => {
                       setSelectedDate(new Date().toISOString().split('T')[0]);
                       setShowAddRoutineModal(true);
                     }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors"
+                    className="hidden md:flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-colors font-medium touch-manipulation"
                   >
                     <Dumbbell size={18} />
-                    <span className="hidden sm:inline">Routine</span>
+                    <span>Routine</span>
                   </button>
                   <button
                     onClick={() => setShowAssignPlanModal(true)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors"
+                    className="hidden md:flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white text-xs md:text-sm rounded-lg transition-colors font-medium touch-manipulation"
                   >
                     <ClipboardList size={18} />
-                    <span className="hidden sm:inline">Plan</span>
+                    <span>Plan</span>
                   </button>
                 </div>
               </div>
 
-              {/* Calendar Grid */}
+              {/* Calendar Grid - Mobile horizontal scroll, desktop normal */}
               <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                {/* Day headers */}
-                <div className="grid grid-cols-7 bg-white/5 border-b border-white/10">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                    <div key={day} className="p-2 text-center text-sm font-semibold text-gray-400">
-                      {day}
+                <div className="overflow-x-auto">
+                  <div className="min-w-[800px] md:min-w-0">
+                    {/* Day headers */}
+                    <div className="grid grid-cols-7 bg-white/5 border-b border-white/10">
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                        <div key={day} className="p-2 text-center text-sm font-semibold text-gray-400">
+                          {day}
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                {/* Calendar days */}
-                <div className="grid grid-cols-7">
+                    {/* Calendar days */}
+                    <div className="grid grid-cols-7">
                   {getDaysInMonth(currentMonth).map((day, index) => {
                     if (!day) {
-                      return <DroppableDay key={`empty-${index}`} date={null} groupColor={group.color} />;
+                      return <DroppableDay key={`empty-${index}`} date={null} groupColor={group.color} showDetails={showWorkoutDetails} />;
                     }
 
                     const daySchedules = getSchedulesForDate(day);
@@ -631,7 +776,10 @@ export default function GroupDetailPage() {
                         groupColor={group.color}
                         isToday={today}
                         schedules={daySchedules}
+                        showDetails={showWorkoutDetails}
                         onDeleteSchedule={handleDeleteSchedule}
+                        onEditSchedule={handleEditWorkout}
+                        onCloneSchedule={handleCloneWorkout}
                         onClickDate={(dateStr) => {
                           setSelectedDate(dateStr);
                           setShowCreateWorkoutModal(true);
@@ -639,94 +787,9 @@ export default function GroupDetailPage() {
                       />
                     );
                   })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-
-              {/* Upcoming Workouts List */}
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-white mb-3">Upcoming Workouts</h3>
-                {schedules.filter(s => new Date(s.scheduled_date) >= new Date()).length === 0 ? (
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6 text-center text-gray-400">
-                    No upcoming workouts scheduled
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {schedules
-                      .filter(s => new Date(s.scheduled_date) >= new Date())
-                      .slice(0, 5)
-                      .map((schedule) => (
-                        <div
-                          key={schedule.id}
-                          className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-between hover:bg-white/10 transition-colors"
-                        >
-                          <div className="flex items-center gap-4 flex-1">
-                            <div
-                              className="w-12 h-12 rounded-lg flex items-center justify-center border"
-                              style={{
-                                backgroundColor: group.color + '20',
-                                borderColor: group.color + '40'
-                              }}
-                            >
-                              <CalendarIcon size={20} style={{ color: group.color }} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-semibold text-white truncate">{schedule.workout?.name || 'Workout'}</h4>
-                              <div className="flex items-center gap-3 text-sm text-gray-400 flex-wrap">
-                                <span>
-                                  {(() => {
-                                    const [year, month, day] = schedule.scheduled_date.split('-').map(Number);
-                                    const date = new Date(year, month - 1, day);
-                                    return date.toLocaleDateString('en-US', {
-                                      weekday: 'long',
-                                      month: 'long',
-                                      day: 'numeric'
-                                    });
-                                  })()}
-                                </span>
-                                {schedule.scheduled_time && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{schedule.scheduled_time}</span>
-                                  </>
-                                )}
-                                {schedule.workout?.category && (
-                                  <>
-                                    <span>•</span>
-                                    <span>{formatCategory(schedule.workout.category)}</span>
-                                  </>
-                                )}
-                              </div>
-                              {schedule.notes && (
-                                <p className="text-sm text-gray-500 mt-1 line-clamp-1">{schedule.notes}</p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 ml-4">
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded ${
-                                schedule.auto_assign
-                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                  : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
-                              }`}
-                            >
-                              {schedule.auto_assign ? `Synced: ${schedule.synced_count}` : 'Manual'}
-                            </span>
-                            {schedule.detached_count! > 0 && (
-                              <span className="px-2 py-1 text-xs font-medium rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                                Detached: {schedule.detached_count}
-                              </span>
-                            )}
-                            <button
-                              onClick={() => handleDeleteSchedule(schedule.id)}
-                              className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -938,6 +1001,21 @@ export default function GroupDetailPage() {
           />
         )}
 
+        {/* Workout Builder Modal for Editing */}
+        {editingWorkoutId && (
+          <WorkoutBuilderModal
+            workoutId={editingWorkoutId}
+            planId={null}
+            athleteId={null}
+            groupId={groupId}
+            onClose={() => setEditingWorkoutId(null)}
+            onSaved={() => {
+              setEditingWorkoutId(null);
+              fetchGroupDetails();
+            }}
+          />
+        )}
+
         {/* Create Workout - Use Workout Builder */}
         {showCreateWorkoutModal && selectedDate && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -964,6 +1042,55 @@ export default function GroupDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Clone Workout Modal */}
+        {showCloneModal && cloneSchedule && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-xl font-bold text-white mb-4">Clone Workout</h3>
+
+              <div className="mb-4">
+                <p className="text-gray-400 mb-2">
+                  Cloning: <span className="text-white font-semibold">{cloneSchedule.workout?.name || 'Workout'}</span>
+                </p>
+                <p className="text-sm text-gray-500 mb-4">
+                  Original date: {new Date(cloneSchedule.scheduled_date).toLocaleDateString()}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  New Date
+                </label>
+                <input
+                  type="date"
+                  value={cloneDate}
+                  onChange={(e) => setCloneDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCloneModal(false);
+                    setCloneSchedule(null);
+                    setCloneDate('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCloneWorkout}
+                  className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
+                >
+                  Clone Workout
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -975,14 +1102,20 @@ function DroppableDay({
   groupColor,
   isToday = false,
   schedules = [],
+  showDetails = true,
   onDeleteSchedule,
+  onEditSchedule,
+  onCloneSchedule,
   onClickDate
 }: {
   date: Date | null;
   groupColor: string;
   isToday?: boolean;
   schedules?: GroupWorkoutSchedule[];
+  showDetails?: boolean;
   onDeleteSchedule?: (id: string) => void;
+  onEditSchedule?: (workoutId: string) => void;
+  onCloneSchedule?: (scheduleId: string) => void;
   onClickDate?: (dateStr: string) => void;
 }) {
   const dateStr = date?.toISOString().split('T')[0] || '';
@@ -992,13 +1125,13 @@ function DroppableDay({
   });
 
   if (!date) {
-    return <div className="h-24 border-r border-b border-white/10 bg-white/[0.02]" />;
+    return <div className="min-h-[100px] md:min-h-[120px] border-r border-b border-white/10 bg-white/[0.02]" />;
   }
 
   return (
     <div
       ref={setNodeRef}
-      className={`h-24 border-r border-b border-white/10 p-1 cursor-pointer transition-colors ${
+      className={`min-h-[100px] md:min-h-[120px] border-r border-b border-white/10 p-1.5 md:p-2 cursor-pointer transition-colors ${
         isToday ? 'bg-[#9BDDFF]/10' : 'hover:bg-white/5'
       } ${isOver ? 'bg-[#9BDDFF]/20 ring-2 ring-[#9BDDFF]/50' : ''}`}
       onClick={() => onClickDate?.(dateStr)}
@@ -1006,13 +1139,16 @@ function DroppableDay({
       <div className={`text-sm font-medium mb-1 ${isToday ? 'text-[#9BDDFF]' : 'text-gray-400'}`}>
         {date.getDate()}
       </div>
-      <div className="space-y-0.5 overflow-y-auto max-h-16">
+      <div className="space-y-0.5 overflow-y-auto">
         {schedules.map((schedule) => (
           <DraggableWorkout
             key={schedule.id}
             schedule={schedule}
             groupColor={groupColor}
+            showDetails={showDetails}
             onDelete={onDeleteSchedule}
+            onEdit={onEditSchedule}
+            onClone={onCloneSchedule}
           />
         ))}
       </div>
@@ -1024,11 +1160,17 @@ function DroppableDay({
 function DraggableWorkout({
   schedule,
   groupColor,
-  onDelete
+  showDetails = true,
+  onDelete,
+  onEdit,
+  onClone
 }: {
   schedule: GroupWorkoutSchedule;
   groupColor: string;
+  showDetails?: boolean;
   onDelete?: (id: string) => void;
+  onEdit?: (workoutId: string) => void;
+  onClone?: (scheduleId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: schedule.id,
@@ -1041,31 +1183,229 @@ function DraggableWorkout({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`text-xs px-1.5 py-0.5 rounded border truncate group relative ${categoryClass} ${
+      className={`text-xs px-1.5 py-0.5 rounded border group relative ${categoryClass} ${
         isDragging ? 'opacity-50' : 'cursor-move'
-      }`}
+      } ${!showDetails ? 'truncate' : ''}`}
       title={schedule.workout?.name || 'Workout'}
       onClick={(e) => e.stopPropagation()}
     >
-      <div className="flex items-center justify-between">
-        <span className="truncate flex-1">
-          {schedule.scheduled_time} {schedule.workout?.name || 'Workout'}
-        </span>
-        {onDelete && (
+      <div className="flex items-center justify-between gap-1">
+        {/* Clone button - Top Left */}
+        {onClone && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(schedule.id);
+              onClone(schedule.id);
             }}
-            className="opacity-0 group-hover:opacity-100 ml-1 p-0.5 hover:bg-white/20 rounded transition-opacity"
+            className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/20 rounded transition-opacity flex-shrink-0"
+            title="Clone workout"
           >
-            <X size={12} />
+            <Copy size={12} />
           </button>
         )}
+
+        <span className={`flex-1 ${!showDetails ? 'truncate' : ''}`}>
+          {schedule.scheduled_time} {schedule.workout?.name || 'Workout'}
+        </span>
+
+        {/* Edit and Delete buttons - Top Right */}
+        <div className="flex items-center gap-0.5">
+          {onEdit && schedule.workout?.id && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(schedule.workout!.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/20 rounded transition-opacity flex-shrink-0"
+              title="Edit workout"
+            >
+              <Edit size={12} />
+            </button>
+          )}
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(schedule.id);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-white/20 rounded transition-opacity flex-shrink-0"
+              title="Delete workout"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
       </div>
-      {schedule.synced_count! > 0 && (
-        <div className="text-[10px] opacity-70 mt-0.5">
-          {schedule.synced_count} synced
+
+      {/* Duration (always shown) */}
+      {schedule.workout?.estimated_duration_minutes && (
+        <div className="text-[10px] opacity-75 mt-0.5">
+          {schedule.workout.estimated_duration_minutes}min
+        </div>
+      )}
+
+      {/* Detailed View - Routines and Exercises (EXACT COPY FROM ATHLETE CALENDAR) */}
+      {showDetails && schedule.workout?.routines && schedule.workout.routines.length > 0 && (
+        <div className="mt-2 space-y-2 border-t border-white/10 pt-2">
+          {schedule.workout.routines
+            .sort((a: any, b: any) => a.order_index - b.order_index)
+            .map((routine: any, routineIndex: number) => (
+              <div key={routine.id} className="space-y-1">
+                {/* Routine Name as Section Header - Only if not "Exercise" */}
+                {routine.name && routine.name.toLowerCase() !== 'exercise' && (
+                  <div className="font-bold text-[10px] text-white/90">
+                    {routine.name}
+                  </div>
+                )}
+
+                {/* Exercises */}
+                {routine.routine_exercises && routine.routine_exercises.length > 0 && (
+                  <div className="space-y-1.5">
+                    {routine.routine_exercises
+                      .sort((a: any, b: any) => a.order_index - b.order_index)
+                      .map((routineExercise: any, exerciseIndex: number) => {
+                        // Generate exercise code (A1, A2, B1, etc.)
+                        const letter = String.fromCharCode(65 + routineIndex); // A, B, C, etc.
+                        const number = exerciseIndex + 1;
+                        const exerciseCode = `${letter}${number}`;
+
+                        return (
+                          <div key={routineExercise.id} className="text-[9px] space-y-0.5">
+                            {/* Exercise Code and Name */}
+                            <div className="flex items-start gap-1.5">
+                              <span className="text-blue-400 font-medium min-w-[16px]">{exerciseCode}</span>
+                              {routineExercise.exercises?.name && (
+                                <span className="text-white/80 font-medium leading-tight">
+                                  {routineExercise.exercises.name}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Sets, Reps, and Metrics */}
+                            <div className="pl-[20px] text-white/60 space-y-0.5">
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {/* Sets */}
+                                {routineExercise.sets && (
+                                  <span className="text-[9px]">{routineExercise.sets} Sets</span>
+                                )}
+
+                                {/* Show metrics from set_configurations or metric_targets */}
+                                {(() => {
+                                  // Check if we have per-set configuration
+                                  const hasSetConfigurations = routineExercise.set_configurations &&
+                                                              Array.isArray(routineExercise.set_configurations) &&
+                                                              routineExercise.set_configurations.length > 0;
+
+                                  const hasMetricTargets = routineExercise.metric_targets &&
+                                                          Object.keys(routineExercise.metric_targets).length > 0;
+
+                                  if (!hasSetConfigurations && !hasMetricTargets) {
+                                    return null;
+                                  }
+
+                                  // Get all unique metric keys from all sets or metric_targets
+                                  const allMetricKeys = new Set<string>();
+                                  if (hasSetConfigurations) {
+                                    routineExercise.set_configurations.forEach((setConfig: any) => {
+                                      if (setConfig.metric_values) {
+                                        Object.keys(setConfig.metric_values).forEach(key => allMetricKeys.add(key));
+                                      }
+                                    });
+                                  } else if (hasMetricTargets) {
+                                    Object.keys(routineExercise.metric_targets).forEach(key => allMetricKeys.add(key));
+                                  }
+
+                                  // Format metric name helper
+                                  const formatMetricName = (metricKey: string): string => {
+                                    if (metricKey.includes('_')) {
+                                      const parts = metricKey.split('_');
+                                      const lastPart = parts[parts.length - 1];
+                                      if (['reps', 'velo', 'mph', 'weight', 'time', 'distance'].includes(lastPart.toLowerCase())) {
+                                        const baseName = parts.slice(0, -1).map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                        const metricType = lastPart.charAt(0).toUpperCase() + lastPart.slice(1);
+                                        return `${baseName} ${metricType}`;
+                                      }
+                                    }
+                                    return metricKey.split('_').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                                  };
+
+                                  // Check if metric is primary (reps-based)
+                                  const isPrimaryMetric = (key: string) => key === 'reps' || key.toLowerCase().endsWith('_reps');
+
+                                  return Array.from(allMetricKeys).map((key: string) => {
+                                    if (!key) return null;
+
+                                    // Skip secondary metrics with 0/null values in metric_targets
+                                    if (!hasSetConfigurations && !isPrimaryMetric(key)) {
+                                      const value = routineExercise.metric_targets[key];
+                                      if (!value || value === 0) return null;
+                                    }
+
+                                    const formattedKey = formatMetricName(key);
+
+                                    // Check for per-set values for THIS metric
+                                    if (hasSetConfigurations) {
+                                      const hasPerSetValues = routineExercise.set_configurations.some((s: any) =>
+                                        s.metric_values?.[key] !== undefined && s.metric_values?.[key] !== null
+                                      );
+
+                                      if (hasPerSetValues) {
+                                        const valuesArray = routineExercise.set_configurations.map((s: any) => {
+                                          const val = s.metric_values?.[key];
+                                          return (val === null || val === undefined) ? 0 : val;
+                                        });
+                                        return <span key={key} className="text-[9px]">{formattedKey}: {valuesArray.join(', ')}</span>;
+                                      }
+                                    }
+
+                                    // Fallback to metric_targets or show AMRAP
+                                    if (key === 'reps' && routineExercise.is_amrap) {
+                                      return <span key={key} className="text-[9px] text-purple-300">AMRAP</span>;
+                                    }
+
+                                    const value = routineExercise.metric_targets?.[key];
+                                    const displayValue = (value === null || value === undefined) ? 0 : value;
+                                    return <span key={key} className="text-[9px]">{formattedKey}: {displayValue}</span>;
+                                  });
+                                })()}
+
+                                {/* Intensity */}
+                                {routineExercise.intensity_targets && routineExercise.intensity_targets.length > 0 && (
+                                  <span className="text-[9px] text-blue-300">@{routineExercise.intensity_targets[0].percent}%</span>
+                                )}
+
+                                {/* Not configured badge */}
+                                {(() => {
+                                  const hasSetConfigs = routineExercise.set_configurations && routineExercise.set_configurations.length > 0;
+                                  const hasMetricTargets = routineExercise.metric_targets && Object.keys(routineExercise.metric_targets).length > 0;
+                                  if (!hasSetConfigs && !hasMetricTargets) {
+                                    return <span className="text-[9px] text-yellow-300">Not configured</span>;
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+
+                              {/* Special notes from notes field */}
+                              {routineExercise.notes && (
+                                <div className="italic text-[8px]">
+                                  {routineExercise.notes}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* Sync Status */}
+      {showDetails && schedule.synced_count! > 0 && (
+        <div className="text-[9px] opacity-60 mt-1 pt-1 border-t border-white/10">
+          {schedule.synced_count} synced{schedule.detached_count! > 0 ? `, ${schedule.detached_count} detached` : ''}
         </div>
       )}
     </div>
@@ -1165,17 +1505,24 @@ function AddMemberModal({
       role: 'member'
     }));
 
-    const { error } = await supabase
+    console.log('Attempting to insert group members:', inserts);
+
+    const { data, error } = await supabase
       .from('group_members')
-      .insert(inserts);
+      .insert(inserts)
+      .select();
 
     if (error) {
       console.error('Error adding members:', error);
-      alert('Failed to add members');
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Error message:', error.message);
+      console.error('Error code:', error.code);
+      alert(`Failed to add members: ${error.message || 'Unknown error'}`);
       setSaving(false);
       return;
     }
 
+    console.log('Successfully added members:', data);
     onAdded();
   }
 

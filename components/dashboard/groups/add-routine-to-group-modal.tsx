@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { X, Search, Calendar, Clock, Dumbbell } from 'lucide-react';
+import { X, Search, Calendar, Dumbbell } from 'lucide-react';
 import { getContentFilter } from '@/lib/auth/permissions';
 import { useStaffPermissions } from '@/lib/auth/use-staff-permissions';
 
@@ -33,7 +33,6 @@ export function AddRoutineToGroupModal({
   const [selectedRoutineId, setSelectedRoutineId] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [scheduledDate, setScheduledDate] = useState(initialDate);
-  const [scheduledTime, setScheduledTime] = useState('');
   const [workoutName, setWorkoutName] = useState('');
   const [notes, setNotes] = useState('');
   const [autoAssign, setAutoAssign] = useState(true);
@@ -235,7 +234,6 @@ export function AddRoutineToGroupModal({
           group_id: groupId,
           workout_id: newWorkout.id,
           scheduled_date: scheduledDate,
-          scheduled_time: scheduledTime || null,
           notes: notes || null,
           auto_assign: autoAssign,
           created_by: user?.id
@@ -386,20 +384,6 @@ export function AddRoutineToGroupModal({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                <div className="flex items-center gap-2">
-                  <Clock size={16} />
-                  Time (optional)
-                </div>
-              </label>
-              <input
-                type="time"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-              />
-            </div>
           </div>
 
           {/* Notes */}

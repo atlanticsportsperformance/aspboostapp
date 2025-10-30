@@ -717,7 +717,7 @@ export default function WorkoutExecutionPage() {
                           allMetricKeys.forEach(metricKey => {
                             const valuesPerSet = ex.set_configurations.map((setConfig: any) => {
                               const value = setConfig.metric_values?.[metricKey];
-                              return value !== undefined && value !== null && value !== '' ? value : '—';
+                              return value !== undefined && value !== null && value !== '' ? value : 0;
                             });
                             metricsToShow[metricKey] = valuesPerSet.join(', ');
                           });
@@ -727,7 +727,7 @@ export default function WorkoutExecutionPage() {
                         }
 
                         // Get reps display specifically for the "3 × reps" format
-                        let repsDisplay = '—';
+                        let repsDisplay = '0';
                         const repsKeys = Object.keys(metricsToShow).filter((k: string) => k === 'reps' || k.endsWith('_reps'));
                         if (repsKeys.length > 0) {
                           repsDisplay = metricsToShow[repsKeys[0]];
@@ -1723,9 +1723,14 @@ function ExerciseAccordionCard({ exercise, exerciseCode, athleteId, instanceId, 
                           };
                         });
                       } else {
-                        // If no enabled_measurements specified, show all from schema
-                        displayMeasurements = allMeasurements;
+                        // If no enabled_measurements specified, show all ENABLED from schema
+                        displayMeasurements = allMeasurements.filter((m: any) => m.enabled !== false);
                       }
+
+                      console.log('🔍 [Execute] Exercise:', exercise.exercises?.name);
+                      console.log('🔍 [Execute] enabled_measurements:', exercise.enabled_measurements);
+                      console.log('🔍 [Execute] allMeasurements:', allMeasurements);
+                      console.log('🔍 [Execute] displayMeasurements:', displayMeasurements);
 
                       return displayMeasurements.map((measurement: any) => {
                         const metricId = measurement.id;
