@@ -109,6 +109,21 @@ export default function DashboardPage() {
 
       const todayWorkouts = await enrichWorkoutInstances(supabase, todayWorkoutsRaw || []);
 
+      // TODAY'S WORKOUTS BY CATEGORY
+      const todayByCategory = {
+        'strength-conditioning': todayWorkouts.filter((w: any) => w.category === 'strength-conditioning').length,
+        'throwing': todayWorkouts.filter((w: any) => w.category === 'throwing').length,
+        'hitting': todayWorkouts.filter((w: any) => w.category === 'hitting').length,
+      };
+
+      // COMPLETED TODAY (not 7 days)
+      const completedTodayWorkouts = todayWorkouts.filter((w: any) => w.status === 'completed');
+      const completedTodayByCategory = {
+        'strength-conditioning': completedTodayWorkouts.filter((w: any) => w.category === 'strength-conditioning').length,
+        'throwing': completedTodayWorkouts.filter((w: any) => w.category === 'throwing').length,
+        'hitting': completedTodayWorkouts.filter((w: any) => w.category === 'hitting').length,
+      };
+
       // ⚠️ INCOMPLETE WORKOUTS THIS WEEK
       const { data: incompleteWorkouts } = await supabase
         .from('workout_instances')
@@ -121,11 +136,33 @@ export default function DashboardPage() {
 
       const incompleteEnriched = await enrichWorkoutInstances(supabase, incompleteWorkouts || []);
 
-      // 🏆 RECENT PRS (last 7 days)
+      // 🏆 RECENT PRS (last 30 days for count, last 7 days for list)
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(today.getDate() - 7);
       const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
 
+      // Count all PRs in last 30 days from exercise_logs
+      const { data: allPRsLast30Days } = await supabase
+        .from('exercise_logs')
+        .select(`
+          *,
+          workout_instance:workout_instances(athlete_id, workout:workouts(category))
+        `)
+        .eq('is_pr', true)
+        .gte('logged_at', thirtyDaysAgoStr)
+        .order('logged_at', { ascending: false });
+
+      const myPRsLast30 = allPRsLast30Days?.filter(pr =>
+        myAthleteIds.includes(pr.workout_instance?.athlete_id)
+      ) || [];
+
+      const myPRsCount = myPRsLast30.length;
+
+      // Get recent PRs for display (last 7 days)
       const { data: recentPRs } = await supabase
         .from('exercise_logs')
         .select(`
@@ -175,18 +212,11 @@ export default function DashboardPage() {
 
       const { data: progressAthletes } = await supabase
         .from('athletes')
-        .select('id, user_id, position, grad_year')
+        .select('id, first_name, last_name, position, grad_year')
         .in('id', myAthleteIds);
-
-      const progressUserIds = progressAthletes?.filter(a => a.user_id).map(a => a.user_id!) || [];
-      const { data: progressProfiles } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .in('id', progressUserIds);
 
       const athleteProgressGrid = Object.entries(athleteStats).map(([athleteId, stats]: [string, any]) => {
         const athlete = progressAthletes?.find(a => a.id === athleteId);
-        const profile = progressProfiles?.find(p => p.id === athlete?.user_id);
 
         let status: 'excellent' | 'on-track' | 'attention' | 'at-risk' = 'excellent';
         if (stats.completionRate >= 85) status = 'excellent';
@@ -196,8 +226,8 @@ export default function DashboardPage() {
 
         return {
           id: athleteId,
-          first_name: profile?.first_name || 'Unknown',
-          last_name: profile?.last_name || '',
+          first_name: athlete?.first_name || 'Unknown',
+          last_name: athlete?.last_name || '',
           position: athlete?.position,
           grad_year: athlete?.grad_year,
           status,
@@ -219,12 +249,160 @@ export default function DashboardPage() {
         .order('logged_at', { ascending: false })
         .limit(15);
 
+      // 🏋️ FORCE PLATE IMPROVEMENTS (last 60 days) - All test types
+      const sixtyDaysAgo = new Date(today);
+      sixtyDaysAgo.setDate(today.getDate() - 60);
+      const sixtyDaysAgoStr = sixtyDaysAgo.toISOString().split('T')[0];
+
+      const { data: cmjTests } = await supabase
+        .from('cmj_tests')
+        .select('*')
+        .in('athlete_id', myAthleteIds)
+        .gte('test_date', sixtyDaysAgoStr)
+        .order('test_date', { ascending: true });
+
+      // Calculate biggest improvements (comparing most recent test to previous test for each athlete)
+      const athleteImprovements: any[] = [];
+      if (cmjTests && cmjTests.length > 0) {
+        const athleteTestMap = new Map();
+        cmjTests.forEach(test => {
+          const key = `${test.athlete_id}-${test.test_type || 'cmj'}`;
+          if (!athleteTestMap.has(key)) {
+            athleteTestMap.set(key, []);
+          }
+          athleteTestMap.get(key).push(test);
+        });
+
+        for (const [key, tests] of athleteTestMap.entries()) {
+          if (tests.length >= 2) {
+            const sortedTests = tests.sort((a: any, b: any) =>
+              new Date(b.test_date).getTime() - new Date(a.test_date).getTime()
+            );
+            const latest = sortedTests[0];
+            const previous = sortedTests[1];
+
+            if (latest.jump_height_cm && previous.jump_height_cm) {
+              const improvement = latest.jump_height_cm - previous.jump_height_cm;
+              if (improvement > 0) {
+                athleteImprovements.push({
+                  athlete_id: latest.athlete_id,
+                  test_type: latest.test_type || 'CMJ',
+                  improvement: improvement,
+                  latest_height: latest.jump_height_cm,
+                  previous_height: previous.jump_height_cm,
+                  latest_date: latest.test_date,
+                  previous_date: previous.test_date,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      // Sort by improvement and get top 1 for display
+      const topImprovements = athleteImprovements
+        .sort((a, b) => b.improvement - a.improvement)
+        .slice(0, 1);
+
+      // Enrich with athlete names
+      if (topImprovements.length > 0) {
+        const improvementAthleteIds = topImprovements.map(i => i.athlete_id);
+        const { data: improvementAthletes } = await supabase
+          .from('athletes')
+          .select('id, first_name, last_name')
+          .in('id', improvementAthleteIds);
+
+        topImprovements.forEach(imp => {
+          const athlete = improvementAthletes?.find(a => a.id === imp.athlete_id);
+          imp.athleteName = athlete ? `${athlete.first_name} ${athlete.last_name}` : 'Unknown';
+        });
+      }
+
+      // Categorize PRs by workout category (after athleteImprovements is calculated)
+      const prsByCategory = {
+        'strength-conditioning': myPRsLast30.filter(pr => pr.workout_instance?.workout?.category === 'strength-conditioning').length,
+        'throwing': myPRsLast30.filter(pr => pr.workout_instance?.workout?.category === 'throwing').length,
+        'hitting': myPRsLast30.filter(pr => pr.workout_instance?.workout?.category === 'hitting').length,
+        'force-plate': athleteImprovements.length,
+      };
+
+      // 🔥 ACTIVE STREAKS - Athletes with consecutive days of completed workouts
+      const { data: allCompletedWorkouts } = await supabase
+        .from('workout_instances')
+        .select('athlete_id, scheduled_date, status')
+        .in('athlete_id', myAthleteIds)
+        .eq('status', 'completed')
+        .gte('scheduled_date', startOfWeekStr)
+        .order('scheduled_date', { ascending: false });
+
+      // Calculate streaks
+      const athleteStreaks: any[] = [];
+      const athleteWorkoutMap = new Map();
+
+      allCompletedWorkouts?.forEach(w => {
+        if (!athleteWorkoutMap.has(w.athlete_id)) {
+          athleteWorkoutMap.set(w.athlete_id, []);
+        }
+        athleteWorkoutMap.get(w.athlete_id).push(w.scheduled_date);
+      });
+
+      for (const [athleteId, dates] of athleteWorkoutMap.entries()) {
+        const uniqueDates = [...new Set(dates)].sort((a, b) =>
+          new Date(b).getTime() - new Date(a).getTime()
+        );
+
+        let streak = 0;
+        let currentDate = new Date(todayStr);
+
+        for (const dateStr of uniqueDates) {
+          const workoutDate = new Date(dateStr);
+          const daysDiff = Math.floor((currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (daysDiff === streak) {
+            streak++;
+            currentDate = workoutDate;
+          } else {
+            break;
+          }
+        }
+
+        if (streak >= 2) {
+          athleteStreaks.push({ athlete_id: athleteId, streak });
+        }
+      }
+
+      // Sort by streak and get top 5
+      const topStreaks = athleteStreaks
+        .sort((a, b) => b.streak - a.streak)
+        .slice(0, 5);
+
+      // Enrich with athlete names
+      if (topStreaks.length > 0) {
+        const streakAthleteIds = topStreaks.map(s => s.athlete_id);
+        const { data: streakAthletes } = await supabase
+          .from('athletes')
+          .select('id, first_name, last_name')
+          .in('id', streakAthleteIds);
+
+        topStreaks.forEach(s => {
+          const athlete = streakAthletes?.find(a => a.id === s.athlete_id);
+          s.athleteName = athlete ? `${athlete.first_name} ${athlete.last_name}` : 'Unknown';
+        });
+      }
+
       setData({
         userProfile,
         athletesNeedingWorkouts: athletesNeedingWorkoutsEnriched,
         todayWorkouts,
+        todayByCategory,
+        completedTodayByCategory,
+        completedTodayCount: completedTodayWorkouts.length,
         incompleteWorkouts: incompleteEnriched,
         recentPRs: enrichedPRs,
+        myPRsCount,
+        prsByCategory,
+        topImprovements,
+        topStreaks,
         athleteProgressGrid,
         totalWorkoutsThisWeek,
         completedThisWeek,
@@ -257,8 +435,15 @@ export default function DashboardPage() {
     userProfile,
     athletesNeedingWorkouts,
     todayWorkouts,
+    todayByCategory,
+    completedTodayByCategory,
+    completedTodayCount,
     incompleteWorkouts,
     recentPRs,
+    myPRsCount,
+    prsByCategory,
+    topImprovements,
+    topStreaks,
     athleteProgressGrid,
     completionRate,
     totalAthletes,
@@ -291,6 +476,7 @@ export default function DashboardPage() {
 
           {/* Key Metrics - 5 Column Grid */}
           <div className="mb-4 sm:mb-6 lg:mb-8 grid gap-2 sm:gap-3 lg:gap-6 grid-cols-2 lg:grid-cols-5">
+            {/* Total Athletes */}
             <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 border-l-2 border-l-[#9BDDFF]">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -306,12 +492,32 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Training Today - Dynamic by Category */}
             <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
                   <p className="text-xs sm:text-sm font-medium text-white/60">Training Today</p>
                   <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-white">{athletesTrainingToday}</p>
-                  <p className="mt-1 sm:mt-2 text-xs text-blue-400">{todayWorkouts.length} workouts</p>
+                  <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1.5">
+                    {todayByCategory['strength-conditioning'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-400 text-[10px] font-medium rounded">
+                        S&C: {todayByCategory['strength-conditioning']}
+                      </span>
+                    )}
+                    {todayByCategory['throwing'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-400 text-[10px] font-medium rounded">
+                        Throwing: {todayByCategory['throwing']}
+                      </span>
+                    )}
+                    {todayByCategory['hitting'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-purple-500/10 text-purple-400 text-[10px] font-medium rounded">
+                        Hitting: {todayByCategory['hitting']}
+                      </span>
+                    )}
+                    {todayWorkouts.length === 0 && (
+                      <span className="text-xs text-gray-400">No workouts</span>
+                    )}
+                  </div>
                 </div>
                 <div className="hidden sm:flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl bg-blue-500/10">
                   <svg className="h-5 w-5 lg:h-6 lg:w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -321,12 +527,32 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Completed Today - Dynamic by Category */}
             <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-xs sm:text-sm font-medium text-white/60">Completed (7d)</p>
-                  <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-white">{completedThisWeek}</p>
-                  <p className="mt-1 sm:mt-2 text-xs text-emerald-400">Workouts finished</p>
+                  <p className="text-xs sm:text-sm font-medium text-white/60">Completed Today</p>
+                  <p className="mt-1 sm:mt-2 text-2xl sm:text-3xl font-bold text-white">{completedTodayCount}</p>
+                  <div className="mt-1 sm:mt-2 flex flex-wrap items-center gap-1.5">
+                    {completedTodayByCategory['strength-conditioning'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-medium rounded">
+                        S&C: {completedTodayByCategory['strength-conditioning']}
+                      </span>
+                    )}
+                    {completedTodayByCategory['throwing'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-medium rounded">
+                        Throw: {completedTodayByCategory['throwing']}
+                      </span>
+                    )}
+                    {completedTodayByCategory['hitting'] > 0 && (
+                      <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] font-medium rounded">
+                        Hit: {completedTodayByCategory['hitting']}
+                      </span>
+                    )}
+                    {completedTodayCount === 0 && (
+                      <span className="text-xs text-gray-400">None yet</span>
+                    )}
+                  </div>
                 </div>
                 <div className="hidden sm:flex h-10 w-10 lg:h-12 lg:w-12 items-center justify-center rounded-xl bg-emerald-500/10">
                   <svg className="h-5 w-5 lg:h-6 lg:w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -336,6 +562,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* This Week Total Scheduled */}
             <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -351,6 +578,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Completion Percent */}
             <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-3 sm:p-4 lg:p-6 border-r-2 border-r-emerald-400">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -363,6 +591,132 @@ export default function DashboardPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Performance Highlights - Second Row */}
+          <div className="mb-4 sm:mb-6 lg:mb-8 grid gap-2 sm:gap-3 lg:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            {/* PRs Last 30 Days */}
+            <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-4 sm:p-5 lg:p-6 border-l-4 border-l-yellow-400">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-yellow-500/20 rounded-xl">
+                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-white/60">PRs Last 30 Days</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-white">{myPRsCount + prsByCategory['force-plate']}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {prsByCategory['strength-conditioning'] > 0 && (
+                  <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 text-[10px] font-medium rounded">
+                    S&C: {prsByCategory['strength-conditioning']}
+                  </span>
+                )}
+                {prsByCategory['throwing'] > 0 && (
+                  <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 text-[10px] font-medium rounded">
+                    Throw: {prsByCategory['throwing']}
+                  </span>
+                )}
+                {prsByCategory['hitting'] > 0 && (
+                  <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 text-[10px] font-medium rounded">
+                    Hit: {prsByCategory['hitting']}
+                  </span>
+                )}
+                {prsByCategory['force-plate'] > 0 && (
+                  <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-400 text-[10px] font-medium rounded">
+                    Jump: {prsByCategory['force-plate']}
+                  </span>
+                )}
+                {myPRsCount === 0 && prsByCategory['force-plate'] === 0 && (
+                  <span className="text-xs text-gray-400">No PRs yet</span>
+                )}
+              </div>
+            </div>
+
+            {/* Force Plate Improvements */}
+            <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-4 sm:p-5 lg:p-6 border-l-4 border-l-cyan-400">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-cyan-500/20 rounded-xl">
+                  <svg className="w-5 h-5 lg:w-6 lg:h-6 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs sm:text-sm font-medium text-white/60">Top Jump Gain (60d)</p>
+                  {topImprovements.length > 0 ? (
+                    <>
+                      <p className="text-xl sm:text-2xl font-bold text-white">+{topImprovements[0].improvement.toFixed(1)}cm</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs text-cyan-400 truncate">{topImprovements[0].athleteName}</p>
+                        <span className="px-1.5 py-0.5 bg-cyan-500/20 text-cyan-300 text-[10px] font-medium rounded uppercase">
+                          {topImprovements[0].test_type}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400 mt-1">No data yet</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Top Performers */}
+            <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-4 sm:p-5 lg:p-6 border-l-4 border-l-blue-400">
+              <div className="mb-3">
+                <p className="text-xs sm:text-sm font-medium text-white/60 mb-2">Top Performers</p>
+                {athleteProgressGrid.slice(0, 3).length > 0 ? (
+                  <div className="space-y-1.5">
+                    {athleteProgressGrid.slice(0, 3).map((athlete: any, idx: number) => (
+                      <Link
+                        key={athlete.id}
+                        href={`/dashboard/athletes/${athlete.id}`}
+                        className="flex items-center gap-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <span className="text-xs font-bold text-blue-400 w-4">{idx + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-white truncate">
+                            {athlete.first_name} {athlete.last_name}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-400">{athlete.completionRate}%</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No data yet</p>
+                )}
+              </div>
+            </div>
+
+            {/* Active Streaks */}
+            <div className="glass-card-hover shadow-premium rounded-xl lg:rounded-2xl p-4 sm:p-5 lg:p-6 border-l-4 border-l-orange-400">
+              <div className="mb-3">
+                <p className="text-xs sm:text-sm font-medium text-white/60 mb-2">Active Streaks</p>
+                {topStreaks.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {topStreaks.slice(0, 3).map((streak: any) => (
+                      <Link
+                        key={streak.athlete_id}
+                        href={`/dashboard/athletes/${streak.athlete_id}`}
+                        className="flex items-center gap-2 p-1.5 bg-white/5 hover:bg-white/10 rounded-lg transition-colors"
+                      >
+                        <span className="text-base">🔥</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-white truncate">
+                            {streak.athleteName}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-orange-400">{streak.streak} days</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">No streaks yet</p>
+                )}
               </div>
             </div>
           </div>

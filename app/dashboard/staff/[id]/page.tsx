@@ -8,7 +8,7 @@ import Link from 'next/link';
 // Import tab components
 import StaffDetailsTab from '@/components/dashboard/staff/staff-details-tab';
 import StaffPermissionsTab from '@/components/dashboard/staff/staff-permissions-tab';
-import StaffAthletesTab from '@/components/dashboard/staff/staff-athletes-tab';
+import StaffAthletesGroupsTab from '@/components/dashboard/staff/staff-athletes-groups-tab';
 
 interface Profile {
   id: string;
@@ -32,7 +32,7 @@ interface StaffMember {
 const tabs = [
   { id: 'details', label: 'Details' },
   { id: 'permissions', label: 'Permissions' },
-  { id: 'athletes', label: 'Athletes', coachOnly: true },
+  { id: 'assignments', label: 'Athletes & Groups', coachOnly: false },
 ];
 
 export default function StaffDetailPage() {
@@ -229,9 +229,9 @@ export default function StaffDetailPage() {
             staff={staffData}
           />
         )}
-        {activeTab === 'athletes' && isCoach && (
-          <StaffAthletesTab
-            coach={staffData}
+        {activeTab === 'assignments' && (
+          <StaffAthletesGroupsTab
+            staffMember={staffData}
           />
         )}
       </div>

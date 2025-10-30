@@ -1104,10 +1104,7 @@ function AddMemberModal({
   async function fetchAvailableAthletes() {
     const { data: athletesData } = await supabase
       .from('athletes')
-      .select(`
-        *,
-        profile:profiles(id, first_name, last_name, email)
-      `)
+      .select('*')
       .eq('is_active', true)
       .order('created_at', { ascending: false});
 
@@ -1116,8 +1113,22 @@ function AddMemberModal({
       return;
     }
 
+    // Fetch profiles for these athletes
+    const userIds = athletesData.map(a => a.user_id).filter(Boolean);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name, email')
+      .in('id', userIds);
+
+    // Map profiles to athletes
+    const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+    const enrichedAthletes = athletesData.map(athlete => ({
+      ...athlete,
+      profile: athlete.user_id ? profilesMap.get(athlete.user_id) : null
+    }));
+
     // Filter out existing members
-    const available = athletesData.filter(a => !existingMemberIds.includes(a.id));
+    const available = enrichedAthletes.filter(a => !existingMemberIds.includes(a.id));
 
     setAthletes(available);
     setFilteredAthletes(available);
