@@ -33,6 +33,7 @@ interface Athlete {
   last_name: string | null;
   email: string | null;
   date_of_birth: string | null;
+  play_level: string | null;
   primary_position: string | null;
   secondary_position: string | null;
   grad_year: number | null;
@@ -110,10 +111,10 @@ export default function AthletesPage() {
       // Apply athlete visibility filtering
       const filter = await getAthleteFilter(userId, userRole);
 
-      // Step 1: Get all athletes (include VALD and Blast Motion profile status, is_active, and date_of_birth)
+      // Step 1: Get all athletes (include VALD and Blast Motion profile status, is_active, date_of_birth, and play_level)
       let query = supabase
         .from('athletes')
-        .select('*, vald_profile_id, blast_player_id, is_active, date_of_birth');
+        .select('*, vald_profile_id, blast_player_id, is_active, date_of_birth, play_level');
 
       // Apply visibility filter
       if (filter.filter === 'ids' && filter.athleteIds) {
@@ -632,9 +633,9 @@ export default function AthletesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {athlete.grad_year ? (
+                      {athlete.play_level ? (
                         <span className="text-white text-sm">
-                          Class of {athlete.grad_year}
+                          {athlete.play_level}
                         </span>
                       ) : (
                         <span className="text-gray-500 text-sm">-</span>
