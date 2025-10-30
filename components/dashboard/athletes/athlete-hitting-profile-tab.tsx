@@ -191,11 +191,11 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     // Get most recent session swings
     const recentSessionSwings = swingsToUse.filter(s => s.recorded_date === mostRecentDate);
 
-    // Calculate recent session stats
+    // Calculate recent session stats (but maxBatSpeed should be from ALL last 30 days, not just recent session)
     const recentSession = {
       date: mostRecentDate,
       avgBatSpeed: recentSessionSwings.reduce((sum, s) => sum + (s.bat_speed || 0), 0) / recentSessionSwings.filter(s => s.bat_speed).length,
-      maxBatSpeed: Math.max(...recentSessionSwings.map(s => s.bat_speed || 0)),
+      maxBatSpeed: Math.max(...swingsToUse.map(s => s.bat_speed || 0)), // Max from ALL swings in period, not just recent session
       avgAttackAngle: recentSessionSwings.reduce((sum, s) => sum + (s.attack_angle || 0), 0) / recentSessionSwings.filter(s => s.attack_angle).length,
       avgEarlyConnection: recentSessionSwings.reduce((sum, s) => sum + (s.early_connection || 0), 0) / recentSessionSwings.filter(s => s.early_connection).length,
       avgConnectionAtImpact: recentSessionSwings.reduce((sum, s) => sum + (s.connection_at_impact || 0), 0) / recentSessionSwings.filter(s => s.connection_at_impact).length,
