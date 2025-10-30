@@ -267,6 +267,7 @@ export default function AddAthleteModal({ isOpen, onClose, onSuccess }: AddAthle
           linkExistingVald,
           existingValdProfileId: existingValdProfileId || null,
           blastUserId: selectedBlastProfile?.blast_user_id || null,
+          blastPlayerId: selectedBlastProfile?.id || null,
         }),
       });
 

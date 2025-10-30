@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       linkExistingVald,
       existingValdProfileId,
       blastUserId,
+      blastPlayerId,
     } = body;
 
     // Validate required fields
@@ -261,9 +262,12 @@ export async function POST(request: NextRequest) {
       is_active: isActive !== undefined ? isActive : true,
     };
 
-    // Add Blast Motion user ID if provided
+    // Add Blast Motion linking if provided
     if (blastUserId) {
       athleteInsert.blast_user_id = blastUserId;
+    }
+    if (blastPlayerId) {
+      athleteInsert.blast_player_id = blastPlayerId;
     }
 
     const { data: newAthlete, error: athleteError } = await supabase
