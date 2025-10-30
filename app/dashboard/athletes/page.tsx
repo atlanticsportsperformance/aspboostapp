@@ -109,11 +109,10 @@ export default function AthletesPage() {
       // Apply athlete visibility filtering
       const filter = await getAthleteFilter(userId, userRole);
 
-      // Step 1: Get all active athletes (include VALD and Blast Motion profile status)
+      // Step 1: Get all athletes (include VALD and Blast Motion profile status and is_active)
       let query = supabase
         .from('athletes')
-        .select('*, vald_profile_id, blast_player_id')
-        .eq('is_active', true);
+        .select('*, vald_profile_id, blast_player_id, is_active');
 
       // Apply visibility filter
       if (filter.filter === 'ids' && filter.athleteIds) {
@@ -521,10 +520,9 @@ export default function AthletesPage() {
                     />
                   </th>
                 )}
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Status</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Name</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Position</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Team</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Plan</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Last Workout</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Completion %</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Actions</th>
@@ -533,7 +531,7 @@ export default function AthletesPage() {
             <tbody>
               {filteredAthletes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12">
+                  <td colSpan={bulkMode ? 7 : 6} className="text-center py-12">
                     <p className="text-gray-400">No athletes found matching your filters</p>
                   </td>
                 </tr>
@@ -578,6 +576,16 @@ export default function AthletesPage() {
                         />
                       </td>
                     )}
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            athlete.is_active ? 'bg-emerald-400' : 'bg-red-400'
+                          }`}
+                          title={athlete.is_active ? 'Active' : 'Inactive'}
+                        />
+                      </div>
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold">
@@ -628,26 +636,6 @@ export default function AthletesPage() {
                         </span>
                       ) : (
                         <span className="text-gray-500 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {athlete.teams && athlete.teams.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {athlete.teams.map((team) => (
-                            <span key={team.id} className="px-2 py-1 bg-purple-500/10 text-purple-400 rounded text-xs font-medium">
-                              {team.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500 text-sm">No team</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      {athlete.currentPlan ? (
-                        <p className="text-white text-sm">{athlete.currentPlan.name}</p>
-                      ) : (
-                        <span className="text-gray-500 text-sm">No active plan</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
