@@ -49,7 +49,13 @@
       "Bash(node scripts/fix-enabled-measurements.js:*)",
       "Bash(Get-Process)",
       "Bash(Where-Object {$_rocessName -eq 'node'})",
-      "Bash(node scripts/initialize-enabled-measurements.js:*)"
+      "Bash(node scripts/initialize-enabled-measurements.js:*)",
+      "Bash(node scripts/check-vald-profile.js:*)",
+      "Bash(node scripts/check-vald-tables.js:*)",
+      "Bash(node scripts/fix-lincoln-vald-link.js:*)",
+      "Bash(node -r esbuild-register:*)",
+      "Bash(node scripts/delete-october-tests.js:*)",
+      "Bash(node scripts/find-october-test-data.js:*)"
     ],
     "deny": [],
     "ask": []

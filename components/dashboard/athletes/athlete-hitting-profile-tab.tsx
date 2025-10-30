@@ -191,11 +191,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     // Get most recent session swings
     const recentSessionSwings = swingsToUse.filter(s => s.recorded_date === mostRecentDate);
 
-    // Calculate recent session stats (but maxBatSpeed should be from ALL last 30 days, not just recent session)
+    // Calculate MAX BAT SPEED for recent session (max from just that day)
+    const recentSessionMaxBatSpeed = Math.max(...recentSessionSwings.map(s => s.bat_speed || 0));
+
+    // Calculate recent session stats
     const recentSession = {
       date: mostRecentDate,
       avgBatSpeed: recentSessionSwings.reduce((sum, s) => sum + (s.bat_speed || 0), 0) / recentSessionSwings.filter(s => s.bat_speed).length,
-      maxBatSpeed: Math.max(...swingsToUse.map(s => s.bat_speed || 0)), // Max from ALL swings in period, not just recent session
+      maxBatSpeed: recentSessionMaxBatSpeed, // Max from RECENT SESSION ONLY
       avgAttackAngle: recentSessionSwings.reduce((sum, s) => sum + (s.attack_angle || 0), 0) / recentSessionSwings.filter(s => s.attack_angle).length,
       avgEarlyConnection: recentSessionSwings.reduce((sum, s) => sum + (s.early_connection || 0), 0) / recentSessionSwings.filter(s => s.early_connection).length,
       avgConnectionAtImpact: recentSessionSwings.reduce((sum, s) => sum + (s.connection_at_impact || 0), 0) / recentSessionSwings.filter(s => s.connection_at_impact).length,
@@ -209,9 +212,26 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     // If no other swings, use all swings for comparison
     const averagesData = swingsExcludingRecentSession.length > 0 ? swingsExcludingRecentSession : swingsToUse;
 
+    // For MAX BAT SPEED baseline: calculate average of daily max speeds (not just overall max)
+    // Group swings by date and find max for each day
+    const dailyMaxSpeeds: number[] = [];
+    const datesForAverage = [...new Set(averagesData.map(s => s.recorded_date))];
+    datesForAverage.forEach(date => {
+      const daySwings = averagesData.filter(s => s.recorded_date === date);
+      const dayMax = Math.max(...daySwings.map(s => s.bat_speed || 0));
+      if (dayMax > 0) {
+        dailyMaxSpeeds.push(dayMax);
+      }
+    });
+
+    // Average of all daily max speeds over last 30 days (excluding recent session)
+    const avgOfDailyMaxBatSpeeds = dailyMaxSpeeds.length > 0
+      ? dailyMaxSpeeds.reduce((sum, max) => sum + max, 0) / dailyMaxSpeeds.length
+      : 0;
+
     const last30DayAverages = {
       avgBatSpeed: averagesData.reduce((sum, s) => sum + (s.bat_speed || 0), 0) / averagesData.filter(s => s.bat_speed).length,
-      maxBatSpeed: Math.max(...averagesData.map(s => s.bat_speed || 0)),
+      maxBatSpeed: avgOfDailyMaxBatSpeeds, // AVERAGE of daily max bat speeds
       avgAttackAngle: averagesData.reduce((sum, s) => sum + (s.attack_angle || 0), 0) / averagesData.filter(s => s.attack_angle).length,
       avgEarlyConnection: averagesData.reduce((sum, s) => sum + (s.early_connection || 0), 0) / averagesData.filter(s => s.early_connection).length,
       avgConnectionAtImpact: averagesData.reduce((sum, s) => sum + (s.connection_at_impact || 0), 0) / averagesData.filter(s => s.connection_at_impact).length,
@@ -432,7 +452,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[10px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgBatSpeed - overviewStats.last30DayAverages.avgBatSpeed))}</span>
+                        <span className="text-[10px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgBatSpeed - overviewStats.last30DayAverages.avgBatSpeed))}%</span>
                       </div>
                     )}
                   </div>
@@ -458,7 +478,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.maxBatSpeed - overviewStats.last30DayAverages.maxBatSpeed))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.maxBatSpeed - overviewStats.last30DayAverages.maxBatSpeed))}%</span>
                       </div>
                     )}
                   </div>
@@ -478,7 +498,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgAttackAngle - overviewStats.last30DayAverages.avgAttackAngle))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgAttackAngle - overviewStats.last30DayAverages.avgAttackAngle))}%</span>
                       </div>
                     )}
                   </div>
@@ -504,7 +524,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgEarlyConnection - overviewStats.last30DayAverages.avgEarlyConnection))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgEarlyConnection - overviewStats.last30DayAverages.avgEarlyConnection))}%</span>
                       </div>
                     )}
                   </div>
@@ -530,7 +550,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgConnectionAtImpact - overviewStats.last30DayAverages.avgConnectionAtImpact))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgConnectionAtImpact - overviewStats.last30DayAverages.avgConnectionAtImpact))}%</span>
                       </div>
                     )}
                   </div>
@@ -556,7 +576,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgPeakHandSpeed - overviewStats.last30DayAverages.avgPeakHandSpeed))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgPeakHandSpeed - overviewStats.last30DayAverages.avgPeakHandSpeed))}%</span>
                       </div>
                     )}
                   </div>
@@ -582,7 +602,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgRotationalAcceleration - overviewStats.last30DayAverages.avgRotationalAcceleration))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgRotationalAcceleration - overviewStats.last30DayAverages.avgRotationalAcceleration))}%</span>
                       </div>
                     )}
                   </div>

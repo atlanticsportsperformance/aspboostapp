@@ -213,6 +213,47 @@ export class ValdProfileApi {
     }
   }
 
+  async updateProfileEmail(profileId: string, email: string): Promise<boolean> {
+    try {
+      console.log(`Updating email for VALD profile ${profileId} to ${email}`);
+      const endpoint = `/profiles/${profileId}`;
+
+      // First, get the current profile data
+      const currentProfile = await this.getProfileById(profileId);
+      if (!currentProfile) {
+        throw new Error(`Profile ${profileId} not found`);
+      }
+
+      // Update the profile with the new email
+      const body = {
+        tenantId: this.tenantId,
+        profileId: profileId,
+        email: email,
+        // Include other required fields from current profile
+        givenName: currentProfile.givenName,
+        familyName: currentProfile.familyName,
+        dateOfBirth: currentProfile.dateOfBirth,
+        syncId: currentProfile.syncId,
+        externalId: currentProfile.externalId,
+      };
+
+      const response = await this.makeRequest(endpoint, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw new Error(`Failed to update profile email: ${response.message}`);
+      }
+
+      console.log(`✅ Successfully updated email for VALD profile ${profileId}`);
+      return true;
+    } catch (error) {
+      console.error('❌ Error updating profile email:', error instanceof Error ? error.message : 'Unknown error');
+      throw error;
+    }
+  }
+
   async searchByEmail(email: string): Promise<Profile | null> {
     try {
       console.log("Searching for athlete by email in VALD profile API...");
@@ -229,8 +270,31 @@ export class ValdProfileApi {
         console.warn('No profiles found for email:', email);
         return null;
       }
-      // Return the first matching profile
-      return profiles[0];
+
+      // IMPORTANT: Validate that the returned profile actually has the email we searched for
+      // The VALD API sometimes returns profiles without emails when searching by email
+      const searchEmailLower = email.toLowerCase().trim();
+      const matchingProfiles = profiles.filter(profile => {
+        const profileEmail = profile.email?.toLowerCase().trim();
+        return profileEmail && profileEmail === searchEmailLower;
+      });
+
+      if (matchingProfiles.length === 0) {
+        console.warn(`⚠️ VALD API returned ${profiles.length} profile(s), but NONE have the email we searched for (${email})`);
+        console.warn('Profiles returned:', profiles.map(p => ({
+          profileId: p.profileId,
+          name: `${p.givenName} ${p.familyName}`,
+          email: p.email || '(no email)'
+        })));
+        return null;
+      }
+
+      if (matchingProfiles.length > 1) {
+        console.warn(`⚠️ Found ${matchingProfiles.length} profiles with email ${email}, returning first one`);
+      }
+
+      // Return the first profile that actually has the matching email
+      return matchingProfiles[0];
     } catch (error) {
       console.error('❌ Error searching athlete by email:', error instanceof Error ? error.message : 'Unknown error');
       throw error;
