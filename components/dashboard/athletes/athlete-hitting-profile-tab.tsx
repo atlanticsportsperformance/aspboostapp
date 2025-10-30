@@ -466,10 +466,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">BAT SPD</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-[#9BDDFF] leading-none">{formatMetric(overviewStats.recentSession.avgBatSpeed)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgBatSpeed)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className={`flex items-center gap-0.5 ${
-                        overviewStats.recentSession.avgBatSpeed > overviewStats.last30DayAverages.avgBatSpeed ? 'text-emerald-400' : 'text-red-400'
+                        overviewStats.recentSession.avgBatSpeed > overviewStats.last30DayAverages.avgBatSpeed
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.avgBatSpeed < overviewStats.last30DayAverages.avgBatSpeed
+                          ? 'text-red-400'
+                          : 'text-gray-400'
                       }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgBatSpeed > overviewStats.last30DayAverages.avgBatSpeed ? (
@@ -488,10 +492,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">MAX SPD</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-emerald-400 leading-none">{formatMetric(overviewStats.recentSession.maxBatSpeed)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.maxBatSpeed)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className={`flex items-center gap-0.5 ${
-                        overviewStats.recentSession.maxBatSpeed > overviewStats.last30DayAverages.maxBatSpeed ? 'text-emerald-400' : 'text-red-400'
+                        overviewStats.recentSession.maxBatSpeed > overviewStats.last30DayAverages.maxBatSpeed
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.maxBatSpeed < overviewStats.last30DayAverages.maxBatSpeed
+                          ? 'text-red-400'
+                          : 'text-gray-400'
                       }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.maxBatSpeed > overviewStats.last30DayAverages.maxBatSpeed ? (
@@ -530,9 +538,15 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">EARLY</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-blue-400 leading-none">{formatMetric(overviewStats.recentSession.avgEarlyConnection)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgEarlyConnection)}</p>
                     {overviewStats.last30DayAverages && (
-                      <div className="flex items-center gap-0.5 text-gray-400">
+                      <div className={`flex items-center gap-0.5 ${
+                        overviewStats.recentSession.avgEarlyConnection > overviewStats.last30DayAverages.avgEarlyConnection
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.avgEarlyConnection < overviewStats.last30DayAverages.avgEarlyConnection
+                          ? 'text-red-400'
+                          : 'text-gray-400'
+                      }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgEarlyConnection > overviewStats.last30DayAverages.avgEarlyConnection ? (
                             <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -550,10 +564,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">CONNECT</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-purple-400 leading-none">{formatMetric(overviewStats.recentSession.avgConnectionAtImpact)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgConnectionAtImpact)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className={`flex items-center gap-0.5 ${
-                        overviewStats.recentSession.avgConnectionAtImpact < overviewStats.last30DayAverages.avgConnectionAtImpact ? 'text-emerald-400' : 'text-red-400'
+                        overviewStats.recentSession.avgConnectionAtImpact < overviewStats.last30DayAverages.avgConnectionAtImpact
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.avgConnectionAtImpact > overviewStats.last30DayAverages.avgConnectionAtImpact
+                          ? 'text-red-400'
+                          : 'text-gray-400'
                       }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgConnectionAtImpact < overviewStats.last30DayAverages.avgConnectionAtImpact ? (
@@ -572,10 +590,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">HAND</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-orange-400 leading-none">{formatMetric(overviewStats.recentSession.avgPeakHandSpeed)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgPeakHandSpeed)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className={`flex items-center gap-0.5 ${
-                        overviewStats.recentSession.avgPeakHandSpeed > overviewStats.last30DayAverages.avgPeakHandSpeed ? 'text-emerald-400' : 'text-red-400'
+                        overviewStats.recentSession.avgPeakHandSpeed > overviewStats.last30DayAverages.avgPeakHandSpeed
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.avgPeakHandSpeed < overviewStats.last30DayAverages.avgPeakHandSpeed
+                          ? 'text-red-400'
+                          : 'text-gray-400'
                       }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgPeakHandSpeed > overviewStats.last30DayAverages.avgPeakHandSpeed ? (
@@ -594,10 +616,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                 <div className="bg-white/5 border border-white/10 rounded-lg p-2">
                   <p className="text-[9px] text-gray-400 mb-1 font-medium">ROT G</p>
                   <div className="flex items-center gap-1.5">
-                    <p className="text-lg font-bold text-cyan-400 leading-none">{formatMetric(overviewStats.recentSession.avgRotationalAcceleration)}</p>
+                    <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgRotationalAcceleration)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className={`flex items-center gap-0.5 ${
-                        overviewStats.recentSession.avgRotationalAcceleration > overviewStats.last30DayAverages.avgRotationalAcceleration ? 'text-emerald-400' : 'text-red-400'
+                        overviewStats.recentSession.avgRotationalAcceleration > overviewStats.last30DayAverages.avgRotationalAcceleration
+                          ? 'text-emerald-400'
+                          : overviewStats.recentSession.avgRotationalAcceleration < overviewStats.last30DayAverages.avgRotationalAcceleration
+                          ? 'text-red-400'
+                          : 'text-gray-400'
                       }`}>
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgRotationalAcceleration > overviewStats.last30DayAverages.avgRotationalAcceleration ? (
