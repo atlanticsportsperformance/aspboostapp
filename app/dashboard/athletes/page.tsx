@@ -32,6 +32,7 @@ interface Athlete {
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  date_of_birth: string | null;
   primary_position: string | null;
   secondary_position: string | null;
   grad_year: number | null;
@@ -109,10 +110,10 @@ export default function AthletesPage() {
       // Apply athlete visibility filtering
       const filter = await getAthleteFilter(userId, userRole);
 
-      // Step 1: Get all athletes (include VALD and Blast Motion profile status and is_active)
+      // Step 1: Get all athletes (include VALD and Blast Motion profile status, is_active, and date_of_birth)
       let query = supabase
         .from('athletes')
-        .select('*, vald_profile_id, blast_player_id, is_active');
+        .select('*, vald_profile_id, blast_player_id, is_active, date_of_birth');
 
       // Apply visibility filter
       if (filter.filter === 'ids' && filter.athleteIds) {
@@ -522,16 +523,17 @@ export default function AthletesPage() {
                 )}
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Status</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Name</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Position</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Playing Level</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Birthday</th>
+                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Email</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Last Workout</th>
-                <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Completion %</th>
                 <th className="text-left px-6 py-4 text-sm font-semibold text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredAthletes.length === 0 ? (
                 <tr>
-                  <td colSpan={bulkMode ? 7 : 6} className="text-center py-12">
+                  <td colSpan={bulkMode ? 8 : 7} className="text-center py-12">
                     <p className="text-gray-400">No athletes found matching your filters</p>
                   </td>
                 </tr>
@@ -630,23 +632,38 @@ export default function AthletesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {athlete.primary_position ? (
-                        <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded-md text-sm font-medium">
-                          {athlete.primary_position}
+                      {athlete.grad_year ? (
+                        <span className="text-white text-sm">
+                          Class of {athlete.grad_year}
                         </span>
                       ) : (
                         <span className="text-gray-500 text-sm">-</span>
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-gray-400 text-sm">{formatDate(athlete.lastWorkoutDate)}</p>
+                      {athlete.date_of_birth ? (
+                        <p className="text-gray-400 text-sm">
+                          {new Date(athlete.date_of_birth).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </p>
+                      ) : (
+                        <span className="text-gray-500 text-sm">-</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`px-2.5 py-1 rounded-md text-sm font-medium ${getStatusColor(athlete.completionRate)}`}>
-                          {athlete.completionRate}%
-                        </span>
-                      </div>
+                      {athlete.profile?.email ? (
+                        <p className="text-gray-400 text-sm">{athlete.profile.email}</p>
+                      ) : athlete.email ? (
+                        <p className="text-gray-400 text-sm">{athlete.email}</p>
+                      ) : (
+                        <span className="text-gray-500 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="text-gray-400 text-sm">{formatDate(athlete.lastWorkoutDate)}</p>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
