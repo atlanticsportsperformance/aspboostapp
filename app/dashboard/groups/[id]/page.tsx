@@ -982,7 +982,7 @@ function DraggableWorkout({
   );
 }
 
-// Add Member Modal with Search and Tag Filtering
+// Add Member Modal with Search
 function AddMemberModal({
   groupId,
   existingMemberIds,
@@ -997,8 +997,6 @@ function AddMemberModal({
   const [athletes, setAthletes] = useState<any[]>([]);
   const [filteredAthletes, setFilteredAthletes] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTag, setSelectedTag] = useState('');
-  const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -1011,10 +1009,9 @@ function AddMemberModal({
 
   useEffect(() => {
     filterAthletes();
-  }, [searchQuery, selectedTag, athletes]);
+  }, [searchQuery, athletes]);
 
   async function fetchAvailableAthletes() {
-    // Fetch athletes with their tags
     const { data: athletesData } = await supabase
       .from('athletes')
       .select(`
@@ -1029,36 +1026,11 @@ function AddMemberModal({
       return;
     }
 
-    // Fetch tags for each athlete
-    const athleteIds = athletesData.map(a => a.id);
-    const { data: tagsData } = await supabase
-      .from('athlete_tags')
-      .select('athlete_id, tag')
-      .in('athlete_id', athleteIds);
+    // Filter out existing members
+    const available = athletesData.filter(a => !existingMemberIds.includes(a.id));
 
-    // Organize tags by athlete
-    const athleteTagsMap: Record<string, string[]> = {};
-    const uniqueTags = new Set<string>();
-
-    (tagsData || []).forEach((tagEntry) => {
-      if (!athleteTagsMap[tagEntry.athlete_id]) {
-        athleteTagsMap[tagEntry.athlete_id] = [];
-      }
-      athleteTagsMap[tagEntry.athlete_id].push(tagEntry.tag);
-      uniqueTags.add(tagEntry.tag);
-    });
-
-    // Add tags to athletes and filter out existing members
-    const enrichedAthletes = athletesData
-      .filter(a => !existingMemberIds.includes(a.id))
-      .map(athlete => ({
-        ...athlete,
-        tags: athleteTagsMap[athlete.id] || []
-      }));
-
-    setAthletes(enrichedAthletes);
-    setFilteredAthletes(enrichedAthletes);
-    setAllTags(Array.from(uniqueTags).sort());
+    setAthletes(available);
+    setFilteredAthletes(available);
     setLoading(false);
   }
 
@@ -1075,13 +1047,6 @@ function AddMemberModal({
       });
     }
 
-    // Filter by tag
-    if (selectedTag) {
-      filtered = filtered.filter(athlete =>
-        athlete.tags?.includes(selectedTag)
-      );
-    }
-
     setFilteredAthletes(filtered);
   }
 
@@ -1094,45 +1059,6 @@ function AddMemberModal({
     setSaving(true);
 
     const inserts = Array.from(selectedAthletes).map(athlete_id => ({
-      group_id: groupId,
-      athlete_id,
-      role: 'member'
-    }));
-
-    const { error } = await supabase
-      .from('group_members')
-      .insert(inserts);
-
-    if (error) {
-      console.error('Error adding members:', error);
-      alert('Failed to add members');
-      setSaving(false);
-      return;
-    }
-
-    onAdded();
-  }
-
-  async function handleAddAllByTag() {
-    if (!selectedTag) {
-      alert('Please select a tag first');
-      return;
-    }
-
-    const athletesWithTag = filteredAthletes.map(a => a.id);
-
-    if (athletesWithTag.length === 0) {
-      alert('No athletes found with this tag');
-      return;
-    }
-
-    if (!confirm(`Add all ${athletesWithTag.length} athletes with "${selectedTag}" tag to this group?`)) {
-      return;
-    }
-
-    setSaving(true);
-
-    const inserts = athletesWithTag.map(athlete_id => ({
       group_id: groupId,
       athlete_id,
       role: 'member'
@@ -1181,8 +1107,8 @@ function AddMemberModal({
           <div className="text-center py-8 text-gray-400">Loading athletes...</div>
         ) : (
           <>
-            {/* Search and Filter */}
-            <div className="space-y-3 mb-4">
+            {/* Search */}
+            <div className="mb-4">
               <input
                 type="text"
                 placeholder="Search athletes by name or email..."
@@ -1190,29 +1116,6 @@ function AddMemberModal({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
               />
-
-              <div className="flex gap-2">
-                <select
-                  value={selectedTag}
-                  onChange={(e) => setSelectedTag(e.target.value)}
-                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-                >
-                  <option value="">All Tags</option>
-                  {allTags.map((tag) => (
-                    <option key={tag} value={tag}>{tag}</option>
-                  ))}
-                </select>
-
-                {selectedTag && (
-                  <button
-                    onClick={handleAddAllByTag}
-                    disabled={saving || filteredAthletes.length === 0}
-                    className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap"
-                  >
-                    Add All ({filteredAthletes.length})
-                  </button>
-                )}
-              </div>
             </div>
 
             {/* Athletes List */}
@@ -1236,15 +1139,6 @@ function AddMemberModal({
                       <div className="flex-1">
                         <p className="font-medium text-white">{getAthleteDisplayName(athlete)}</p>
                         <p className="text-sm text-gray-400">{athlete.profile?.email || ''}</p>
-                        {athlete.tags && athlete.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {athlete.tags.map((tag: string) => (
-                              <span key={tag} className="px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded text-xs">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
                       <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
                         selectedAthletes.has(athlete.id)
