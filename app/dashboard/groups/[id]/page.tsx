@@ -203,10 +203,7 @@ export default function GroupDetailPage() {
 
     const { data: schedulesData, error: schedulesError } = await supabase
       .from('group_workout_schedules')
-      .select(`
-        *,
-        workout:workouts(id, name, category, estimated_duration_minutes, notes, group_id)
-      `)
+      .select('*')
       .eq('group_id', groupId)
       .gte('scheduled_date', startStr)
       .lte('scheduled_date', endStr)
@@ -214,10 +211,19 @@ export default function GroupDetailPage() {
 
     if (schedulesError) {
       console.error('Error fetching schedules:', schedulesError);
+      setSchedules([]);
     } else {
-      // Fetch sync counts for each schedule
+      // Fetch workout details and sync counts for each schedule
       const enrichedSchedules = await Promise.all(
         (schedulesData || []).map(async (schedule) => {
+          // Fetch workout details
+          const { data: workout } = await supabase
+            .from('workouts')
+            .select('id, name, category, estimated_duration_minutes, notes, group_id')
+            .eq('id', schedule.workout_id)
+            .single();
+
+          // Fetch sync counts
           const { data: instances } = await supabase
             .from('workout_instances')
             .select('is_synced_with_group')
@@ -229,6 +235,7 @@ export default function GroupDetailPage() {
 
           return {
             ...schedule,
+            workout,
             synced_count,
             detached_count
           };
