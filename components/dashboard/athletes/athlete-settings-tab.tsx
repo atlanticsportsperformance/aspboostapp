@@ -457,6 +457,60 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
                 </div>
               </div>
 
+              {/* Sync Buttons */}
+              {canEditProfile && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setValdMessage('');
+                      fetch(`/api/athletes/${athlete.id}/vald/sync?daysBack=30`, {
+                        method: 'POST',
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            setValdMessage(`✅ Synced ${data.tests_synced} test(s) from last 30 days`);
+                          } else {
+                            setValdMessage('❌ Error: ' + (data.error || 'Unknown error'));
+                          }
+                        })
+                        .catch(err => setValdMessage('❌ Failed to sync'))
+                        .finally(() => setTimeout(() => setValdMessage(''), 5000));
+                    }}
+                    className="px-3 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black rounded-lg transition-colors font-medium text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Sync 30d
+                  </button>
+                  <button
+                    onClick={() => {
+                      setValdMessage('');
+                      fetch(`/api/athletes/${athlete.id}/vald/sync?daysBack=365`, {
+                        method: 'POST',
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            setValdMessage(`✅ Synced ${data.tests_synced} test(s) from last 365 days`);
+                          } else {
+                            setValdMessage('❌ Error: ' + (data.error || 'Unknown error'));
+                          }
+                        })
+                        .catch(err => setValdMessage('❌ Failed to sync'))
+                        .finally(() => setTimeout(() => setValdMessage(''), 5000));
+                    }}
+                    className="px-3 py-2 border border-[#9BDDFF] bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] rounded-lg transition-colors font-medium text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Full Sync 365d
+                  </button>
+                </div>
+              )}
+
               {/* Unlink Button */}
               {canEditProfile && (
                 <button
@@ -609,6 +663,72 @@ export default function AthleteSettingsTab({ athleteData, onDeleteAthlete }: Ath
                   </div>
                 </div>
               </div>
+
+              {/* Sync Buttons */}
+              {canEditProfile && (
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      setBlastSyncing(true);
+                      setBlastMessage('');
+                      fetch(`/api/athletes/${athlete.id}/blast/sync`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ daysBack: 30 })
+                      })
+                        .then(res => res.json())
+                        .then(data => {
+                          if (data.success) {
+                            setBlastMessage(`✅ Synced ${data.results.inserted} swings (${data.results.skipped} existed)`);
+                            athlete.blast_synced_at = new Date().toISOString();
+                          } else {
+                            setBlastMessage('❌ Error: ' + (data.message || 'Unknown error'));
+                          }
+                        })
+                        .catch(err => setBlastMessage('❌ Failed to sync'))
+                        .finally(() => {
+                          setBlastSyncing(false);
+                          setTimeout(() => setBlastMessage(''), 5000);
+                        });
+                    }}
+                    disabled={blastSyncing}
+                    className="px-3 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs flex items-center justify-center gap-1.5"
+                  >
+                    {blastSyncing ? (
+                      <>
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-solid border-black border-r-transparent"></div>
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Sync 30d
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleSyncBlast}
+                    disabled={blastSyncing}
+                    className="px-3 py-2 border border-[#9BDDFF] bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-xs flex items-center justify-center gap-1.5"
+                  >
+                    {blastSyncing ? (
+                      <>
+                        <div className="h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
+                        Syncing...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Full Sync 365d
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
 
               {/* Unlink Button */}
               {canEditProfile && (
