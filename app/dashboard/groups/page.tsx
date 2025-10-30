@@ -239,42 +239,47 @@ export default function GroupsPage() {
   return (
     <div className="min-h-screen bg-[#0A0A0A]">
       {/* Top Navigation Bar */}
-      <div className="sticky top-0 z-40 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/[0.05]">
-        <div className="px-6 py-4">
+      <div className="sticky top-0 z-40 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
+        <div className="p-3 lg:p-6">
           <div className="flex items-center justify-between">
-            {/* Left: Title and Breadcrumb */}
-            <div className="flex items-center gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                  <span>Dashboard</span>
-                  <ChevronRight size={14} />
-                  <span className="text-white">Groups</span>
-                </div>
-                <h1 className="text-2xl font-semibold text-white tracking-tight">Team Groups</h1>
-              </div>
+            {/* Left: Title */}
+            <div>
+              <h1 className="text-xl lg:text-3xl font-bold text-white">Groups</h1>
+              <p className="text-gray-400 text-xs lg:text-sm mt-0.5 lg:mt-1 hidden sm:block">
+                Manage team groups and schedules
+              </p>
             </div>
 
             {/* Right: Actions */}
-            <div className="flex items-center gap-3">
-              {/* Search */}
+            <div className="flex items-center gap-2">
+              {/* Search - Desktop only */}
               <button
                 onClick={() => setShowCommandPalette(true)}
-                className="group relative px-4 py-2 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.08] rounded-lg transition-all duration-200 flex items-center gap-2"
+                className="hidden lg:flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-gray-400 text-sm hover:bg-white/10 transition-colors"
               >
-                <Search size={16} className="text-gray-400" />
-                <span className="text-sm text-gray-400">Search groups...</span>
-                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium text-gray-500 bg-white/[0.05] border border-white/[0.08] rounded">
+                <Search size={16} />
+                <span>Search...</span>
+                <kbd className="px-2 py-0.5 text-[10px] bg-white/5 border border-white/10 rounded">
                   ⌘K
                 </kbd>
+              </button>
+
+              {/* Search Icon - Mobile */}
+              <button
+                onClick={() => setShowCommandPalette(true)}
+                className="lg:hidden p-2 bg-white/5 border border-white/10 rounded-lg text-gray-400 hover:bg-white/10 transition-colors"
+              >
+                <Search size={18} />
               </button>
 
               {/* Create Group Button */}
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="relative group px-4 py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-medium rounded-lg transition-all duration-200 flex items-center gap-2 shadow-lg shadow-[#9BDDFF]/20"
+                className="px-3 py-2 lg:px-4 lg:py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black font-medium rounded-lg transition-colors flex items-center gap-2 text-sm lg:text-base"
               >
                 <Plus size={18} />
-                <span>New Group</span>
+                <span className="hidden sm:inline">New Group</span>
+                <span className="sm:hidden">+</span>
               </button>
             </div>
           </div>
@@ -282,83 +287,56 @@ export default function GroupsPage() {
       </div>
 
       {/* Main Content */}
-      <div className="px-6 py-8 max-w-[1600px] mx-auto">
+      <div className="p-3 lg:p-6 pb-20 lg:pb-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-4 mb-4 lg:mb-8">
           {/* Total Groups */}
-          <div className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.15] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#9BDDFF]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2 bg-[#9BDDFF]/10 rounded-lg">
-                  <Users size={18} className="text-[#9BDDFF]" />
-                </div>
-                {stats.weeklyGrowth > 0 && <TrendingUp size={14} className="text-emerald-500" />}
+          <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 lg:p-5">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Groups</p>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-[#9BDDFF]/10 flex items-center justify-center flex-shrink-0">
+                <Users size={14} className="lg:w-5 lg:h-5 text-[#9BDDFF]" />
               </div>
-              <div className="space-y-1">
-                <p className="text-3xl font-bold text-white">{stats.totalGroups}</p>
-                <p className="text-xs text-gray-500 font-medium">Active Groups</p>
-              </div>
+              <p className="text-xl lg:text-3xl font-bold text-white">{stats.totalGroups}</p>
             </div>
           </div>
 
           {/* Total Athletes */}
-          <div className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.15] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Target size={18} className="text-blue-500" />
-                </div>
-                {stats.weeklyGrowth > 0 && (
-                  <span className="text-xs text-emerald-500 font-medium">+{stats.weeklyGrowth}%</span>
-                )}
+          <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 lg:p-5">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Athletes</p>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Target size={14} className="lg:w-5 lg:h-5 text-blue-500" />
               </div>
-              <div className="space-y-1">
-                <p className="text-3xl font-bold text-white">{stats.totalAthletes}</p>
-                <p className="text-xs text-gray-500 font-medium">Total Athletes</p>
-              </div>
+              <p className="text-xl lg:text-3xl font-bold text-white">{stats.totalAthletes}</p>
             </div>
           </div>
 
           {/* Active Workouts */}
-          <div className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.15] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2 bg-purple-500/10 rounded-lg">
-                  <Zap size={18} className="text-purple-500" />
-                </div>
-                <Clock size={14} className="text-gray-500" />
+          <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 lg:p-5">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Workouts</p>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                <Zap size={14} className="lg:w-5 lg:h-5 text-purple-500" />
               </div>
-              <div className="space-y-1">
-                <p className="text-3xl font-bold text-white">{stats.activeWorkouts}</p>
-                <p className="text-xs text-gray-500 font-medium">Scheduled Workouts</p>
-              </div>
+              <p className="text-xl lg:text-3xl font-bold text-white">{stats.activeWorkouts}</p>
             </div>
           </div>
 
           {/* Completion Rate */}
-          <div className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl p-5 hover:border-white/[0.15] transition-all duration-300 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative">
-              <div className="flex items-center justify-between mb-3">
-                <div className="p-2 bg-emerald-500/10 rounded-lg">
-                  <CheckCircle2 size={18} className="text-emerald-500" />
-                </div>
-                <TrendingUp size={14} className="text-emerald-500" />
+          <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 lg:p-5">
+            <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Completion</p>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 size={14} className="lg:w-5 lg:h-5 text-emerald-500" />
               </div>
-              <div className="space-y-1">
-                <p className="text-3xl font-bold text-white">{stats.avgCompletion}%</p>
-                <p className="text-xs text-gray-500 font-medium">Avg. Completion</p>
-              </div>
+              <p className="text-xl lg:text-3xl font-bold text-white">{stats.avgCompletion}%</p>
             </div>
           </div>
 
-          {/* Quick Action */}
-          <div className="group relative bg-gradient-to-br from-[#9BDDFF]/20 to-[#9BDDFF]/5 border border-[#9BDDFF]/20 rounded-xl p-5 hover:border-[#9BDDFF]/40 transition-all duration-300 overflow-hidden cursor-pointer">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#9BDDFF]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-            <div className="relative flex flex-col items-center justify-center h-full text-center">
+          {/* Quick Action - Hidden on mobile */}
+          <div className="hidden lg:flex bg-gradient-to-br from-[#9BDDFF]/20 to-[#9BDDFF]/5 border border-[#9BDDFF]/20 rounded-xl p-5 hover:border-[#9BDDFF]/40 transition-all cursor-pointer">
+            <div className="flex flex-col items-center justify-center w-full text-center">
               <Award size={24} className="text-[#9BDDFF] mb-2" />
               <p className="text-sm font-semibold text-white mb-1">Quick Schedule</p>
               <p className="text-xs text-gray-400">Bulk assign workouts</p>
@@ -367,16 +345,16 @@ export default function GroupsPage() {
         </div>
 
         {/* Filters and View Toggle */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between mb-4 lg:mb-6">
+          <div className="flex items-center gap-1 lg:gap-2">
             {['all', 'active', 'archived'].map((filter) => (
               <button
                 key={filter}
                 onClick={() => setSelectedFilter(filter as any)}
-                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                className={`px-2 lg:px-4 py-1.5 lg:py-2 text-xs lg:text-sm font-medium rounded-lg transition-all ${
                   selectedFilter === filter
-                    ? 'bg-white/[0.08] text-white border border-white/[0.15]'
-                    : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                    ? 'bg-white/10 text-white border border-white/20'
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -385,17 +363,17 @@ export default function GroupsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="p-2 text-gray-400 hover:text-white hover:bg-white/[0.04] rounded-lg transition-colors">
+            <button className="hidden lg:block p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <Filter size={18} />
             </button>
-            <div className="h-4 w-px bg-white/[0.08]"></div>
+            <div className="hidden lg:block h-4 w-px bg-white/10"></div>
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'grid' ? 'text-white bg-white/[0.08]' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                viewMode === 'grid' ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" className="lg:w-[18px] lg:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <rect x="3" y="3" width="7" height="7" />
                 <rect x="14" y="3" width="7" height="7" />
                 <rect x="14" y="14" width="7" height="7" />
@@ -405,10 +383,10 @@ export default function GroupsPage() {
             <button
               onClick={() => setViewMode('list')}
               className={`p-2 rounded-lg transition-colors ${
-                viewMode === 'list' ? 'text-white bg-white/[0.08]' : 'text-gray-400 hover:text-white hover:bg-white/[0.04]'
+                viewMode === 'list' ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" className="lg:w-[18px] lg:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <line x1="3" y1="12" x2="21" y2="12" />
                 <line x1="3" y1="18" x2="21" y2="18" />
@@ -444,11 +422,11 @@ export default function GroupsPage() {
             </div>
           </div>
         ) : (
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-3'}>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-2 lg:gap-4' : 'space-y-2 lg:space-y-3'}>
             {filteredGroups.map((group, index) => (
               <div
                 key={group.id}
-                className="group relative bg-gradient-to-br from-white/[0.03] to-white/[0.01] border border-white/[0.08] rounded-xl hover:border-white/[0.15] transition-all duration-300 overflow-hidden cursor-pointer"
+                className="group relative bg-white/5 border border-white/10 rounded-lg lg:rounded-xl hover:border-white/20 transition-all cursor-pointer"
                 style={{
                   animationDelay: `${index * 50}ms`,
                   animation: 'fadeInUp 0.5s ease-out forwards',
@@ -464,21 +442,18 @@ export default function GroupsPage() {
                   }}
                 ></div>
 
-                <div className="relative p-6">
+                <div className="relative p-3 lg:p-6">
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-start justify-between mb-3 lg:mb-4">
+                    <div className="flex items-center gap-2 lg:gap-3">
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
-                        style={{
-                          backgroundColor: `${group.color}15`,
-                          boxShadow: `0 0 20px ${group.color}20`
-                        }}
+                        className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl flex items-center justify-center"
+                        style={{ backgroundColor: `${group.color}15` }}
                       >
-                        <Users size={20} style={{ color: group.color }} />
+                        <Users size={18} className="lg:w-5 lg:h-5" style={{ color: group.color }} />
                       </div>
                       <div>
-                        <h3 className="text-base font-semibold text-white mb-0.5">{group.name}</h3>
+                        <h3 className="text-sm lg:text-base font-semibold text-white">{group.name}</h3>
                         <p className="text-xs text-gray-500">{group.memberCount} athletes</p>
                       </div>
                     </div>
@@ -487,53 +462,53 @@ export default function GroupsPage() {
                         e.stopPropagation();
                         handleDeleteGroup(group.id);
                       }}
-                      className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                      className="p-1 lg:p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={14} className="lg:w-4 lg:h-4" />
                     </button>
                   </div>
 
-                  {/* Description */}
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2 min-h-[40px]">
+                  {/* Description - Hidden on mobile */}
+                  <p className="hidden lg:block text-sm text-gray-400 mb-4 line-clamp-2 min-h-[40px]">
                     {group.description || 'No description'}
                   </p>
 
                   {/* Stats Row */}
-                  <div className="grid grid-cols-3 gap-3 mb-4">
-                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5">
-                      <p className="text-xs text-gray-500 mb-0.5">Workouts</p>
-                      <p className="text-lg font-bold text-white">{group.upcomingWorkouts}</p>
+                  <div className="grid grid-cols-3 gap-2 lg:gap-3 mb-3 lg:mb-4">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 lg:p-2.5">
+                      <p className="text-[10px] lg:text-xs text-gray-500 mb-0.5">Workouts</p>
+                      <p className="text-base lg:text-lg font-bold text-white">{group.upcomingWorkouts}</p>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5">
-                      <p className="text-xs text-gray-500 mb-0.5">Completion</p>
-                      <p className="text-lg font-bold text-emerald-400">{group.completionRate}%</p>
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 lg:p-2.5">
+                      <p className="text-[10px] lg:text-xs text-gray-500 mb-0.5">Rate</p>
+                      <p className="text-base lg:text-lg font-bold text-emerald-400">{group.completionRate}%</p>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/[0.05] rounded-lg p-2.5 flex items-center justify-center">
+                    <div className="bg-white/5 border border-white/10 rounded-lg p-2 lg:p-2.5 flex items-center justify-center">
                       <div
-                        className="w-10 h-10 rounded-full border-4 flex items-center justify-center"
+                        className="w-8 h-8 lg:w-10 lg:h-10 rounded-full border-4 flex items-center justify-center"
                         style={{
                           borderColor: `${group.color}30`,
                           borderTopColor: group.color
                         }}
                       >
-                        <TrendingUp size={16} style={{ color: group.color }} />
+                        <TrendingUp size={14} className="lg:w-4 lg:h-4" style={{ color: group.color }} />
                       </div>
                     </div>
                   </div>
 
-                  {/* Tags */}
+                  {/* Tags - Hidden on mobile */}
                   {group.tags && group.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
+                    <div className="hidden lg:flex flex-wrap gap-1.5 mb-4">
                       {group.tags.slice(0, 3).map((tag) => (
                         <span
                           key={tag}
-                          className="px-2 py-1 text-[10px] font-medium bg-white/[0.05] text-gray-400 rounded-md border border-white/[0.08]"
+                          className="px-2 py-1 text-[10px] font-medium bg-white/5 text-gray-400 rounded-md border border-white/10"
                         >
                           {tag}
                         </span>
                       ))}
                       {group.tags.length > 3 && (
-                        <span className="px-2 py-1 text-[10px] font-medium bg-white/[0.05] text-gray-400 rounded-md border border-white/[0.08]">
+                        <span className="px-2 py-1 text-[10px] font-medium bg-white/5 text-gray-400 rounded-md border border-white/10">
                           +{group.tags.length - 3}
                         </span>
                       )}
@@ -541,19 +516,19 @@ export default function GroupsPage() {
                   )}
 
                   {/* Recent Activity */}
-                  <div className="flex items-center gap-2 pt-4 border-t border-white/[0.05]">
+                  <div className="flex items-center gap-2 pt-3 lg:pt-4 border-t border-white/10">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                     <p className="text-xs text-gray-500">{group.recentActivity}</p>
                   </div>
                 </div>
 
-                {/* Hover Action Bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-2">
+                {/* Hover Action Bar - Desktop only */}
+                <div className="hidden lg:flex absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 items-end justify-center pb-2">
                   <div className="flex items-center gap-2">
-                    <button className="px-3 py-1.5 text-xs font-medium bg-white/[0.1] hover:bg-white/[0.15] text-white rounded-lg backdrop-blur-xl transition-colors">
+                    <button className="px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/15 text-white rounded-lg backdrop-blur-xl transition-colors">
                       View Details
                     </button>
-                    <button className="px-3 py-1.5 text-xs font-medium bg-white/[0.1] hover:bg-white/[0.15] text-white rounded-lg backdrop-blur-xl transition-colors">
+                    <button className="px-3 py-1.5 text-xs font-medium bg-white/10 hover:bg-white/15 text-white rounded-lg backdrop-blur-xl transition-colors">
                       Schedule
                     </button>
                   </div>
