@@ -487,7 +487,7 @@ export default function AthletesPage() {
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
-          <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Inactive</p>
+          <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">No Workout</p>
           <div className="flex items-center gap-2 lg:gap-3">
             <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center flex-shrink-0">
               <svg className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
