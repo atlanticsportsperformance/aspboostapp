@@ -118,8 +118,9 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState<Group | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
   const [schedules, setSchedules] = useState<GroupWorkoutSchedule[]>([]);
-  const [currentView, setCurrentView] = useState<'calendar' | 'members'>('calendar');
+  const [currentView, setCurrentView] = useState<'calendar' | 'members' | 'staff'>('calendar');
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showScheduleWorkoutModal, setShowScheduleWorkoutModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -475,7 +476,20 @@ export default function GroupDetailPage() {
           >
             <div className="flex items-center gap-2">
               <Users size={18} />
-              Members ({members.length})
+              Athletes ({members.length})
+            </div>
+          </button>
+          <button
+            onClick={() => setCurrentView('staff')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              currentView === 'staff'
+                ? 'text-[#9BDDFF] border-b-2 border-[#9BDDFF]'
+                : 'text-gray-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users size={18} />
+              Staff ({staff.length})
             </div>
           </button>
         </div>
@@ -756,6 +770,27 @@ export default function GroupDetailPage() {
           </div>
         )}
 
+        {/* Staff View */}
+        {currentView === 'staff' && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-white">Staff & Coaches</h2>
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
+              >
+                <Plus size={18} />
+                Add Staff
+              </button>
+            </div>
+
+            <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+              <Users className="mx-auto text-gray-500 mb-2" size={48} />
+              <p className="text-gray-400">Staff management coming soon</p>
+              <p className="text-sm text-gray-500 mt-2">This will allow you to assign coaches and staff to manage this group</p>
+            </div>
+          </div>
+        )}
+
         {/* Modals */}
         {showAddMemberModal && (
           <AddMemberModal
@@ -947,7 +982,7 @@ function DraggableWorkout({
   );
 }
 
-// Add Member Modal (reusing from original)
+// Add Member Modal with Search and Tag Filtering
 function AddMemberModal({
   groupId,
   existingMemberIds,
@@ -960,8 +995,11 @@ function AddMemberModal({
   onAdded: () => void;
 }) {
   const [athletes, setAthletes] = useState<any[]>([]);
-  const [selectedAthleteId, setSelectedAthleteId] = useState('');
-  const [role, setRole] = useState('member');
+  const [filteredAthletes, setFilteredAthletes] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTag, setSelectedTag] = useState('');
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [selectedAthletes, setSelectedAthletes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -971,7 +1009,12 @@ function AddMemberModal({
     fetchAvailableAthletes();
   }, []);
 
+  useEffect(() => {
+    filterAthletes();
+  }, [searchQuery, selectedTag, athletes]);
+
   async function fetchAvailableAthletes() {
+    // Fetch athletes with their tags
     const { data: athletesData } = await supabase
       .from('athletes')
       .select(`
@@ -979,38 +1022,144 @@ function AddMemberModal({
         profile:profiles(id, first_name, last_name, email)
       `)
       .eq('is_active', true)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false});
 
-    // Filter out existing members
-    const available = (athletesData || []).filter(a => !existingMemberIds.includes(a.id));
-    setAthletes(available);
+    if (!athletesData) {
+      setLoading(false);
+      return;
+    }
+
+    // Fetch tags for each athlete
+    const athleteIds = athletesData.map(a => a.id);
+    const { data: tagsData } = await supabase
+      .from('athlete_tags')
+      .select('athlete_id, tag')
+      .in('athlete_id', athleteIds);
+
+    // Organize tags by athlete
+    const athleteTagsMap: Record<string, string[]> = {};
+    const uniqueTags = new Set<string>();
+
+    (tagsData || []).forEach((tagEntry) => {
+      if (!athleteTagsMap[tagEntry.athlete_id]) {
+        athleteTagsMap[tagEntry.athlete_id] = [];
+      }
+      athleteTagsMap[tagEntry.athlete_id].push(tagEntry.tag);
+      uniqueTags.add(tagEntry.tag);
+    });
+
+    // Add tags to athletes and filter out existing members
+    const enrichedAthletes = athletesData
+      .filter(a => !existingMemberIds.includes(a.id))
+      .map(athlete => ({
+        ...athlete,
+        tags: athleteTagsMap[athlete.id] || []
+      }));
+
+    setAthletes(enrichedAthletes);
+    setFilteredAthletes(enrichedAthletes);
+    setAllTags(Array.from(uniqueTags).sort());
     setLoading(false);
   }
 
-  async function handleAdd() {
-    if (!selectedAthleteId) {
-      alert('Please select an athlete');
+  function filterAthletes() {
+    let filtered = [...athletes];
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(athlete => {
+        const name = getAthleteDisplayName(athlete).toLowerCase();
+        const email = athlete.profile?.email?.toLowerCase() || '';
+        return name.includes(query) || email.includes(query);
+      });
+    }
+
+    // Filter by tag
+    if (selectedTag) {
+      filtered = filtered.filter(athlete =>
+        athlete.tags?.includes(selectedTag)
+      );
+    }
+
+    setFilteredAthletes(filtered);
+  }
+
+  async function handleAddSelected() {
+    if (selectedAthletes.size === 0) {
+      alert('Please select at least one athlete');
       return;
     }
 
     setSaving(true);
 
+    const inserts = Array.from(selectedAthletes).map(athlete_id => ({
+      group_id: groupId,
+      athlete_id,
+      role: 'member'
+    }));
+
     const { error } = await supabase
       .from('group_members')
-      .insert({
-        group_id: groupId,
-        athlete_id: selectedAthleteId,
-        role
-      });
+      .insert(inserts);
 
     if (error) {
-      console.error('Error adding member:', error);
-      alert('Failed to add member');
+      console.error('Error adding members:', error);
+      alert('Failed to add members');
       setSaving(false);
       return;
     }
 
     onAdded();
+  }
+
+  async function handleAddAllByTag() {
+    if (!selectedTag) {
+      alert('Please select a tag first');
+      return;
+    }
+
+    const athletesWithTag = filteredAthletes.map(a => a.id);
+
+    if (athletesWithTag.length === 0) {
+      alert('No athletes found with this tag');
+      return;
+    }
+
+    if (!confirm(`Add all ${athletesWithTag.length} athletes with "${selectedTag}" tag to this group?`)) {
+      return;
+    }
+
+    setSaving(true);
+
+    const inserts = athletesWithTag.map(athlete_id => ({
+      group_id: groupId,
+      athlete_id,
+      role: 'member'
+    }));
+
+    const { error } = await supabase
+      .from('group_members')
+      .insert(inserts);
+
+    if (error) {
+      console.error('Error adding members:', error);
+      alert('Failed to add members');
+      setSaving(false);
+      return;
+    }
+
+    onAdded();
+  }
+
+  function toggleAthleteSelection(athleteId: string) {
+    const newSelected = new Set(selectedAthletes);
+    if (newSelected.has(athleteId)) {
+      newSelected.delete(athleteId);
+    } else {
+      newSelected.add(athleteId);
+    }
+    setSelectedAthletes(newSelected);
   }
 
   function getAthleteDisplayName(athlete: any): string {
@@ -1025,68 +1174,112 @@ function AddMemberModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1a1a1a] border border-white/10 rounded-xl max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-white mb-4">Add Member to Group</h2>
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-hidden flex flex-col">
+        <h2 className="text-2xl font-bold text-white mb-4">Add Athletes to Group</h2>
 
         {loading ? (
           <div className="text-center py-8 text-gray-400">Loading athletes...</div>
-        ) : athletes.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            No available athletes to add
-          </div>
         ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Select Athlete *
-              </label>
-              <select
-                value={selectedAthleteId}
-                onChange={(e) => setSelectedAthleteId(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-              >
-                <option value="">Choose an athlete...</option>
-                {athletes.map((athlete) => (
-                  <option key={athlete.id} value={athlete.id}>
-                    {getAthleteDisplayName(athlete)}
-                  </option>
-                ))}
-              </select>
+          <>
+            {/* Search and Filter */}
+            <div className="space-y-3 mb-4">
+              <input
+                type="text"
+                placeholder="Search athletes by name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
+              />
+
+              <div className="flex gap-2">
+                <select
+                  value={selectedTag}
+                  onChange={(e) => setSelectedTag(e.target.value)}
+                  className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
+                >
+                  <option value="">All Tags</option>
+                  {allTags.map((tag) => (
+                    <option key={tag} value={tag}>{tag}</option>
+                  ))}
+                </select>
+
+                {selectedTag && (
+                  <button
+                    onClick={handleAddAllByTag}
+                    disabled={saving || filteredAthletes.length === 0}
+                    className="px-4 py-2 bg-gradient-to-br from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Add All ({filteredAthletes.length})
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Role
-              </label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent"
-              >
-                <option value="member">Member</option>
-                <option value="leader">Leader</option>
-                <option value="captain">Captain</option>
-              </select>
+            {/* Athletes List */}
+            <div className="flex-1 overflow-y-auto mb-4 space-y-2 min-h-[200px] max-h-[400px]">
+              {filteredAthletes.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  {athletes.length === 0 ? 'No available athletes to add' : 'No athletes match your search'}
+                </div>
+              ) : (
+                filteredAthletes.map((athlete) => (
+                  <div
+                    key={athlete.id}
+                    onClick={() => toggleAthleteSelection(athlete.id)}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      selectedAthletes.has(athlete.id)
+                        ? 'bg-[#9BDDFF]/20 border-[#9BDDFF]/40'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{getAthleteDisplayName(athlete)}</p>
+                        <p className="text-sm text-gray-400">{athlete.profile?.email || ''}</p>
+                        {athlete.tags && athlete.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {athlete.tags.map((tag: string) => (
+                              <span key={tag} className="px-1.5 py-0.5 bg-blue-500/20 border border-blue-500/30 text-blue-300 rounded text-xs">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        selectedAthletes.has(athlete.id)
+                          ? 'bg-[#9BDDFF] border-[#9BDDFF]'
+                          : 'border-gray-600'
+                      }`}>
+                        {selectedAthletes.has(athlete.id) && (
+                          <Check size={14} className="text-black" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
-          </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                disabled={saving}
+                className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddSelected}
+                disabled={saving || selectedAthletes.size === 0}
+                className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg disabled:opacity-50 transition-colors font-medium"
+              >
+                {saving ? 'Adding...' : `Add Selected (${selectedAthletes.size})`}
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            disabled={saving || !selectedAthleteId}
-            className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg disabled:opacity-50 transition-colors font-medium"
-          >
-            {saving ? 'Adding...' : 'Add Member'}
-          </button>
-        </div>
       </div>
     </div>
   );
