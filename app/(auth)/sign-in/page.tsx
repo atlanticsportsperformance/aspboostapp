@@ -7,7 +7,15 @@ import { signIn } from '@/lib/auth/helpers';
 function SignInForm() {
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    // Check if app is running as PWA
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                  (window.navigator as any).standalone === true;
+    setIsStandalone(isPWA);
+  }, []);
 
   useEffect(() => {
     const errorParam = searchParams.get('error');
@@ -48,6 +56,30 @@ function SignInForm() {
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.02)_1px,transparent_1px)] bg-[size:72px_72px] [mask-image:radial-gradient(ellipse_at_center,black_20%,transparent_80%)]" />
 
       <div className="relative z-10 w-full max-w-md">
+        {/* Install Instructions Banner - Only show when NOT running as PWA */}
+        {!isStandalone && (
+          <div className="mb-6 rounded-2xl bg-gradient-to-r from-[#9BDDFF]/15 via-[#B0E5FF]/10 to-[#7BC5F0]/15 border border-[#9BDDFF]/30 p-4 backdrop-blur-sm">
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-2xl">📱</span>
+                <p className="text-sm font-semibold text-white">
+                  Install App for Best Experience
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 text-xs">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
+                  <span className="font-semibold text-[#9BDDFF]">iOS:</span>
+                  <span className="text-white/80">Tap Share → "Add to Home Screen"</span>
+                </div>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-lg border border-white/10">
+                  <span className="font-semibold text-[#9BDDFF]">Android:</span>
+                  <span className="text-white/80">Menu ⋮ → "Add to Home screen"</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Logo / Brand */}
         <div className="mb-8 text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] shadow-2xl shadow-[#9BDDFF]/30">
