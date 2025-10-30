@@ -13,7 +13,7 @@ const navLinks = [
 ];
 
 const adminLinks = [
-  { href: '/dashboard/coaches', label: 'Coaches Dashboard', icon: '🎯', superAdminOnly: true },
+  { href: '/dashboard/athletes/bulk-add', label: 'Bulk Add Athletes', icon: '➕', superAdminOnly: true },
   { href: '/dashboard/admin', label: 'Settings', icon: '⚙️', superAdminOnly: true },
 ];
 
@@ -282,30 +282,21 @@ export default function DashboardLayout({
           {/* Admin Links (for super_admin) */}
           {profile?.app_role === 'super_admin' && (
             <>
-              <Link
-                href="/dashboard/coaches"
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                  mounted && pathname === '/dashboard/coaches'
-                    ? 'bg-white/5 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="text-lg">🎯</span>
-                <span className="text-sm font-medium">Coaches Dashboard</span>
-              </Link>
-              <Link
-                href="/dashboard/admin"
-                onClick={() => setSidebarOpen(false)}
-                className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
-                  mounted && pathname === '/dashboard/admin'
-                    ? 'bg-white/5 text-white'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <span className="text-lg">⚙️</span>
-                <span className="text-sm font-medium">Settings</span>
-              </Link>
+              {adminLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    mounted && pathname === link.href
+                      ? 'bg-white/5 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <span className="text-lg">{link.icon}</span>
+                  <span className="text-sm font-medium">{link.label}</span>
+                </Link>
+              ))}
             </>
           )}
 
