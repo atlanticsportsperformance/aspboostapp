@@ -183,12 +183,12 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
             )}
           </div>
 
-          {/* Mobile: Dropdown + Sync Button */}
-          <div className="md:hidden w-full flex items-center gap-2">
+          {/* Mobile: Dropdown */}
+          <div className="md:hidden w-full">
             <select
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as ViewMode)}
-              className="flex-1 px-3 py-2 bg-black/40 border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
+              className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
             >
               <option value="composite">Force Overview</option>
               <option value="cmj">CMJ</option>
@@ -198,48 +198,6 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
               <option value="imtp">IMTP</option>
               <option value="history">Sync History</option>
             </select>
-
-            {/* Sync Buttons (Mobile) */}
-            <div className="flex gap-1">
-              <button
-                onClick={() => handleSync(30)}
-                disabled={syncing || !valdProfileId}
-                className={`px-2 py-2 rounded-md font-medium text-xs transition-all whitespace-nowrap flex items-center gap-1 ${
-                  valdProfileId
-                    ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
-                    : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-                } ${syncing ? 'opacity-50' : ''}`}
-                title="Sync last 30 days"
-              >
-                {syncing ? (
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                ) : (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                )}
-                <span>30d</span>
-              </button>
-              <button
-                onClick={() => handleSync(365)}
-                disabled={syncing || !valdProfileId}
-                className={`px-2 py-2 rounded-md font-medium text-xs transition-all whitespace-nowrap flex items-center gap-1 ${
-                  valdProfileId
-                    ? 'border border-[#9BDDFF] bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF]'
-                    : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-                } ${syncing ? 'opacity-50' : ''}`}
-                title="Full sync - last 365 days"
-              >
-                {syncing ? (
-                  <div className="h-3 w-3 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                ) : (
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                )}
-                <span>365d</span>
-              </button>
-            </div>
           </div>
 
           {/* Desktop: Tabs + Buttons */}
@@ -329,57 +287,6 @@ export default function ForceProfileTab({ athleteId, athleteName }: ForceProfile
                 Present
               </button>
             )}
-
-            {/* Sync Buttons (Desktop) */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleSync(30)}
-                disabled={syncing || !valdProfileId}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
-                valdProfileId
-                  ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
-                  : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-              } ${syncing ? 'opacity-50' : ''}`}
-              >
-                {syncing ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Sync 30d
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => handleSync(365)}
-                disabled={syncing || !valdProfileId}
-                className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
-                  valdProfileId
-                    ? 'border border-[#9BDDFF] bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF]'
-                    : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-                } ${syncing ? 'opacity-50' : ''}`}
-                title="Full historical sync - 365 days"
-              >
-                {syncing ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-                    Syncing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Full Sync 365d
-                  </>
-                )}
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -333,56 +333,6 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
 
   return (
     <div className="space-y-4">
-      {/* Header: Title + Sync Buttons */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
-        {/* Left: Title */}
-        <div className="hidden sm:block flex-shrink-0">
-          <h2 className="font-bold text-white text-xl">Hitting Overview</h2>
-        </div>
-
-        {/* Sync Buttons */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <button
-            onClick={() => handleSync(30)}
-            disabled={syncing || !blastPlayerId}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
-              blastPlayerId
-                ? 'bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] text-black shadow-lg shadow-[#9BDDFF]/20'
-                : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-            } ${syncing ? 'opacity-50' : ''}`}
-            title="Sync last 30 days"
-          >
-            {syncing ? (
-              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            )}
-            <span>{syncing ? 'Syncing...' : 'Sync 30d'}</span>
-          </button>
-          <button
-            onClick={() => handleSync(365)}
-            disabled={syncing || !blastPlayerId}
-            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-md font-medium text-xs sm:text-sm transition-all whitespace-nowrap flex items-center justify-center gap-1.5 ${
-              blastPlayerId
-                ? 'border border-[#9BDDFF] bg-[#9BDDFF]/10 hover:bg-[#9BDDFF]/20 text-[#9BDDFF]'
-                : 'border border-white/20 bg-black/20 text-gray-400 cursor-not-allowed'
-            } ${syncing ? 'opacity-50' : ''}`}
-            title="Full sync - last 365 days"
-          >
-            {syncing ? (
-              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-solid border-current border-r-transparent"></div>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            )}
-            <span>Full Sync</span>
-          </button>
-        </div>
-      </div>
-
       {/* Content */}
       {!blastPlayerId ? (
         // Not Linked State
@@ -423,7 +373,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
             <div>
               <h3 className="text-lg font-semibold text-white mb-2">No Swing Data Yet</h3>
               <p className="text-gray-400 text-sm">
-                Click "Sync 30d" or "Full Sync" above to import swing data from Blast Motion.
+                Go to the <strong>Settings</strong> tab to sync swing data from Blast Motion.
               </p>
             </div>
           </div>

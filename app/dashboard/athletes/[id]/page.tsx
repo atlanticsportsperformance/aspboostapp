@@ -306,7 +306,7 @@ export default function AthleteDetailPage() {
       {/* Header with Back Button */}
       <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
         <div className="p-3 lg:p-6">
-          <div className="flex items-center gap-3 mb-2 lg:mb-4">
+          <div className="flex items-center gap-3 mb-2 lg:mb-0">
             <button
               onClick={() => router.push('/dashboard/athletes')}
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
@@ -318,70 +318,89 @@ export default function AthleteDetailPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 lg:gap-4">
-            {/* Avatar and Name */}
-            <div className="h-12 w-12 lg:h-16 lg:w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-lg lg:text-2xl flex-shrink-0">
-              {athlete.first_name?.[0] || 'A'}
-              {athlete.last_name?.[0] || ''}
-            </div>
-            <div>
-              <h1 className="text-xl lg:text-3xl font-bold text-white">{fullName}</h1>
-              <div className="flex flex-wrap items-center gap-1.5 lg:gap-2 mt-0.5 lg:mt-1">
-                {athlete.primary_position && (
-                  <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 bg-blue-500/10 text-blue-400 rounded-md text-xs lg:text-sm font-medium">
-                    {athlete.primary_position}
-                  </span>
-                )}
-                {athlete.grad_year && (
-                  <span className="px-2 py-0.5 lg:px-2.5 lg:py-1 bg-purple-500/10 text-purple-400 rounded-md text-xs lg:text-sm font-medium">
-                    Class of {athlete.grad_year}
-                  </span>
-                )}
+          {/* Desktop: Avatar/Name on left, Tabs on right */}
+          <div className="hidden lg:flex items-end justify-between gap-4 mt-4">
+            <div className="flex items-center gap-4">
+              {/* Avatar and Name */}
+              <div className="h-16 w-16 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-2xl flex-shrink-0">
+                {athlete.first_name?.[0] || 'A'}
+                {athlete.last_name?.[0] || ''}
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-white">{fullName}</h1>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {athlete.primary_position && (
+                    <span className="px-2.5 py-1 bg-blue-500/10 text-blue-400 rounded-md text-sm font-medium">
+                      {athlete.primary_position}
+                    </span>
+                  )}
+                  {athlete.grad_year && (
+                    <span className="px-2.5 py-1 bg-purple-500/10 text-purple-400 rounded-md text-sm font-medium">
+                      Class of {athlete.grad_year}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Tabs - Desktop */}
-        <div className="hidden lg:block border-t border-white/10">
-          <div className="flex items-center justify-between px-6">
-            <div className="flex gap-1">
+            {/* Tabs - Desktop (moved to header, aligned right) */}
+            <div className="flex gap-1 pb-2">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => updateTabInUrl(tab.id)}
-                  className={`px-4 py-3 font-medium transition-all duration-200 border-b-2 ${
+                  className={`px-3 py-2 text-sm font-medium transition-all duration-200 rounded-lg whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'border-[#9BDDFF] text-white'
-                      : 'border-transparent text-gray-400 hover:text-white'
+                      ? 'bg-[#9BDDFF]/10 text-[#9BDDFF] border border-[#9BDDFF]/30'
+                      : 'text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
                   style={mounted && activeTab === tab.id ? {} : undefined}
                 >
-                  <span className="mr-2">{tab.icon}</span>
+                  <span className="mr-1.5">{tab.icon}</span>
                   {tab.label}
                 </button>
               ))}
             </div>
-
-            {/* Action Buttons removed - now in Overview tab */}
           </div>
-        </div>
 
-        {/* Tabs - Mobile Dropdown */}
-        <div className="lg:hidden border-t border-white/10 px-4 py-3 space-y-3">
-          <select
-            value={activeTab}
-            onChange={(e) => updateTabInUrl(e.target.value)}
-            className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
-          >
-            {tabs.map((tab) => (
-              <option key={tab.id} value={tab.id}>
-                {tab.icon} {tab.label}
-              </option>
-            ))}
-          </select>
+          {/* Mobile: Avatar/Name, then dropdown below */}
+          <div className="lg:hidden space-y-3 mt-2">
+            <div className="flex items-center gap-3">
+              {/* Avatar and Name */}
+              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#9BDDFF] to-[#7BC5F0] flex items-center justify-center text-black font-bold text-lg flex-shrink-0">
+                {athlete.first_name?.[0] || 'A'}
+                {athlete.last_name?.[0] || ''}
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white">{fullName}</h1>
+                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                  {athlete.primary_position && (
+                    <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-md text-xs font-medium">
+                      {athlete.primary_position}
+                    </span>
+                  )}
+                  {athlete.grad_year && (
+                    <span className="px-2 py-0.5 bg-purple-500/10 text-purple-400 rounded-md text-xs font-medium">
+                      Class of {athlete.grad_year}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
 
-          {/* Action Buttons removed - now in Overview tab */}
+            {/* Tabs - Mobile Dropdown */}
+            <select
+              value={activeTab}
+              onChange={(e) => updateTabInUrl(e.target.value)}
+              className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]"
+            >
+              {tabs.map((tab) => (
+                <option key={tab.id} value={tab.id}>
+                  {tab.icon} {tab.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
