@@ -88,7 +88,8 @@ export default function AthleteCalendarTab({ athleteId }: CalendarTabProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 15,
+        tolerance: 5,
       },
     })
   );
