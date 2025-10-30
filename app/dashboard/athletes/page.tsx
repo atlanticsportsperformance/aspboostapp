@@ -463,42 +463,39 @@ export default function AthletesPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">Total</p>
-            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Total</p>
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <svg className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
             </div>
+            <p className="text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
           </div>
-          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.total}</p>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">Active</p>
-            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Active</p>
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+              <svg className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
+            <p className="text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
           </div>
-          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.activeThisWeek}</p>
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-lg lg:rounded-xl p-2 sm:p-3 lg:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-1 sm:mb-2">
-            <p className="text-gray-400 text-xs sm:text-xs lg:text-sm font-medium">
-              <span className="hidden sm:inline">No Workout</span>
-              <span className="sm:hidden">No WO</span>
-            </p>
-            <div className="h-6 w-6 sm:h-6 sm:w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center">
-              <svg className="h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <p className="text-gray-400 text-xs lg:text-sm font-medium mb-2 lg:mb-3">Inactive</p>
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="h-6 w-6 lg:h-10 lg:w-10 rounded bg-orange-500/10 flex items-center justify-center flex-shrink-0">
+              <svg className="h-3.5 w-3.5 lg:h-5 lg:w-5 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
+            <p className="text-xl lg:text-3xl font-bold text-white">{stats.noUpcoming}</p>
           </div>
-          <p className="text-xl sm:text-xl lg:text-3xl font-bold text-white">{stats.noUpcoming}</p>
         </div>
       </div>
 
