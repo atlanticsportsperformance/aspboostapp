@@ -12,7 +12,7 @@ import { getContentFilter } from '@/lib/auth/permissions';
 const ROUTINE_CATEGORIES = [
   { value: 'hitting', label: 'Hitting' },
   { value: 'throwing', label: 'Throwing' },
-  { value: 'strength_conditioning', label: 'Strength & Conditioning' }
+  { value: 'strength_conditioning', label: 'S&C' }
 ] as const;
 
 interface Routine {
@@ -48,6 +48,7 @@ export default function RoutinesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [managerOpen, setManagerOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
@@ -113,10 +114,10 @@ export default function RoutinesPage() {
           exercises (name)
         )
       `)
-      .eq('is_standalone', true)          // ✅ ONLY templates
-      .is('workout_id', null)              // ✅ NOT in a workout
-      .is('plan_id', null)                 // ✅ NOT in a plan
-      .is('athlete_id', null)              // ✅ NOT for an athlete
+      .eq('is_standalone', true)
+      .is('workout_id', null)
+      .is('plan_id', null)
+      .is('athlete_id', null)
       .order('created_at', { ascending: false });
 
     // Apply creator filter based on permissions
@@ -135,7 +136,6 @@ export default function RoutinesPage() {
       console.error('Error fetching routines:', error);
     } else {
       console.log('✅ Template routines loaded:', data?.length);
-      console.log('✅ Filtered to templates only (is_standalone=true, plan_id=null, athlete_id=null)');
       setRoutines(data || []);
     }
 
@@ -149,7 +149,6 @@ export default function RoutinesPage() {
     const creatorIds = [...new Set(routines.map(r => r.created_by).filter(Boolean))] as string[];
 
     if (creatorIds.length > 0) {
-      // Batch fetch all creator roles at once
       const { data: creators } = await supabase
         .from('profiles')
         .select('id, app_role')
@@ -177,7 +176,6 @@ export default function RoutinesPage() {
   }
 
   async function handleCreateRoutine() {
-    // Get current user
     const { data: { user } } = await supabase.auth.getUser();
 
     const { data, error } = await supabase
@@ -186,7 +184,7 @@ export default function RoutinesPage() {
         name: 'New Routine',
         scheme: 'straight',
         is_standalone: true,
-        created_by: user?.id || null,  // Set creator
+        created_by: user?.id || null,
         order_index: 0
       })
       .select()
@@ -204,7 +202,6 @@ export default function RoutinesPage() {
   async function handleDuplicate(routine: Routine) {
     if (!confirm(`Duplicate "${routine.name}"?`)) return;
 
-    // Create new routine
     const { data: newRoutine, error: routineError } = await supabase
       .from('routines')
       .insert({
@@ -287,255 +284,385 @@ export default function RoutinesPage() {
 
   const getSchemeBadge = (scheme: string) => {
     const schemes: Record<string, { label: string; color: string }> = {
-      straight: { label: 'Straight Sets', color: 'bg-gray-500/20 text-gray-300' },
-      superset: { label: 'Superset', color: 'bg-blue-500/20 text-blue-300' },
-      circuit: { label: 'Circuit', color: 'bg-purple-500/20 text-purple-300' },
-      emom: { label: 'EMOM', color: 'bg-green-500/20 text-green-300' },
-      amrap: { label: 'AMRAP', color: 'bg-yellow-500/20 text-yellow-300' },
-      giant_set: { label: 'Giant Set', color: 'bg-red-500/20 text-red-300' }
+      straight: { label: 'Straight', color: 'bg-gray-500/20 text-gray-300 border-gray-500/30' },
+      superset: { label: 'Superset', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+      circuit: { label: 'Circuit', color: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+      emom: { label: 'EMOM', color: 'bg-green-500/20 text-green-300 border-green-500/30' },
+      amrap: { label: 'AMRAP', color: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+      giant_set: { label: 'Giant Set', color: 'bg-red-500/20 text-red-300 border-red-500/30' }
     };
     const config = schemes[scheme] || schemes.straight;
     return (
-      <span className={`px-2 py-0.5 rounded text-xs ${config.color}`}>
+      <span className={`px-1.5 py-0.5 rounded text-xs border ${config.color}`}>
         {config.label}
       </span>
     );
   };
 
   const getCategoryBadge = (category?: string) => {
-    const categories: Record<string, { label: string; color: string }> = {
-      hitting: { label: 'Hitting', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
-      throwing: { label: 'Throwing', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
-      strength_conditioning: { label: 'Strength & Conditioning', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
+    const categories: Record<string, { label: string; color: string; emoji: string }> = {
+      hitting: { label: 'Hitting', color: 'bg-red-500/20 text-red-300 border-red-500/30', emoji: '⚾' },
+      throwing: { label: 'Throwing', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30', emoji: '🎯' },
+      strength_conditioning: { label: 'S&C', color: 'bg-green-500/20 text-green-300 border-green-500/30', emoji: '💪' }
     };
     const config = categories[category || 'strength_conditioning'] || categories.strength_conditioning;
     return (
-      <span className={`px-2 py-0.5 rounded text-xs border ${config.color}`}>
-        {config.label}
+      <span className={`px-1.5 py-0.5 rounded text-xs border ${config.color} flex items-center gap-1`}>
+        <span>{config.emoji}</span>
+        <span className="hidden sm:inline">{config.label}</span>
       </span>
     );
   };
 
   if (loading) {
     return (
-      <div className="p-6">
-        <div className="text-gray-400">Loading routines...</div>
+      <div className="p-3 lg:p-6">
+        <div className="text-gray-400 text-sm">Loading routines...</div>
       </div>
     );
   }
 
+  const activeFilterCount = [
+    categoryFilter !== 'all' ? 1 : 0,
+    schemeFilter !== 'all' ? 1 : 0,
+    tagFilter !== 'all' ? 1 : 0
+  ].reduce((a, b) => a + b, 0);
+
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Routine Library</h1>
-          <p className="text-gray-400 text-sm mt-1">
-            Create reusable routines to import into workouts or assign directly to calendar
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setManagerOpen(true)}
-            className="px-4 py-2 bg-white/10 border border-white/20 text-white font-semibold rounded-lg hover:bg-white/20 transition-all"
-          >
-            ⚙️ Manage Tags
-          </button>
-          {(userRole === 'super_admin' || permissions?.can_create_routines) && (
-            <button
-              onClick={handleCreateRoutine}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              + Create Routine
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4 mb-6 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search routines..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 max-w-md px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
-        >
-          <option value="all">All Categories</option>
-          {ROUTINE_CATEGORIES.map(cat => (
-            <option key={cat.value} value={cat.value}>{cat.label}</option>
-          ))}
-        </select>
-        <select
-          value={schemeFilter}
-          onChange={(e) => setSchemeFilter(e.target.value)}
-          className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
-        >
-          <option value="all">All Schemes</option>
-          <option value="straight">Straight Sets</option>
-          <option value="superset">Superset</option>
-          <option value="circuit">Circuit</option>
-          <option value="emom">EMOM</option>
-          <option value="amrap">AMRAP</option>
-          <option value="giant_set">Giant Set</option>
-        </select>
-        {allTags.length > 0 && (
-          <select
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 [&>option]:bg-neutral-900 [&>option]:text-white"
-          >
-            <option value="all">All Tags</option>
-            {allTags.map(tag => (
-              <option key={tag} value={tag} className="capitalize">{tag}</option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      {/* Routine List */}
-      {filteredRoutines.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-400 mb-4">
-            {searchQuery || schemeFilter !== 'all' ? 'No routines found' : 'No routines yet'}
-          </p>
-          {!searchQuery && schemeFilter === 'all' && (
-            <button
-              onClick={handleCreateRoutine}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Create Your First Routine
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
-          {/* List Header */}
-          <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
-            <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-              <div className="col-span-3">Routine Name</div>
-              <div className="col-span-2">Category</div>
-              <div className="col-span-2">Scheme</div>
-              <div className="col-span-1">Exercises</div>
-              <div className="col-span-2">Created By</div>
-              <div className="col-span-2 text-right">Actions</div>
+    <div className="min-h-screen pb-20 lg:pb-8">
+      {/* Compact Mobile Header */}
+      <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
+        <div className="p-3 lg:p-6">
+          {/* Title Row */}
+          <div className="flex items-center justify-between mb-3 lg:mb-4">
+            <div>
+              <h1 className="text-xl lg:text-3xl font-bold text-white">Routines</h1>
+              <p className="text-gray-400 text-xs lg:text-sm mt-0.5 lg:mt-1 hidden sm:block">
+                Reusable exercise routines
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {/* Mobile: Only show create button */}
+              {(userRole === 'super_admin' || permissions?.can_create_routines) && (
+                <button
+                  onClick={handleCreateRoutine}
+                  className="px-3 py-2 lg:px-4 lg:py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black rounded-lg font-medium transition-colors text-sm lg:text-base"
+                >
+                  <span className="hidden sm:inline">+ Create</span>
+                  <span className="sm:hidden">+</span>
+                </button>
+              )}
             </div>
           </div>
 
-          {/* List Items */}
-          <div className="divide-y divide-neutral-800">
-            {filteredRoutines.map((routine) => {
-              const exerciseCount = routine.routine_exercises?.length || 0;
+          {/* Search Bar */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
+            />
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors relative"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              {activeFilterCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#9BDDFF] text-black text-xs rounded-full flex items-center justify-center font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setManagerOpen(true)}
+              className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors"
+              title="Manage Tags"
+            >
+              ⚙️
+            </button>
+          </div>
 
-              return (
-                <div
-                  key={routine.id}
-                  className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
+          {/* Collapsible Filters */}
+          {showFilters && (
+            <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50 [&>option]:bg-neutral-900"
+              >
+                <option value="all">All Categories</option>
+                {ROUTINE_CATEGORIES.map(cat => (
+                  <option key={cat.value} value={cat.value}>{cat.label}</option>
+                ))}
+              </select>
+              <select
+                value={schemeFilter}
+                onChange={(e) => setSchemeFilter(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50 [&>option]:bg-neutral-900"
+              >
+                <option value="all">All Schemes</option>
+                <option value="straight">Straight Sets</option>
+                <option value="superset">Superset</option>
+                <option value="circuit">Circuit</option>
+                <option value="emom">EMOM</option>
+                <option value="amrap">AMRAP</option>
+                <option value="giant_set">Giant Set</option>
+              </select>
+              {allTags.length > 0 && (
+                <select
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50 [&>option]:bg-neutral-900"
                 >
-                  <div className="grid grid-cols-12 gap-4 items-center">
-                    {/* Routine Name */}
-                    <div className="col-span-3">
-                      <div className="text-white font-medium">
-                        {routine.name}
+                  <option value="all">All Tags</option>
+                  {allTags.map(tag => (
+                    <option key={tag} value={tag} className="capitalize">{tag}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Routine List */}
+      <div className="p-3 lg:p-6">
+        {filteredRoutines.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-400 text-sm mb-4">
+              {searchQuery || schemeFilter !== 'all' ? 'No routines found' : 'No routines yet'}
+            </p>
+            {!searchQuery && schemeFilter === 'all' && (userRole === 'super_admin' || permissions?.can_create_routines) && (
+              <button
+                onClick={handleCreateRoutine}
+                className="px-4 py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black rounded-lg font-medium transition-colors text-sm"
+              >
+                Create Your First Routine
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Mobile: Card Layout */}
+            <div className="lg:hidden space-y-2">
+              {filteredRoutines.map((routine) => {
+                const exerciseCount = routine.routine_exercises?.length || 0;
+                const canEdit = routinePermissions[routine.id]?.canEdit;
+                const canDelete = routinePermissions[routine.id]?.canDelete;
+
+                return (
+                  <div
+                    key={routine.id}
+                    onClick={() => canEdit && router.push(`/dashboard/routines/${routine.id}`)}
+                    className={`bg-white/5 border border-white/10 rounded-lg p-3 ${canEdit ? 'active:bg-white/10' : ''}`}
+                  >
+                    {/* Top Row: Name and Badges */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-medium text-sm truncate">{routine.name}</h3>
+                        {routine.description && (
+                          <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{routine.description}</p>
+                        )}
                       </div>
-                      {routine.description && (
-                        <div className="text-xs text-neutral-500 mt-1 line-clamp-1">
-                          {routine.description}
-                        </div>
-                      )}
+                      <div className="flex gap-1 flex-shrink-0">
+                        {getCategoryBadge(routine.category)}
+                      </div>
                     </div>
 
-                    {/* Category */}
-                    <div className="col-span-2">
-                      {getCategoryBadge(routine.category)}
-                    </div>
-
-                    {/* Scheme */}
-                    <div className="col-span-2">
+                    {/* Middle Row: Scheme and Exercise Count */}
+                    <div className="flex items-center gap-2 mb-2">
                       {getSchemeBadge(routine.scheme)}
+                      <span className="text-xs text-gray-400">
+                        {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+                      </span>
                     </div>
 
-                    {/* Exercises */}
-                    <div className="col-span-1 text-sm text-neutral-400">
-                      {exerciseCount}
-                    </div>
-
-                    {/* Created By */}
-                    <div className="col-span-2">
+                    {/* Bottom Row: Creator and Actions */}
+                    <div className="flex items-center justify-between gap-2">
                       {routine.creator ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
                             {routine.creator.first_name?.[0]}{routine.creator.last_name?.[0]}
                           </div>
-                          <div className="text-sm text-neutral-300">
+                          <span className="text-xs text-gray-400 truncate">
                             {routine.creator.first_name} {routine.creator.last_name}
-                          </div>
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-neutral-600">—</span>
+                        <div className="text-xs text-gray-600">—</div>
                       )}
-                    </div>
 
-                    {/* Actions */}
-                    <div className="col-span-2 flex items-center justify-end gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDuplicate(routine);
-                        }}
-                        className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
-                        title="Duplicate routine"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </button>
-
-                      {routinePermissions[routine.id]?.canEdit && (
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
-                            e.preventDefault();
                             e.stopPropagation();
-                            router.push(`/dashboard/routines/${routine.id}`);
+                            handleDuplicate(routine);
                           }}
-                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
-                          title="Edit routine"
+                          className="p-1.5 hover:bg-blue-500/20 rounded text-blue-400 transition-colors"
+                          title="Duplicate"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                         </button>
-                      )}
 
-                      {routinePermissions[routine.id]?.canDelete && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleDelete(routine.id, routine.name);
-                          }}
-                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                          title="Delete routine"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
+                        {canEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/routines/${routine.id}`);
+                            }}
+                            className="p-1.5 hover:bg-blue-500/20 rounded text-blue-400 transition-colors"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(routine.id, routine.name);
+                            }}
+                            className="p-1.5 hover:bg-red-500/20 rounded text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop: Table Layout */}
+            <div className="hidden lg:block bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
+              <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
+                <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                  <div className="col-span-3">Routine Name</div>
+                  <div className="col-span-2">Category</div>
+                  <div className="col-span-2">Scheme</div>
+                  <div className="col-span-1">Exercises</div>
+                  <div className="col-span-2">Created By</div>
+                  <div className="col-span-2 text-right">Actions</div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+              </div>
+
+              <div className="divide-y divide-neutral-800">
+                {filteredRoutines.map((routine) => {
+                  const exerciseCount = routine.routine_exercises?.length || 0;
+
+                  return (
+                    <div
+                      key={routine.id}
+                      className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
+                    >
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        <div className="col-span-3">
+                          <div className="text-white font-medium">
+                            {routine.name}
+                          </div>
+                          {routine.description && (
+                            <div className="text-xs text-neutral-500 mt-1 line-clamp-1">
+                              {routine.description}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="col-span-2">
+                          {getCategoryBadge(routine.category)}
+                        </div>
+
+                        <div className="col-span-2">
+                          {getSchemeBadge(routine.scheme)}
+                        </div>
+
+                        <div className="col-span-1 text-sm text-neutral-400">
+                          {exerciseCount}
+                        </div>
+
+                        <div className="col-span-2">
+                          {routine.creator ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                                {routine.creator.first_name?.[0]}{routine.creator.last_name?.[0]}
+                              </div>
+                              <div className="text-sm text-neutral-300">
+                                {routine.creator.first_name} {routine.creator.last_name}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-neutral-600">—</span>
+                          )}
+                        </div>
+
+                        <div className="col-span-2 flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDuplicate(routine);
+                            }}
+                            className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                            title="Duplicate routine"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+
+                          {routinePermissions[routine.id]?.canEdit && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                router.push(`/dashboard/routines/${routine.id}`);
+                              }}
+                              className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                              title="Edit routine"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                          )}
+
+                          {routinePermissions[routine.id]?.canDelete && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleDelete(routine.id, routine.name);
+                              }}
+                              className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                              title="Delete routine"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Tags Manager */}
       {managerOpen && (
