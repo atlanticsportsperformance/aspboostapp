@@ -646,7 +646,7 @@ function CreateGroupModal({ onClose, onCreated }: { onClose: () => void; onCreat
     { name: 'Gold', value: '#9BDDFF' },
     { name: 'Emerald', value: '#059669' },
     { name: 'Cyan', value: '#06b6d4' },
-    { name: 'Amber', value: '#f59e0b' }
+    { name: 'Yellow', value: '#eab308' }
   ];
 
   async function handleCreate() {
