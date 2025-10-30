@@ -122,6 +122,7 @@ export default function GroupDetailPage() {
   const [schedules, setSchedules] = useState<GroupWorkoutSchedule[]>([]);
   const [currentView, setCurrentView] = useState<'calendar' | 'members' | 'staff'>('calendar');
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showScheduleWorkoutModal, setShowScheduleWorkoutModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeSchedule, setActiveSchedule] = useState<GroupWorkoutSchedule | null>(null);
@@ -193,6 +194,22 @@ export default function GroupDetailPage() {
       setMembers(membersData || []);
     }
 
+    // Fetch staff members
+    const { data: staffData, error: staffError } = await supabase
+      .from('staff_groups')
+      .select(`
+        *,
+        staff:profiles!staff_groups_staff_id_fkey(id, first_name, last_name, email, app_role)
+      `)
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+
+    if (staffError) {
+      console.error('Error fetching staff:', staffError);
+    } else {
+      setStaff(staffData || []);
+    }
+
     // Fetch workout schedules for current month
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -260,6 +277,23 @@ export default function GroupDetailPage() {
     if (error) {
       console.error('Error removing member:', error);
       alert('Failed to remove member');
+      return;
+    }
+
+    fetchGroupDetails();
+  }
+
+  async function handleRemoveStaff(staffGroupId: string) {
+    if (!confirm('Remove this staff member from the group?')) return;
+
+    const { error } = await supabase
+      .from('staff_groups')
+      .delete()
+      .eq('id', staffGroupId);
+
+    if (error) {
+      console.error('Error removing staff:', error);
+      alert('Failed to remove staff member');
       return;
     }
 
@@ -776,6 +810,7 @@ export default function GroupDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold text-white">Staff & Coaches</h2>
               <button
+                onClick={() => setShowAddStaffModal(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
               >
                 <Plus size={18} />
@@ -783,11 +818,54 @@ export default function GroupDetailPage() {
               </button>
             </div>
 
-            <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
-              <Users className="mx-auto text-gray-500 mb-2" size={48} />
-              <p className="text-gray-400">Staff management coming soon</p>
-              <p className="text-sm text-gray-500 mt-2">This will allow you to assign coaches and staff to manage this group</p>
-            </div>
+            {staff.length === 0 ? (
+              <div className="bg-white/5 border border-white/10 rounded-xl p-8 text-center">
+                <Users className="mx-auto text-gray-500 mb-2" size={48} />
+                <p className="text-gray-400">No staff assigned to this group yet</p>
+                <button
+                  onClick={() => setShowAddStaffModal(true)}
+                  className="mt-4 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg transition-colors font-medium"
+                >
+                  Add First Staff Member
+                </button>
+              </div>
+            ) : (
+              <div className="bg-white/5 border border-white/10 rounded-xl divide-y divide-white/10">
+                {staff.map((staffMember) => (
+                  <div key={staffMember.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+                        <Users size={20} className="text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-white">
+                          {staffMember.staff?.first_name && staffMember.staff?.last_name
+                            ? `${staffMember.staff.first_name} ${staffMember.staff.last_name}`
+                            : staffMember.staff?.email || 'Unknown'}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          {staffMember.staff?.email || ''}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-1 text-xs font-medium bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded capitalize">
+                        {staffMember.staff?.app_role || 'Coach'}
+                      </span>
+                      <span className="px-2 py-1 text-xs font-medium bg-white/5 border border-white/10 text-gray-300 rounded capitalize">
+                        {staffMember.role}
+                      </span>
+                      <button
+                        onClick={() => handleRemoveStaff(staffMember.id)}
+                        className="ml-2 p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -799,6 +877,18 @@ export default function GroupDetailPage() {
             onClose={() => setShowAddMemberModal(false)}
             onAdded={() => {
               setShowAddMemberModal(false);
+              fetchGroupDetails();
+            }}
+          />
+        )}
+
+        {showAddStaffModal && (
+          <AddStaffModal
+            groupId={groupId}
+            existingStaffIds={staff.map(s => s.staff_id)}
+            onClose={() => setShowAddStaffModal(false)}
+            onAdded={() => {
+              setShowAddStaffModal(false);
               fetchGroupDetails();
             }}
           />
@@ -1171,6 +1261,161 @@ function AddMemberModal({
               >
                 {saving ? 'Adding...' : `Add Selected (${selectedAthletes.size})`}
               </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Add Staff Modal
+function AddStaffModal({
+  groupId,
+  existingStaffIds,
+  onClose,
+  onAdded
+}: {
+  groupId: string;
+  existingStaffIds: string[];
+  onClose: () => void;
+  onAdded: () => void;
+}) {
+  const [staff, setStaff] = useState<any[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStaff, setSelectedStaff] = useState<Set<string>>(new Set());
+  const [role, setRole] = useState<'owner' | 'member'>('member');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const supabase = createClient();
+
+  useEffect(() => {
+    fetchAvailableStaff();
+  }, []);
+
+  useEffect(() => {
+    filterStaff();
+  }, [searchQuery, staff]);
+
+  async function fetchAvailableStaff() {
+    const { data: staffData } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('app_role', ['coach', 'admin', 'super_admin'])
+      .order('first_name', { ascending: true });
+
+    if (!staffData) {
+      setLoading(false);
+      return;
+    }
+
+    const available = staffData.filter(s => !existingStaffIds.includes(s.id));
+    setStaff(available);
+    setFilteredStaff(available);
+    setLoading(false);
+  }
+
+  function filterStaff() {
+    let filtered = [...staff];
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(person => {
+        const name = getStaffDisplayName(person).toLowerCase();
+        const email = person.email?.toLowerCase() || '';
+        return name.includes(query) || email.includes(query);
+      });
+    }
+    setFilteredStaff(filtered);
+  }
+
+  async function handleAddSelected() {
+    if (selectedStaff.size === 0) {
+      alert('Please select at least one staff member');
+      return;
+    }
+
+    setSaving(true);
+    const inserts = Array.from(selectedStaff).map(staff_id => ({
+      group_id: groupId,
+      staff_id,
+      role
+    }));
+
+    const { error } = await supabase.from('staff_groups').insert(inserts);
+
+    if (error) {
+      console.error('Error adding staff:', error);
+      alert('Failed to add staff members');
+      setSaving(false);
+      return;
+    }
+
+    onAdded();
+  }
+
+  function toggleStaffSelection(staffId: string) {
+    const newSelected = new Set(selectedStaff);
+    if (newSelected.has(staffId)) {
+      newSelected.delete(staffId);
+    } else {
+      newSelected.add(staffId);
+    }
+    setSelectedStaff(newSelected);
+  }
+
+  function getStaffDisplayName(person: any): string {
+    if (person.first_name && person.last_name) return `${person.first_name} ${person.last_name}`;
+    if (person.first_name) return person.first_name;
+    if (person.last_name) return person.last_name;
+    return person.email || 'Unknown';
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a1a1a] border border-white/10 rounded-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-hidden flex flex-col">
+        <h2 className="text-2xl font-bold text-white mb-4">Add Staff to Group</h2>
+        {loading ? (
+          <div className="text-center py-8 text-gray-400">Loading staff...</div>
+        ) : (
+          <>
+            <div className="space-y-3 mb-4">
+              <input type="text" placeholder="Search staff by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-[#9BDDFF] focus:border-transparent" />
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Group Role</label>
+                <div className="flex gap-3">
+                  <button onClick={() => setRole('member')} className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${role === 'member' ? 'bg-[#9BDDFF] text-black' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}>Member</button>
+                  <button onClick={() => setRole('owner')} className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${role === 'owner' ? 'bg-[#9BDDFF] text-black' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}>Owner</button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Owners can manage group settings and members</p>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto mb-4 space-y-2 min-h-[200px] max-h-[400px]">
+              {filteredStaff.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">{staff.length === 0 ? 'No available staff to add' : 'No staff match your search'}</div>
+              ) : (
+                filteredStaff.map((person) => (
+                  <div key={person.id} onClick={() => toggleStaffSelection(person.id)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selectedStaff.has(person.id) ? 'bg-[#9BDDFF]/20 border-[#9BDDFF]/40' : 'bg-white/5 border-white/10 hover:bg-white/10'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="font-medium text-white">{getStaffDisplayName(person)}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-sm text-gray-400">{person.email || ''}</p>
+                          <span className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 rounded text-xs capitalize">{person.app_role}</span>
+                        </div>
+                      </div>
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${selectedStaff.has(person.id) ? 'bg-[#9BDDFF] border-[#9BDDFF]' : 'border-gray-600'}`}>
+                        {selectedStaff.has(person.id) && (<Check size={14} className="text-black" />)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={onClose} disabled={saving} className="flex-1 px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg hover:bg-white/10 disabled:opacity-50 transition-colors">Cancel</button>
+              <button onClick={handleAddSelected} disabled={saving || selectedStaff.size === 0} className="flex-1 px-4 py-2 bg-gradient-to-br from-[#9BDDFF] via-[#B0E5FF] to-[#7BC5F0] hover:from-[#7BC5F0] hover:to-[#5AB3E8] shadow-lg shadow-[#9BDDFF]/20 text-black rounded-lg disabled:opacity-50 transition-colors font-medium">{saving ? 'Adding...' : `Add Selected (${selectedStaff.size})`}</button>
             </div>
           </>
         )}
