@@ -449,14 +449,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.last30Days.percentChangeFromPrevious30 > 0 ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.last30Days.percentChangeFromPrevious30 > 0 ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{Math.abs(overviewStats.last30Days.percentChangeFromPrevious30).toFixed(0)}%</span>
+                        <span className="text-[10px] font-bold">{Math.abs(overviewStats.last30Days.percentChangeFromPrevious30).toFixed(0)}%</span>
                       </div>
                     )}
                   </div>
@@ -471,14 +471,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.recentSession.avgBatSpeed > overviewStats.last30DayAverages.avgBatSpeed ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgBatSpeed > overviewStats.last30DayAverages.avgBatSpeed ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgBatSpeed - overviewStats.last30DayAverages.avgBatSpeed))}</span>
+                        <span className="text-[10px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgBatSpeed - overviewStats.last30DayAverages.avgBatSpeed))}</span>
                       </div>
                     )}
                   </div>
@@ -493,14 +493,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.recentSession.maxBatSpeed > overviewStats.last30DayAverages.maxBatSpeed ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.maxBatSpeed > overviewStats.last30DayAverages.maxBatSpeed ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.maxBatSpeed - overviewStats.last30DayAverages.maxBatSpeed))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.maxBatSpeed - overviewStats.last30DayAverages.maxBatSpeed))}</span>
                       </div>
                     )}
                   </div>
@@ -513,14 +513,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                     <p className="text-lg font-bold text-white leading-none">{formatMetric(overviewStats.recentSession.avgAttackAngle)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className="flex items-center gap-0.5 text-gray-400">
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgAttackAngle > overviewStats.last30DayAverages.avgAttackAngle ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgAttackAngle - overviewStats.last30DayAverages.avgAttackAngle))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgAttackAngle - overviewStats.last30DayAverages.avgAttackAngle))}</span>
                       </div>
                     )}
                   </div>
@@ -533,14 +533,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                     <p className="text-lg font-bold text-blue-400 leading-none">{formatMetric(overviewStats.recentSession.avgEarlyConnection)}</p>
                     {overviewStats.last30DayAverages && (
                       <div className="flex items-center gap-0.5 text-gray-400">
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgEarlyConnection > overviewStats.last30DayAverages.avgEarlyConnection ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgEarlyConnection - overviewStats.last30DayAverages.avgEarlyConnection))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgEarlyConnection - overviewStats.last30DayAverages.avgEarlyConnection))}</span>
                       </div>
                     )}
                   </div>
@@ -555,14 +555,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.recentSession.avgConnectionAtImpact < overviewStats.last30DayAverages.avgConnectionAtImpact ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgConnectionAtImpact < overviewStats.last30DayAverages.avgConnectionAtImpact ? (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           ) : (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgConnectionAtImpact - overviewStats.last30DayAverages.avgConnectionAtImpact))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgConnectionAtImpact - overviewStats.last30DayAverages.avgConnectionAtImpact))}</span>
                       </div>
                     )}
                   </div>
@@ -577,14 +577,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.recentSession.avgPeakHandSpeed > overviewStats.last30DayAverages.avgPeakHandSpeed ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgPeakHandSpeed > overviewStats.last30DayAverages.avgPeakHandSpeed ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgPeakHandSpeed - overviewStats.last30DayAverages.avgPeakHandSpeed))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgPeakHandSpeed - overviewStats.last30DayAverages.avgPeakHandSpeed))}</span>
                       </div>
                     )}
                   </div>
@@ -599,14 +599,14 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                       <div className={`flex items-center gap-0.5 ${
                         overviewStats.recentSession.avgRotationalAcceleration > overviewStats.last30DayAverages.avgRotationalAcceleration ? 'text-emerald-400' : 'text-red-400'
                       }`}>
-                        <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           {overviewStats.recentSession.avgRotationalAcceleration > overviewStats.last30DayAverages.avgRotationalAcceleration ? (
-                            <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                           ) : (
-                            <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                           )}
                         </svg>
-                        <span className="text-[9px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgRotationalAcceleration - overviewStats.last30DayAverages.avgRotationalAcceleration))}</span>
+                        <span className="text-[11px] font-bold">{formatMetric(Math.abs(overviewStats.recentSession.avgRotationalAcceleration - overviewStats.last30DayAverages.avgRotationalAcceleration))}</span>
                       </div>
                     )}
                   </div>
