@@ -591,18 +591,29 @@ export default function AthletesPage() {
                                 : `Athlete #${athlete.id.slice(0, 8)}`
                               }
                             </p>
-                            {athlete.vald_profile_id && (
-                              <div className="group relative">
-                                <div className="h-5 w-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                  <svg className="h-3 w-3 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
+                            <div className="flex items-center gap-1">
+                              {athlete.vald_profile_id && (
+                                <div className="group relative">
+                                  <div className="h-5 w-5 rounded-full bg-orange-500 flex items-center justify-center">
+                                    <span className="text-white font-bold text-xs">V</span>
+                                  </div>
+                                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                    VALD Connected
+                                  </div>
                                 </div>
-                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                  VALD Connected
+                              )}
+                              {/* Blast Motion - Coming Soon */}
+                              {false && (
+                                <div className="group relative">
+                                  <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center">
+                                    <span className="text-blue-500 font-bold text-xs">B</span>
+                                  </div>
+                                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                                    Blast Motion Connected
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+                            </div>
                           </div>
                           {athlete.grad_year && (
                             <p className="text-sm text-gray-400">Class of {athlete.grad_year}</p>
@@ -697,13 +708,19 @@ export default function AthletesPage() {
                           : `Athlete #${athlete.id.slice(0, 8)}`
                         }
                       </h3>
-                      {athlete.vald_profile_id && (
-                        <div className="h-4 w-4 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                          <svg className="h-2.5 w-2.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-0.5">
+                        {athlete.vald_profile_id && (
+                          <div className="h-4 w-4 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white font-bold text-[10px]">V</span>
+                          </div>
+                        )}
+                        {/* Blast Motion - Coming Soon */}
+                        {false && (
+                          <div className="h-4 w-4 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                            <span className="text-blue-500 font-bold text-[10px]">B</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(athlete.completionRate)}`}>
                       {athlete.completionRate}%
