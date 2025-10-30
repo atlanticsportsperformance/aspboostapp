@@ -22,7 +22,18 @@
       "Bash(git restore:*)",
       "Bash(echo \"Let me check Ryan''s permissions. Please run this SQL query in Supabase and share the output:\n\nSELECT \n  sp.exercises_visibility,\n  sp.allowed_exercise_tags,\n  p.first_name,\n  p.last_name,\n  p.app_role\nFROM staff_permissions sp\nJOIN profiles p ON p.id = sp.staff_id\nWHERE sp.staff_id = ''1444c908-d237-4e5d-9e93-a24fb7cd6324'';\n\nThis will show Ryan''s current permission settings.\")",
       "Bash(echo:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -c \"\\d cmj_tests\")",
+      "Bash(npm run dev:*)",
+      "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -f scripts/add-blast-metric-columns.sql)",
+      "Bash(pbcopy)",
+      "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -c \"SELECT recorded_date, recorded_time, COUNT(*) as count FROM blast_swings WHERE athlete_id = ''edf7a6b8-cd9c-4eb5-bb17-8484b2214910'' GROUP BY recorded_date, recorded_time ORDER BY recorded_date DESC, recorded_time DESC LIMIT 20;\")",
+      "Bash(node -e:*)",
+      "Bash(npx psql $NEXT_PUBLIC_SUPABASE_URL -c \"SELECT athlete_id, COUNT(*) as swing_count FROM blast_swings GROUP BY athlete_id;\")",
+      "Bash(taskkill:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_ProcessName -eq ''node''} | Select-Object ProcessName, Id\")",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
