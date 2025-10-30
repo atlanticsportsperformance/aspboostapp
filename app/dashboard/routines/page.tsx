@@ -300,16 +300,15 @@ export default function RoutinesPage() {
   };
 
   const getCategoryBadge = (category?: string) => {
-    const categories: Record<string, { label: string; color: string; emoji: string }> = {
-      hitting: { label: 'Hitting', color: 'bg-red-500/20 text-red-300 border-red-500/30', emoji: '⚾' },
-      throwing: { label: 'Throwing', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30', emoji: '🎯' },
-      strength_conditioning: { label: 'S&C', color: 'bg-green-500/20 text-green-300 border-green-500/30', emoji: '💪' }
+    const categories: Record<string, { label: string; color: string }> = {
+      hitting: { label: 'Hitting', color: 'bg-red-500/20 text-red-300 border-red-500/30' },
+      throwing: { label: 'Throwing', color: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+      strength_conditioning: { label: 'S&C', color: 'bg-green-500/20 text-green-300 border-green-500/30' }
     };
     const config = categories[category || 'strength_conditioning'] || categories.strength_conditioning;
     return (
-      <span className={`px-1.5 py-0.5 rounded text-xs border ${config.color} flex items-center gap-1`}>
-        <span>{config.emoji}</span>
-        <span className="hidden sm:inline">{config.label}</span>
+      <span className={`px-1.5 py-0.5 rounded text-xs border ${config.color}`}>
+        {config.label}
       </span>
     );
   };
