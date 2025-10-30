@@ -213,39 +213,40 @@ export default function PlansPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950 flex items-center justify-center">
-        <div className="text-neutral-400">Loading plans...</div>
+      <div className="p-3 lg:p-6">
+        <div className="text-gray-400 text-sm">Loading plans...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-neutral-900 to-zinc-950">
-      {/* Header */}
-      <div className="border-b border-neutral-800 bg-black/30 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
+    <div className="min-h-screen pb-20 lg:pb-8">
+      {/* Compact Mobile Header */}
+      <div className="sticky top-0 z-30 bg-[#0A0A0A]/95 backdrop-blur-xl border-b border-white/10">
+        <div className="p-3 lg:p-6">
+          {/* Title Row */}
+          <div className="flex items-center justify-between mb-3 lg:mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Training Plans</h1>
-              <p className="text-neutral-400">Create and manage your training programs</p>
+              <h1 className="text-xl lg:text-3xl font-bold text-white">Training Plans</h1>
+              <p className="text-gray-400 text-xs lg:text-sm mt-0.5 lg:mt-1 hidden sm:block">
+                Create and manage your training programs
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex gap-2">
               <button
                 onClick={() => setManagerOpen(true)}
-                className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white hover:bg-white/10 transition-colors"
                 title="Manage Tags"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Manage Tags
+                ⚙️
               </button>
               {(userRole === 'super_admin' || permissions?.can_create_plans) && (
                 <button
                   onClick={() => setShowCreateDialog(true)}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
+                  className="px-3 py-2 lg:px-4 lg:py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black rounded-lg font-medium transition-colors text-sm lg:text-base"
                 >
-                  + New Plan
+                  <span className="hidden sm:inline">+ Create</span>
+                  <span className="sm:hidden">+</span>
                 </button>
               )}
             </div>
@@ -254,107 +255,185 @@ export default function PlansPage() {
       </div>
 
       {/* Plans List */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="p-3 lg:p-6">
         {plans.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-neutral-800/50 flex items-center justify-center">
-              <svg className="w-12 h-12 text-neutral-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No plans yet</h3>
-            <p className="text-neutral-400 mb-6">Create your first training plan to get started</p>
-            <button
-              onClick={() => setShowCreateDialog(true)}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
-            >
-              Create Your First Plan
-            </button>
+          <div className="text-center py-12">
+            <p className="text-gray-400 text-sm mb-4">No plans yet</p>
+            {(userRole === 'super_admin' || permissions?.can_create_plans) && (
+              <button
+                onClick={() => setShowCreateDialog(true)}
+                className="px-4 py-2 bg-[#9BDDFF] hover:bg-[#7BC5F0] text-black rounded-lg font-medium transition-colors text-sm"
+              >
+                Create Your First Plan
+              </button>
+            )}
           </div>
         ) : (
-          <div className="bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
-            {/* List Header */}
-            <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
-              <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                <div className="col-span-4">Plan Name</div>
-                <div className="col-span-2">Created By</div>
-                <div className="col-span-2">Created</div>
-                <div className="col-span-2">Description</div>
-                <div className="col-span-2 text-right">Actions</div>
-              </div>
-            </div>
+          <>
+            {/* Mobile: Card Layout */}
+            <div className="lg:hidden space-y-2">
+              {plans.map((plan) => {
+                const canEdit = planPermissions[plan.id]?.canEdit;
+                const canDelete = planPermissions[plan.id]?.canDelete;
 
-            {/* List Items */}
-            <div className="divide-y divide-neutral-800">
-              {plans.map((plan) => (
-                <div
-                  key={plan.id}
-                  className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
-                >
-                  <div className="grid grid-cols-12 gap-4 items-center">
-                    <div className="col-span-4">
-                      <div className="text-white font-medium">
-                        {plan.name}
+                return (
+                  <div
+                    key={plan.id}
+                    onClick={() => canEdit && router.push(`/dashboard/plans/${plan.id}`)}
+                    className={`bg-white/5 border border-white/10 rounded-lg p-3 ${canEdit ? 'active:bg-white/10' : ''}`}
+                  >
+                    {/* Top Row: Name */}
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-medium text-sm truncate">{plan.name}</h3>
+                        {plan.description && (
+                          <p className="text-xs text-gray-400 mt-0.5 truncate">{plan.description}</p>
+                        )}
                       </div>
                     </div>
-                    <div className="col-span-2">
+
+                    {/* Middle Row: Created Date */}
+                    <div className="flex items-center gap-3 mb-2 text-xs text-gray-400">
+                      <span>Created {new Date(plan.created_at).toLocaleDateString()}</span>
+                    </div>
+
+                    {/* Bottom Row: Creator and Actions */}
+                    <div className="flex items-center justify-between gap-2">
                       {plan.creator ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-5 h-5 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
                             {plan.creator.first_name?.[0]}{plan.creator.last_name?.[0]}
                           </div>
-                          <div className="text-sm text-neutral-300">
+                          <span className="text-xs text-gray-400 truncate">
                             {plan.creator.first_name} {plan.creator.last_name}
-                          </div>
+                          </span>
                         </div>
                       ) : (
-                        <span className="text-sm text-neutral-600">—</span>
-                      )}
-                    </div>
-                    <div className="col-span-2 text-sm text-neutral-400">
-                      {new Date(plan.created_at).toLocaleDateString()}
-                    </div>
-                    <div className="col-span-2 text-sm text-neutral-500 truncate">
-                      {plan.description || '—'}
-                    </div>
-                    <div className="col-span-2 flex items-center justify-end gap-2">
-                      {planPermissions[plan.id]?.canEdit && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            router.push(`/dashboard/plans/${plan.id}`);
-                          }}
-                          className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
-                          title="Edit plan"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
+                        <div className="text-xs text-gray-600">—</div>
                       )}
 
-                      {planPermissions[plan.id]?.canDelete && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleDeletePlan(plan.id);
-                          }}
-                          className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
-                          title="Delete plan"
-                        >
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {canEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/plans/${plan.id}`);
+                            }}
+                            className="p-1.5 hover:bg-blue-500/20 rounded text-blue-400 transition-colors"
+                            title="Edit"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+
+                        {canDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePlan(plan.id);
+                            }}
+                            className="p-1.5 hover:bg-red-500/20 rounded text-red-400 transition-colors"
+                            title="Delete"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </div>
+
+            {/* Desktop: Table Layout */}
+            <div className="hidden lg:block bg-neutral-900/30 border border-neutral-800 rounded-lg overflow-hidden">
+              {/* List Header */}
+              <div className="bg-neutral-900/50 border-b border-neutral-800 px-6 py-3">
+                <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-neutral-400 uppercase tracking-wider">
+                  <div className="col-span-4">Plan Name</div>
+                  <div className="col-span-2">Created By</div>
+                  <div className="col-span-2">Created</div>
+                  <div className="col-span-2">Description</div>
+                  <div className="col-span-2 text-right">Actions</div>
+                </div>
+              </div>
+
+              {/* List Items */}
+              <div className="divide-y divide-neutral-800">
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    className="block px-6 py-4 hover:bg-neutral-800/30 transition-colors group"
+                  >
+                    <div className="grid grid-cols-12 gap-4 items-center">
+                      <div className="col-span-4">
+                        <div className="text-white font-medium">
+                          {plan.name}
+                        </div>
+                      </div>
+                      <div className="col-span-2">
+                        {plan.creator ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-[#9BDDFF]/20 flex items-center justify-center text-[#9BDDFF] text-xs font-semibold">
+                              {plan.creator.first_name?.[0]}{plan.creator.last_name?.[0]}
+                            </div>
+                            <div className="text-sm text-neutral-300">
+                              {plan.creator.first_name} {plan.creator.last_name}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-neutral-600">—</span>
+                        )}
+                      </div>
+                      <div className="col-span-2 text-sm text-neutral-400">
+                        {new Date(plan.created_at).toLocaleDateString()}
+                      </div>
+                      <div className="col-span-2 text-sm text-neutral-500 truncate">
+                        {plan.description || '—'}
+                      </div>
+                      <div className="col-span-2 flex items-center justify-end gap-2">
+                        {planPermissions[plan.id]?.canEdit && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              router.push(`/dashboard/plans/${plan.id}`);
+                            }}
+                            className="p-2 hover:bg-blue-500/20 rounded text-blue-400/80 hover:text-blue-300 transition-colors"
+                            title="Edit plan"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        )}
+
+                        {planPermissions[plan.id]?.canDelete && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDeletePlan(plan.id);
+                            }}
+                            className="p-2 hover:bg-red-500/20 rounded text-red-400/80 hover:text-red-300 transition-colors"
+                            title="Delete plan"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
 
