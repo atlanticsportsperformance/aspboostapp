@@ -57,6 +57,8 @@ interface OverviewStats {
   avgTimeToContactPrevious30Days: number;
   avgSwingEfficiencyLast30Days: number;
   avgSwingEfficiencyPrevious30Days: number;
+  avgRotationalAccelerationLast30Days: number;
+  avgRotationalAccelerationPrevious30Days: number;
 }
 
 const SWING_TYPES = [
@@ -150,7 +152,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     // Get swings for last 60 days (for 30-day comparisons)
     const { data: last60DaysSwings } = await supabase
       .from('blast_swings')
-      .select('bat_speed, attack_angle, swing_details, recorded_date, early_connection, connection_at_impact, peak_hand_speed, time_to_contact, on_plane_efficiency')
+      .select('bat_speed, attack_angle, swing_details, recorded_date, early_connection, connection_at_impact, peak_hand_speed, time_to_contact, on_plane_efficiency, rotational_acceleration')
       .eq('athlete_id', athleteId)
       .gte('recorded_date', previous30DaysStart.toISOString().split('T')[0])
       .order('recorded_date', { ascending: false })
@@ -283,6 +285,18 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       ? swingEfficiencyPrevious30.reduce((sum, val) => sum + val, 0) / swingEfficiencyPrevious30.length
       : 0;
 
+    // Average rotational acceleration last 30 days
+    const rotationalAccelerationLast30 = last30Swings.filter(s => s.rotational_acceleration !== null).map(s => s.rotational_acceleration!);
+    const avgRotationalAccelerationLast30Days = rotationalAccelerationLast30.length > 0
+      ? rotationalAccelerationLast30.reduce((sum, val) => sum + val, 0) / rotationalAccelerationLast30.length
+      : 0;
+
+    // Average rotational acceleration previous 30 days
+    const rotationalAccelerationPrevious30 = previous30Swings.filter(s => s.rotational_acceleration !== null).map(s => s.rotational_acceleration!);
+    const avgRotationalAccelerationPrevious30Days = rotationalAccelerationPrevious30.length > 0
+      ? rotationalAccelerationPrevious30.reduce((sum, val) => sum + val, 0) / rotationalAccelerationPrevious30.length
+      : 0;
+
     setOverviewStats({
       totalSwingsAllTime: totalSwingsAllTime || 0,
       totalSwingsLast30Days,
@@ -303,6 +317,8 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       avgTimeToContactPrevious30Days,
       avgSwingEfficiencyLast30Days,
       avgSwingEfficiencyPrevious30Days,
+      avgRotationalAccelerationLast30Days,
+      avgRotationalAccelerationPrevious30Days,
     });
   }
 
@@ -739,6 +755,39 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                         const change = overviewStats.avgSwingEfficiencyLast30Days - overviewStats.avgSwingEfficiencyPrevious30Days;
                         const percentChange = overviewStats.avgSwingEfficiencyPrevious30Days > 0
                           ? (change / overviewStats.avgSwingEfficiencyPrevious30Days) * 100
+                          : 0;
+                        return (
+                          <div className={`flex items-center gap-2 ${
+                            change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
+                          }`}>
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              {change > 0 ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                              ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                              )}
+                            </svg>
+                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 8: Rotational Acceleration */}
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">ROTATIONAL ACCEL</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-3">
+                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgRotationalAccelerationLast30Days)} g</p>
+                      {(() => {
+                        const change = overviewStats.avgRotationalAccelerationLast30Days - overviewStats.avgRotationalAccelerationPrevious30Days;
+                        const percentChange = overviewStats.avgRotationalAccelerationPrevious30Days > 0
+                          ? (change / overviewStats.avgRotationalAccelerationPrevious30Days) * 100
                           : 0;
                         return (
                           <div className={`flex items-center gap-2 ${
