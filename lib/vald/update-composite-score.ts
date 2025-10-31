@@ -20,8 +20,6 @@ export async function updateCompositeScoreOverall(
 ): Promise<number | null> {
   try {
     const testTypes = ['CMJ', 'SJ', 'HJ', 'PPU', 'IMTP'];
-    const latestPercentiles: number[] = [];
-    let latestTestDate: Date | null = null;
 
     // Get athlete's play level
     const { data: athlete } = await supabase
@@ -35,87 +33,81 @@ export async function updateCompositeScoreOverall(
       return null;
     }
 
-    // Get the latest percentile_play_level for each test type
+    // Get the most recent FORCE_PROFILE row to know which tests have been used
+    const { data: lastForceProfile } = await supabase
+      .from('athlete_percentile_history')
+      .select('test_date')
+      .eq('athlete_id', athleteId)
+      .eq('test_type', 'FORCE_PROFILE')
+      .eq('play_level', athlete.play_level)
+      .order('test_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    // Only consider tests AFTER the last FORCE_PROFILE was created
+    const afterDate = lastForceProfile?.test_date || '1970-01-01';
+
+    // Get the latest test for each test type (only tests after last FORCE_PROFILE)
+    const testData: Record<string, { percentile: number; date: Date; testId: string }> = {};
+
     for (const testType of testTypes) {
       const { data: latestEntry } = await supabase
         .from('athlete_percentile_history')
-        .select('percentile_play_level, test_date')
+        .select('percentile_play_level, test_date, test_id')
         .eq('athlete_id', athleteId)
         .eq('test_type', testType)
         .eq('play_level', athlete.play_level)
+        .gt('test_date', afterDate)
         .order('test_date', { ascending: false })
         .limit(1)
         .single();
 
-      if (latestEntry?.percentile_play_level !== null && latestEntry?.percentile_play_level !== undefined) {
-        latestPercentiles.push(latestEntry.percentile_play_level);
-
-        // Track the most recent test date
-        const testDate = new Date(latestEntry.test_date);
-        if (!latestTestDate || testDate > latestTestDate) {
-          latestTestDate = testDate;
-        }
+      if (latestEntry?.percentile_play_level !== null && latestEntry?.percentile_play_level !== undefined && latestEntry.test_id) {
+        testData[testType] = {
+          percentile: latestEntry.percentile_play_level,
+          date: new Date(latestEntry.test_date),
+          testId: latestEntry.test_id,
+        };
       }
     }
 
-    // Calculate overall composite score (average of all test type percentiles)
-    const compositeScoreOverall = latestPercentiles.length > 0
-      ? latestPercentiles.reduce((sum, p) => sum + p, 0) / latestPercentiles.length
-      : null;
-
-    if (compositeScoreOverall === null || !latestTestDate) {
-      console.log(`No percentile data found for athlete ${athleteId}`);
+    // CHECK: Do we have all 5 tests?
+    const completedTests = Object.keys(testData);
+    if (completedTests.length < 5) {
+      console.log(`Athlete ${athleteId} has only ${completedTests.length}/5 tests since last FORCE_PROFILE. Missing: ${testTypes.filter(t => !completedTests.includes(t)).join(', ')}`);
       return null;
     }
 
-    // Insert or update FORCE_PROFILE row with composite score
-    // Check if a FORCE_PROFILE row exists for this date
-    const { data: existingForceProfile } = await supabase
+    // Calculate composite score (average of all 5 test percentiles)
+    const percentiles = Object.values(testData).map(t => t.percentile);
+    const compositeScoreOverall = percentiles.reduce((sum, p) => sum + p, 0) / percentiles.length;
+
+    // Use the most recent test date as the FORCE_PROFILE date
+    const latestTestDate = new Date(Math.max(...Object.values(testData).map(t => t.date.getTime())));
+
+    console.log(`✅ Athlete ${athleteId} completed all 5 tests! Creating FORCE_PROFILE with composite score ${compositeScoreOverall.toFixed(1)}`);
+
+    // Insert new FORCE_PROFILE row (never update - always create new)
+    const { error } = await supabase
       .from('athlete_percentile_history')
-      .select('id')
-      .eq('athlete_id', athleteId)
-      .eq('test_type', 'FORCE_PROFILE')
-      .eq('play_level', athlete.play_level)
-      .gte('test_date', latestTestDate.toISOString())
-      .single();
+      .insert({
+        athlete_id: athleteId,
+        test_type: 'FORCE_PROFILE',
+        test_date: latestTestDate.toISOString(),
+        test_id: null,
+        play_level: athlete.play_level,
+        metric_name: null,
+        value: null,
+        percentile_play_level: null,
+        percentile_overall: compositeScoreOverall,
+      });
 
-    if (existingForceProfile) {
-      // Update existing row
-      const { error } = await supabase
-        .from('athlete_percentile_history')
-        .update({
-          percentile_overall: compositeScoreOverall,
-          test_date: latestTestDate.toISOString(),
-        })
-        .eq('id', existingForceProfile.id);
-
-      if (error) {
-        console.error('Error updating FORCE_PROFILE row:', error);
-        return null;
-      }
-    } else {
-      // Insert new FORCE_PROFILE row
-      const { error } = await supabase
-        .from('athlete_percentile_history')
-        .insert({
-          athlete_id: athleteId,
-          test_type: 'FORCE_PROFILE',
-          test_date: latestTestDate.toISOString(),
-          test_id: null,
-          play_level: athlete.play_level,
-          metric_name: null,
-          value: null,
-          percentile_play_level: null,
-          percentile_overall: compositeScoreOverall,
-        });
-
-      if (error) {
-        console.error('Error inserting FORCE_PROFILE row:', error);
-        return null;
-      }
+    if (error) {
+      console.error('Error inserting FORCE_PROFILE row:', error);
+      return null;
     }
 
-    console.log(`✅ Created/updated FORCE_PROFILE row with composite score ${compositeScoreOverall.toFixed(1)} for athlete ${athleteId}`);
+    console.log(`✅ Created FORCE_PROFILE row with composite score ${compositeScoreOverall.toFixed(1)} for athlete ${athleteId} (based on tests after ${afterDate})`);
 
     // Also update the athlete's vald_composite_score field
     await supabase
