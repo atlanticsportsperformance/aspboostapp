@@ -45,11 +45,11 @@ export async function GET(request: NextRequest) {
     let totalRows = 0;
 
     stats?.forEach((row: any) => {
-      if (!summary[row.metric_column]) {
-        summary[row.metric_column] = {};
+      if (!summary[row.out_metric_column]) {
+        summary[row.out_metric_column] = {};
       }
-      summary[row.metric_column][row.play_level] = parseInt(row.row_count);
-      totalRows += parseInt(row.row_count);
+      summary[row.out_metric_column][row.out_play_level] = parseInt(row.out_row_count);
+      totalRows += parseInt(row.out_row_count);
     });
 
     console.log('\n📊 Rebuild summary:');

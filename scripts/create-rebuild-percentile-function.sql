@@ -3,9 +3,9 @@
 
 CREATE OR REPLACE FUNCTION rebuild_percentile_lookup()
 RETURNS TABLE(
-  metric_column text,
-  play_level text,
-  row_count bigint
+  out_metric_column text,
+  out_play_level text,
+  out_row_count bigint
 ) AS $$
 BEGIN
   -- Step 1: Clear everything
@@ -117,9 +117,9 @@ BEGIN
   -- Return summary statistics
   RETURN QUERY
   SELECT
-    pl.metric_column::text,
-    pl.play_level::text,
-    COUNT(*)::bigint as row_count
+    pl.metric_column::text as out_metric_column,
+    pl.play_level::text as out_play_level,
+    COUNT(*)::bigint as out_row_count
   FROM percentile_lookup pl
   GROUP BY pl.metric_column, pl.play_level
   ORDER BY pl.metric_column, pl.play_level;
