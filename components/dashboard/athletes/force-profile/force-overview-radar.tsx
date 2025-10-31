@@ -96,29 +96,35 @@ export default function ForceOverviewRadar({ data, compositeScore }: ForceOvervi
     });
 
     // Draw PREVIOUS test (gray outline)
-    const previousPoints: {x: number, y: number}[] = [];
+    // Store points with their original indices to maintain shape
+    const previousPoints: {x: number, y: number, index: number}[] = [];
     data.forEach((point, index) => {
       if (point.previous) {
         const angle = angleStep * index - Math.PI / 2;
         const radius = (point.previous.percentile / 100) * maxRadius;
         const x = centerX + radius * Math.cos(angle);
         const y = centerY + radius * Math.sin(angle);
-        previousPoints.push({ x, y });
+        previousPoints.push({ x, y, index });
       }
     });
 
-    if (previousPoints.length === data.length) {
+    // Draw previous line if we have at least 3 points (enough to show a meaningful shape)
+    if (previousPoints.length >= 3) {
       ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)'; // Gray
       ctx.lineWidth = 2;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
-      previousPoints.forEach((point, index) => {
-        if (index === 0) {
+
+      // Connect the points we have
+      previousPoints.forEach((point, i) => {
+        if (i === 0) {
           ctx.moveTo(point.x, point.y);
         } else {
           ctx.lineTo(point.x, point.y);
         }
       });
+
+      // Close the path back to first point
       ctx.closePath();
       ctx.stroke();
       ctx.setLineDash([]);

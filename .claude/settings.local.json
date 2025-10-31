@@ -55,7 +55,16 @@
       "Bash(node scripts/fix-lincoln-vald-link.js:*)",
       "Bash(node -r esbuild-register:*)",
       "Bash(node scripts/delete-october-tests.js:*)",
-      "Bash(node scripts/find-october-test-data.js:*)"
+      "Bash(node scripts/find-october-test-data.js:*)",
+      "Bash(node scripts/check-youth-contributions.js:*)",
+      "Bash(node -r dotenv/config scripts/check-youth-contributions.js:*)",
+      "Bash(node -r dotenv/config:*)",
+      "Bash(node scripts/check-sj-percentile-issue.js:*)",
+      "Bash(node scripts/check-force-profiles.js:*)",
+      "Bash(node scripts/check-cameron-force-profile.js:*)",
+      "Bash(node scripts/test-radar-api.js:*)",
+      "Bash(node scripts/check-athlete-dependencies.js:*)",
+      "Bash(wait)"
     ],
     "deny": [],
     "ask": []

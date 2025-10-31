@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import AthleteViewTypesTab from '@/components/dashboard/admin/athlete-view-types-tab';
+import ForcePlatesTab from '@/components/dashboard/admin/force-plates-tab';
 
 export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState('general');
@@ -60,6 +61,7 @@ export default function AdminSettingsPage() {
   // Subtabs for each category
   const connectedTabs = [
     { id: 'athlete-view-types', label: 'Athlete View Types', icon: '🏃' },
+    { id: 'force-plates', label: 'Force Plates', icon: '📊' },
   ];
 
   const comingSoonTabs = [
@@ -212,6 +214,9 @@ export default function AdminSettingsPage() {
 
             {/* Athlete View Types */}
             {activeTab === 'athlete-view-types' && <AthleteViewTypesTab />}
+
+            {/* Force Plates */}
+            {activeTab === 'force-plates' && <ForcePlatesTab />}
 
             {/* Team & Access Control */}
             {activeTab === 'team' && (

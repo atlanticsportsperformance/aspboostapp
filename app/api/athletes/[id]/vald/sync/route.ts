@@ -16,6 +16,8 @@ import { resolveVALDProfileId } from '@/lib/vald/create-profile';
 import { saveTestPercentileHistory } from '@/lib/vald/save-percentile-history';
 import { updateCompositeScoreAfterSync } from '@/lib/vald/update-composite-score';
 import { calculateForceProfileComposite } from '@/lib/vald/calculate-force-profile-composite';
+import { calculateForceProfilesByDate } from '@/lib/vald/calculate-force-profiles-by-date';
+import { recalculateHistoryPercentiles } from '@/lib/vald/recalculate-history-percentiles';
 
 export async function POST(
   request: NextRequest,
@@ -23,46 +25,79 @@ export async function POST(
 ) {
   try {
     const { id: athleteId } = await params;
-    const supabase = await createClient();
 
-    // 1. Auth check
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // Check for internal API key (used by bulk sync and cron jobs)
+    const internalApiKey = request.headers.get('x-internal-api-key');
+    const isInternalRequest = internalApiKey === process.env.INTERNAL_API_KEY;
 
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    let supabase;
+    let athlete;
 
-    // 2. Check user has permission (coach/admin/super_admin)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('app_role, org_id')
-      .eq('id', user.id)
-      .single();
+    if (isInternalRequest) {
+      // Internal request - use service role client and skip auth checks
+      console.log('🔑 Internal API request - using service role client');
+      supabase = createServiceRoleClient();
 
-    if (!profile || !['coach', 'admin', 'super_admin'].includes(profile.app_role)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+      // Get athlete info directly
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id, vald_profile_id, vald_sync_id, org_id, user_id, play_level')
+        .eq('id', athleteId)
+        .single();
 
-    // 3. Get athlete with VALD profile info
-    const { data: athlete, error: athleteError } = await supabase
-      .from('athletes')
-      .select('id, vald_profile_id, vald_sync_id, org_id, user_id, play_level')
-      .eq('id', athleteId)
-      .single();
+      if (athleteError || !athleteData) {
+        return NextResponse.json(
+          { error: 'Athlete not found' },
+          { status: 404 }
+        );
+      }
 
-    if (athleteError || !athlete) {
-      return NextResponse.json(
-        { error: 'Athlete not found' },
-        { status: 404 }
-      );
-    }
+      athlete = athleteData;
+    } else {
+      // Regular user request - do full auth checks
+      supabase = await createClient();
 
-    // 4. Verify athlete is in same org as user (super_admin can access all orgs)
-    if (profile.app_role !== 'super_admin' && athlete.org_id !== profile.org_id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      // 1. Auth check
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+
+      // 2. Check user has permission (coach/admin/super_admin)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('app_role, org_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || !['coach', 'admin', 'super_admin'].includes(profile.app_role)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      // 3. Get athlete with VALD profile info
+      const { data: athleteData, error: athleteError } = await supabase
+        .from('athletes')
+        .select('id, vald_profile_id, vald_sync_id, org_id, user_id, play_level')
+        .eq('id', athleteId)
+        .single();
+
+      if (athleteError || !athleteData) {
+        return NextResponse.json(
+          { error: 'Athlete not found' },
+          { status: 404 }
+        );
+      }
+
+      // 4. Verify athlete is in same org as user (super_admin can access all orgs)
+      if (profile.app_role !== 'super_admin' && athleteData.org_id !== profile.org_id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
+      athlete = athleteData;
     }
 
     // 5. Resolve VALD profileId if not present
@@ -290,6 +325,11 @@ export async function POST(
 
               if (success) {
                 console.log(`✅ Saved percentile history for ${test.testType} test ${test.testId} (${playLevel} + Overall)`);
+
+                // NOTE: Percentile contributions are now handled automatically by SQL triggers
+                // See: scripts/setup-percentile-contributions-triggers.sql
+                // Triggers fire AFTER INSERT on test tables and add to athlete_percentile_contributions
+                // when athlete has 2+ tests at their current play level
               } else {
                 console.error(`❌ Failed to save percentile history for ${test.testType} test ${test.testId}`);
               }
@@ -315,7 +355,32 @@ export async function POST(
       }
     }
 
-    // 9. Calculate and update composite_score_overall
+    // 9. Recalculate percentiles for all newly synced tests
+    // This is needed because:
+    // 1. Tests are saved and percentiles are calculated from current lookup table
+    // 2. Then triggers fire and update the lookup table with new contributions
+    // 3. So we need to recalculate to get the correct percentiles
+    if (syncedCount > 0 && playLevel) {
+      try {
+        console.log('\n🔄 Recalculating percentiles after trigger updates...');
+        const recalcResult = await recalculateHistoryPercentiles(
+          serviceSupabase,
+          athleteId,
+          playLevel,
+          tests.map(t => t.testId) // Only recalculate newly synced tests
+        );
+        if (recalcResult.success && recalcResult.updatedCount > 0) {
+          console.log(`✅ Updated ${recalcResult.updatedCount} percentile values`);
+        } else if (!recalcResult.success) {
+          console.error('⚠️  Percentile recalculation failed:', recalcResult.error);
+        }
+      } catch (recalcError) {
+        console.error('Error recalculating percentiles:', recalcError);
+        // Don't fail the sync if recalculation fails
+      }
+    }
+
+    // 9a. Calculate and update composite_score_overall
     if (syncedCount > 0 && playLevel) {
       try {
         await updateCompositeScoreAfterSync(serviceSupabase, athleteId);
@@ -325,16 +390,19 @@ export async function POST(
       }
     }
 
-    // 9b. Calculate Overall Force Profile Composite Score (average of SJ, HJ, PPU, IMTP - no CMJ)
+    // 9b. Calculate Force Profile Composite Scores for EACH test date
+    // This creates a Force Profile entry for each unique test date that has metrics
     if (playLevel) {
       try {
-        console.log('\n📊 Calculating Overall Force Profile Composite Score...');
-        const result = await calculateForceProfileComposite(serviceSupabase, athleteId, playLevel);
+        console.log('\n📊 Calculating Force Profile Composite Scores by date...');
+        const result = await calculateForceProfilesByDate(serviceSupabase, athleteId, playLevel);
         if (!result.success) {
           console.error('Force profile composite calculation failed:', result.error);
+        } else {
+          console.log(`✅ Created ${result.profiles.length} Force Profile entries`);
         }
       } catch (forceProfileError) {
-        console.error('Error calculating force profile composite:', forceProfileError);
+        console.error('Error calculating force profile composites:', forceProfileError);
         // Don't fail the sync if force profile calculation fails
       }
     }

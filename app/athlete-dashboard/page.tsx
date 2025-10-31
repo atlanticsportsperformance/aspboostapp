@@ -4,11 +4,14 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
+import DefaultAthleteView from '@/components/dashboard/athlete-views/DefaultAthleteView';
 
 export default function AthleteDashboardPage() {
   const router = useRouter();
   const [athleteId, setAthleteId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>('');
+  const [viewTypeId, setViewTypeId] = useState<string | null>(null);
+  const [viewTypeName, setViewTypeName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,10 +27,20 @@ export default function AthleteDashboardPage() {
           return;
         }
 
-        // Get athlete profile linked to this user
+        // Get athlete profile with view_type_id
         const { data: athlete, error: athleteError } = await supabase
           .from('athletes')
-          .select('id, first_name, last_name')
+          .select(`
+            id,
+            first_name,
+            last_name,
+            view_type_id,
+            athlete_view_types (
+              id,
+              name,
+              description
+            )
+          `)
           .eq('user_id', user.id)
           .single();
 
@@ -37,8 +50,17 @@ export default function AthleteDashboardPage() {
           return;
         }
 
+        console.log('Loaded athlete with view type:', athlete);
+
         setAthleteId(athlete.id);
         setAthleteName(`${athlete.first_name} ${athlete.last_name}`);
+        setViewTypeId(athlete.view_type_id);
+
+        // Extract view type name if available
+        if (athlete.athlete_view_types) {
+          const viewType = athlete.athlete_view_types as any;
+          setViewTypeName(viewType.name);
+        }
       } catch (err) {
         console.error('Error loading athlete:', err);
         router.push('/athlete-login');
@@ -65,5 +87,35 @@ export default function AthleteDashboardPage() {
     return null;
   }
 
-  return <AthleteDashboardView athleteId={athleteId} fullName={athleteName} />;
+  // Route to different dashboard views based on view_type_id
+  // For now, use the existing AthleteDashboardView as default
+  // Later, we'll add view-specific components
+
+  console.log('Rendering dashboard for view type:', viewTypeName || 'Default');
+
+  // TODO: Add routing logic for specific view types
+  // Example:
+  // if (viewTypeName === 'Two Way Performance') {
+  //   return <TwoWayPerformanceView athleteId={athleteId} fullName={athleteName} />;
+  // }
+
+  // Default view (current implementation)
+  return (
+    <div>
+      {/* Show view type badge if set */}
+      {viewTypeName && (
+        <div className="bg-black border-b border-white/10 px-4 py-2">
+          <div className="max-w-7xl mx-auto">
+            <span className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 text-purple-300 rounded-full text-xs font-medium">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              {viewTypeName} View
+            </span>
+          </div>
+        </div>
+      )}
+      <AthleteDashboardView athleteId={athleteId} fullName={athleteName} />
+    </div>
+  );
 }
