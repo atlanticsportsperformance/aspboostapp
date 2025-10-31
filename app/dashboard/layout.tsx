@@ -14,6 +14,7 @@ const navLinks = [
 
 const adminLinks = [
   { href: '/dashboard/athletes/bulk-add', label: 'Bulk Add Athletes', icon: '➕', superAdminOnly: true },
+  { href: '/dashboard/player-preview', label: 'Player Preview', icon: '👤', superAdminOnly: true },
   { href: '/dashboard/admin', label: 'Settings', icon: '⚙️', superAdminOnly: true },
 ];
 
