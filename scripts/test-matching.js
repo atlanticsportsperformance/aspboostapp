@@ -82,8 +82,8 @@ async function testMatching(athleteId) {
   });
 
   // Run matching algorithm
-  console.log('\n🔗 Running matching algorithm...');
-  const swingPairs = matchSwingsByTime(blastSwings, htxOct30, 5);
+  console.log('\n🔗 Running matching algorithm with 10s window...');
+  const swingPairs = matchSwingsByTime(blastSwings, htxOct30, 10);
 
   const paired = swingPairs.filter(p => p.blastSwing && p.hittraxSwing);
   const blastOnly = swingPairs.filter(p => p.blastSwing && !p.hittraxSwing);

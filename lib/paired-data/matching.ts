@@ -360,9 +360,20 @@ export function groupSwingPairsIntoSessions(
       : null;
 
     // Calculate overall match confidence for the session
-    const avgConfidence = pairedSwings.length > 0
+    // Based on: (paired swings) / min(blast swings, hittrax swings)
+    // This gives % of swings that matched when BOTH systems were recording
+    // Excludes periods when only one system was active
+    const minSwingCount = Math.min(allBlastSwings.length, allHittraxSwings.length);
+    const matchRate = minSwingCount > 0 ? pairedSwings.length / minSwingCount : 0;
+
+    // Also calculate average quality of the matches that did pair
+    const avgQuality = pairedSwings.length > 0
       ? pairedSwings.reduce((sum, p) => sum + p.confidence, 0) / pairedSwings.length
       : 0;
+
+    // Final confidence combines match rate with quality
+    // If 80% of swings matched with 90% quality, confidence = 0.8 * 0.9 = 0.72
+    const avgConfidence = matchRate * avgQuality;
 
     // Determine match method
     let matchMethod: 'time_window' | 'manual' | 'date_overlap' | 'unmatched';
