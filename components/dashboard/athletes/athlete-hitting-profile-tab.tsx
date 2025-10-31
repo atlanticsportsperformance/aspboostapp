@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import BatSpeedSection from './hitting/bat-speed-section';
 
 interface HittingProfileTabProps {
   athleteId: string;
   athleteName?: string;
 }
+
+type ViewMode = 'overview' | 'batspeed';
 
 interface Swing {
   id: string;
@@ -82,6 +85,7 @@ const TIME_RANGES = [
 ];
 
 export default function HittingProfileTab({ athleteId, athleteName }: HittingProfileTabProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('overview');
   const [blastPlayerId, setBlastPlayerId] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [swingCount, setSwingCount] = useState<number>(0);
@@ -353,9 +357,46 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-white">Hitting Overview</h2>
+      {/* Header with Tabs */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+        {/* Tab Navigation */}
+        <div className="w-full md:w-auto">
+          {/* Desktop: Horizontal Tabs */}
+          <div className="hidden md:flex gap-1 bg-black/40 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('overview')}
+              className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                viewMode === 'overview'
+                  ? 'bg-[#9BDDFF] text-black'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              Hitting Overview
+            </button>
+            <button
+              onClick={() => setViewMode('batspeed')}
+              className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                viewMode === 'batspeed'
+                  ? 'bg-[#9BDDFF] text-black'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              Bat Speed
+            </button>
+          </div>
+
+          {/* Mobile: Dropdown */}
+          <div className="md:hidden">
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as ViewMode)}
+              className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
+            >
+              <option value="overview">Hitting Overview</option>
+              <option value="batspeed">Bat Speed</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Content */}
@@ -403,8 +444,11 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
             </div>
           </div>
         </div>
+      ) : viewMode === 'batspeed' ? (
+        // Bat Speed Tab
+        <BatSpeedSection athleteId={athleteId} />
       ) : (
-        // Linked State with Data
+        // Linked State with Data - Overview Tab
         <div className="space-y-4">
           {/* Overview Stats Cards */}
           {overviewStats && overviewStats.recentSession && overviewStats.last30DayAverages && (
