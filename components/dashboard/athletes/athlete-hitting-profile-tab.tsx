@@ -647,6 +647,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                         );
                       })()}
                     </div>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Optimal: 90° (green = closer, red = further)</p>
                   </div>
                   <div className="pt-1.5 sm:pt-2 border-t border-white/10">
                     <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Connection at Impact (Last 30d)</p>
@@ -677,6 +678,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                         );
                       })()}
                     </div>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Optimal: 90° (green = closer, red = further)</p>
                   </div>
                 </div>
               </div>
