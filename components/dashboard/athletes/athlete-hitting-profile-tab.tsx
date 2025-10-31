@@ -359,7 +359,12 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     <div className="space-y-4">
       {/* Header with Tabs */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
-        {/* Tab Navigation */}
+        {/* Left: Title */}
+        <div className="flex-shrink-0">
+          <h2 className="text-xl font-bold text-white">Hitting Profile</h2>
+        </div>
+
+        {/* Right: Tab Navigation */}
         <div className="w-full md:w-auto">
           {/* Desktop: Horizontal Tabs */}
           <div className="hidden md:flex gap-1 bg-black/40 rounded-lg p-1">
@@ -371,7 +376,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                   : 'text-gray-400 hover:text-white hover:bg-white/10'
               }`}
             >
-              Hitting Overview
+              Overview
             </button>
             <button
               onClick={() => setViewMode('batspeed')}
@@ -392,7 +397,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               onChange={(e) => setViewMode(e.target.value as ViewMode)}
               className="w-full px-3 py-2 bg-black/40 border border-white/20 rounded-lg text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#9BDDFF]/50"
             >
-              <option value="overview">Hitting Overview</option>
+              <option value="overview">Overview</option>
               <option value="batspeed">Bat Speed</option>
             </select>
           </div>
