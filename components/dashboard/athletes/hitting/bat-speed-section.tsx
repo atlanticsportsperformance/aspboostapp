@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface BatSpeedSectionProps {
   athleteId: string;
@@ -12,16 +13,32 @@ interface SwingSession {
   avgBatSpeed: number;
   maxBatSpeed: number;
   swingCount: number;
+  above90Percent: number;
+  above90PercentOfAthleteMax: number;
 }
+
+const SWING_TYPES = [
+  { value: 'all', label: 'All Types' },
+  { value: 'tee', label: 'Tee' },
+  { value: 'soft toss', label: 'Soft Toss' },
+  { value: 'front toss - overhand', label: 'Front Toss - Overhand' },
+  { value: 'front toss - underhand', label: 'Front Toss - Underhand' },
+  { value: 'live pitch', label: 'Live Pitch' },
+  { value: 'pitching machine', label: 'Pitching Machine' },
+  { value: 'in game', label: 'In Game' },
+  { value: 'assessment', label: 'Assessment' },
+  { value: 'general practice', label: 'General Practice' },
+];
 
 export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
   const [sessions, setSessions] = useState<SwingSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
+  const [environmentFilter, setEnvironmentFilter] = useState<string>('all');
 
   useEffect(() => {
     fetchBatSpeedData();
-  }, [athleteId, timeRange]);
+  }, [athleteId, timeRange, environmentFilter]);
 
   async function fetchBatSpeedData() {
     try {
@@ -50,7 +67,7 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
       // Get swings
       let query = supabase
         .from('blast_swings')
-        .select('bat_speed, recorded_date')
+        .select('bat_speed, recorded_date, swing_details')
         .eq('athlete_id', athleteId)
         .not('bat_speed', 'is', null)
         .order('recorded_date', { ascending: false });
@@ -59,12 +76,20 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
         query = query.gte('recorded_date', startDate.toISOString().split('T')[0]);
       }
 
+      if (environmentFilter !== 'all') {
+        query = query.eq('swing_details', environmentFilter);
+      }
+
       const { data: swings } = await query;
 
       if (!swings || swings.length === 0) {
         setSessions([]);
         return;
       }
+
+      // Calculate athlete's overall max bat speed (for consistency metric)
+      const athleteMaxBatSpeed = Math.max(...swings.map(s => s.bat_speed || 0));
+      const athleteMax90Percent = athleteMaxBatSpeed * 0.9;
 
       // Group by date and calculate stats
       const sessionsMap: Record<string, { speeds: number[]; count: number }> = {};
@@ -80,15 +105,28 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
         }
       });
 
-      // Convert to array and calculate averages
+      // Convert to array and calculate averages + consistency metrics
       const sessionsArray: SwingSession[] = Object.entries(sessionsMap)
-        .map(([date, data]) => ({
-          date,
-          avgBatSpeed: data.speeds.reduce((sum, speed) => sum + speed, 0) / data.speeds.length,
-          maxBatSpeed: Math.max(...data.speeds),
-          swingCount: data.count,
-        }))
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        .map(([date, data]) => {
+          const sessionMaxBatSpeed = Math.max(...data.speeds);
+          const sessionMax90Percent = sessionMaxBatSpeed * 0.9;
+
+          // Calculate % of swings above 90% of session max
+          const above90PercentSession = (data.speeds.filter(s => s >= sessionMax90Percent).length / data.speeds.length) * 100;
+
+          // Calculate % of swings above 90% of athlete's all-time max
+          const above90PercentAthlete = (data.speeds.filter(s => s >= athleteMax90Percent).length / data.speeds.length) * 100;
+
+          return {
+            date,
+            avgBatSpeed: data.speeds.reduce((sum, speed) => sum + speed, 0) / data.speeds.length,
+            maxBatSpeed: sessionMaxBatSpeed,
+            swingCount: data.count,
+            above90Percent: above90PercentSession,
+            above90PercentOfAthleteMax: above90PercentAthlete,
+          };
+        })
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()); // Sort ascending for charts
 
       setSessions(sessionsArray);
     } catch (error) {
@@ -122,21 +160,44 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
 
   const trendPercent = olderAvg > 0 ? ((recentAvg - olderAvg) / olderAvg) * 100 : null;
 
+  // Format chart data
+  const chartData = sessions.map(s => ({
+    date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    avg: Number(s.avgBatSpeed.toFixed(1)),
+    max: Number(s.maxBatSpeed.toFixed(1)),
+    sessionConsistency: Number(s.above90Percent.toFixed(1)),
+    athleteConsistency: Number(s.above90PercentOfAthleteMax.toFixed(1)),
+  }));
+
   return (
     <div className="space-y-4">
-      {/* Header with Time Range Filter */}
-      <div className="flex items-center justify-between">
+      {/* Header with Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h3 className="text-lg font-semibold text-white">Bat Speed Analysis</h3>
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value as any)}
-          className="px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#9BDDFF]/50"
-        >
-          <option value="7d">Last 7 Days</option>
-          <option value="30d">Last 30 Days</option>
-          <option value="90d">Last 3 Months</option>
-          <option value="all">All Time</option>
-        </select>
+        <div className="flex flex-wrap gap-2">
+          {/* Environment Filter */}
+          <select
+            value={environmentFilter}
+            onChange={(e) => setEnvironmentFilter(e.target.value)}
+            className="px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#9BDDFF]/50"
+          >
+            {SWING_TYPES.map(type => (
+              <option key={type.value} value={type.value}>{type.label}</option>
+            ))}
+          </select>
+
+          {/* Time Range Filter */}
+          <select
+            value={timeRange}
+            onChange={(e) => setTimeRange(e.target.value as any)}
+            className="px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-[#9BDDFF]/50"
+          >
+            <option value="7d">Last 7 Days</option>
+            <option value="30d">Last 30 Days</option>
+            <option value="90d">Last 3 Months</option>
+            <option value="all">All Time</option>
+          </select>
+        </div>
       </div>
 
       {loading ? (
@@ -191,6 +252,119 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
                 )}
               </div>
               <p className="text-xs text-gray-400 mt-1">vs {sessions.length > 1 ? 'earlier period' : 'baseline'}</p>
+            </div>
+          </div>
+
+          {/* Charts Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Left Chart: Bat Speed Trend */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-white mb-4">Bat Speed Trend</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="colorMax" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9ca3af"
+                    style={{ fontSize: '12px' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis
+                    stroke="#9ca3af"
+                    style={{ fontSize: '12px' }}
+                    label={{ value: 'mph', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af' } }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                  />
+                  <Legend />
+                  <Area
+                    type="monotone"
+                    dataKey="max"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorMax)"
+                    name="Max Speed"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="avg"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorAvg)"
+                    name="Avg Speed"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Right Chart: Consistency */}
+            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-white mb-4">Consistency Metrics</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#9ca3af"
+                    style={{ fontSize: '12px' }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={80}
+                  />
+                  <YAxis
+                    stroke="#9ca3af"
+                    style={{ fontSize: '12px' }}
+                    label={{ value: '% Above 90%', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af' } }}
+                    domain={[0, 100]}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#1f2937',
+                      border: '1px solid #374151',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    formatter={(value: any) => [`${value}%`, '']}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="sessionConsistency"
+                    stroke="#a855f7"
+                    strokeWidth={3}
+                    dot={{ fill: '#a855f7', r: 4 }}
+                    name="% Above Session Max"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="athleteConsistency"
+                    stroke="#f59e0b"
+                    strokeWidth={3}
+                    dot={{ fill: '#f59e0b', r: 4 }}
+                    name="% Above Athlete Max"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
