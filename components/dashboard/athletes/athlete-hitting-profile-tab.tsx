@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import BatSpeedSection from './hitting/bat-speed-section';
+import PairedDataSection from './hitting/paired-data-section';
 
 interface HittingProfileTabProps {
   athleteId: string;
   athleteName?: string;
 }
 
-type ViewMode = 'overview' | 'batspeed';
+type ViewMode = 'overview' | 'batspeed' | 'paireddata';
 
 interface Swing {
   id: string;
@@ -59,6 +60,17 @@ interface OverviewStats {
   avgSwingEfficiencyPrevious30Days: number;
   avgRotationalAccelerationLast30Days: number;
   avgRotationalAccelerationPrevious30Days: number;
+  // HitTrax metrics
+  hittraxTotalSwingsAllTime: number;
+  hittraxTotalSwingsLast30Days: number;
+  hittraxMaxExitVelocity: number | null;
+  hittraxAvgExitVelocityLast30Days: number | null;
+  hittraxMaxDistance: number | null;
+  hittraxAvgDistanceLast30Days: number | null;
+  hittraxAvgLaunchAngleLast30Days: number | null;
+  hittraxPercentSwingsInOptimalLaunchAngle: number;
+  hittraxAvgPoiYLast30Days: number | null; // Point of Impact depth (Y coordinate)
+  hittraxPercentSwingsOutOfZone: number;
 }
 
 const SWING_TYPES = [
@@ -143,6 +155,8 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     const previous30DaysStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
     const previous30DaysEnd = last30DaysStart;
 
+    // ========== BLAST MOTION DATA ==========
+
     // Get total count of all swings for this athlete
     const { count: totalSwingsAllTime } = await supabase
       .from('blast_swings')
@@ -167,8 +181,135 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       .order('bat_speed', { ascending: false })
       .limit(1);
 
+    // ========== HITTRAX DATA ==========
+
+    // Get all HitTrax swings for this athlete (through sessions)
+    const { data: hittraxSessions } = await supabase
+      .from('hittrax_sessions')
+      .select('id, session_date')
+      .eq('athlete_id', athleteId)
+      .order('session_date', { ascending: false });
+
+    const sessionIds = hittraxSessions?.map(s => s.id) || [];
+
+    let hittraxTotalSwingsAllTime = 0;
+    let hittraxTotalSwingsLast30Days = 0;
+    let hittraxMaxExitVelocity = null;
+    let hittraxAvgExitVelocityLast30Days = null;
+    let hittraxMaxDistance = null;
+    let hittraxAvgDistanceLast30Days = null;
+    let hittraxAvgLaunchAngleLast30Days = null;
+    let hittraxPercentSwingsInOptimalLaunchAngle = 0;
+    let hittraxAvgPoiYLast30Days = null;
+    let hittraxPercentSwingsOutOfZone = 0;
+
+    if (sessionIds.length > 0) {
+      // Get all HitTrax swings for these sessions
+      const { count: hittraxAllTimeCount } = await supabase
+        .from('hittrax_swings')
+        .select('*', { count: 'exact', head: true })
+        .in('session_id', sessionIds);
+
+      hittraxTotalSwingsAllTime = hittraxAllTimeCount || 0;
+
+      // Get swings from last 30 days with all needed fields
+      const sessionIdsLast30 = hittraxSessions
+        ?.filter(s => new Date(s.session_date) >= last30DaysStart)
+        .map(s => s.id) || [];
+
+      if (sessionIdsLast30.length > 0) {
+        const { data: hittraxLast30Swings } = await supabase
+          .from('hittrax_swings')
+          .select('exit_velocity, launch_angle, distance, poi_y, strike_zone')
+          .in('session_id', sessionIdsLast30)
+          .order('created_at', { ascending: false });
+
+        hittraxTotalSwingsLast30Days = hittraxLast30Swings?.length || 0;
+
+        if (hittraxLast30Swings && hittraxLast30Swings.length > 0) {
+          // Filter for contact swings (exit velocity > 0)
+          const contactSwings = hittraxLast30Swings.filter(s => s.exit_velocity && s.exit_velocity > 0);
+
+          if (contactSwings.length > 0) {
+            // Exit velocity stats
+            const exitVelocities = contactSwings.map(s => s.exit_velocity!).filter(v => v !== null);
+            hittraxMaxExitVelocity = Math.max(...exitVelocities);
+            hittraxAvgExitVelocityLast30Days = exitVelocities.reduce((sum, v) => sum + v, 0) / exitVelocities.length;
+
+            // Distance stats
+            const distances = contactSwings.map(s => s.distance).filter((d): d is number => d !== null && d > 0);
+            if (distances.length > 0) {
+              hittraxMaxDistance = Math.max(...distances);
+              hittraxAvgDistanceLast30Days = distances.reduce((sum, d) => sum + d, 0) / distances.length;
+            }
+
+            // Launch angle stats
+            const launchAngles = contactSwings.map(s => s.launch_angle).filter((a): a is number => a !== null);
+            if (launchAngles.length > 0) {
+              hittraxAvgLaunchAngleLast30Days = launchAngles.reduce((sum, a) => sum + a, 0) / launchAngles.length;
+
+              // Optimal launch angle range: 7-22 degrees
+              const swingsInOptimalLaunchAngle = launchAngles.filter(a => a >= 7 && a <= 22).length;
+              hittraxPercentSwingsInOptimalLaunchAngle = (swingsInOptimalLaunchAngle / launchAngles.length) * 100;
+            }
+
+            // Point of Impact Y (depth) - average for all contact swings
+            const poiYValues = contactSwings.map(s => s.poi_y).filter((y): y is number => y !== null);
+            if (poiYValues.length > 0) {
+              hittraxAvgPoiYLast30Days = poiYValues.reduce((sum, y) => sum + y, 0) / poiYValues.length;
+            }
+
+            // Swings out of strike zone (strike_zone null or 0 typically means out of zone)
+            // Note: This is a rough approximation - HitTrax strike zones 1-13 are in zone
+            const totalSwingsWithStrikeZoneData = hittraxLast30Swings.filter(s => s.strike_zone !== null && s.strike_zone !== undefined);
+            if (totalSwingsWithStrikeZoneData.length > 0) {
+              const outOfZoneSwings = totalSwingsWithStrikeZoneData.filter(s => s.strike_zone === 0 || s.strike_zone === null).length;
+              hittraxPercentSwingsOutOfZone = (outOfZoneSwings / totalSwingsWithStrikeZoneData.length) * 100;
+            }
+          }
+        }
+      }
+    }
+
     if (!last60DaysSwings || last60DaysSwings.length === 0) {
-      setOverviewStats(null);
+      // If no Blast data but we have HitTrax data, still show HitTrax stats
+      if (hittraxTotalSwingsAllTime > 0) {
+        setOverviewStats({
+          totalSwingsAllTime: 0,
+          totalSwingsLast30Days: 0,
+          qualifiedSwingsLast30Days: 0,
+          highestBatSpeedPR: 0,
+          avgBatSpeedLast30Days: 0,
+          avgBatSpeedPrevious30Days: 0,
+          avgAttackAngleLast30Days: 0,
+          avgAttackAnglePrevious30Days: 0,
+          percentSwingsInOptimalRange: 0,
+          avgEarlyConnectionLast30Days: 0,
+          avgEarlyConnectionPrevious30Days: 0,
+          avgConnectionAtImpactLast30Days: 0,
+          avgConnectionAtImpactPrevious30Days: 0,
+          avgPeakHandSpeedLast30Days: 0,
+          avgPeakHandSpeedPrevious30Days: 0,
+          avgTimeToContactLast30Days: 0,
+          avgTimeToContactPrevious30Days: 0,
+          avgSwingEfficiencyLast30Days: 0,
+          avgSwingEfficiencyPrevious30Days: 0,
+          avgRotationalAccelerationLast30Days: 0,
+          avgRotationalAccelerationPrevious30Days: 0,
+          hittraxTotalSwingsAllTime,
+          hittraxTotalSwingsLast30Days,
+          hittraxMaxExitVelocity,
+          hittraxAvgExitVelocityLast30Days,
+          hittraxMaxDistance,
+          hittraxAvgDistanceLast30Days,
+          hittraxAvgLaunchAngleLast30Days,
+          hittraxPercentSwingsInOptimalLaunchAngle,
+          hittraxAvgPoiYLast30Days,
+          hittraxPercentSwingsOutOfZone,
+        });
+      } else {
+        setOverviewStats(null);
+      }
       return;
     }
 
@@ -319,6 +460,16 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       avgSwingEfficiencyPrevious30Days,
       avgRotationalAccelerationLast30Days,
       avgRotationalAccelerationPrevious30Days,
+      hittraxTotalSwingsAllTime,
+      hittraxTotalSwingsLast30Days,
+      hittraxMaxExitVelocity,
+      hittraxAvgExitVelocityLast30Days,
+      hittraxMaxDistance,
+      hittraxAvgDistanceLast30Days,
+      hittraxAvgLaunchAngleLast30Days,
+      hittraxPercentSwingsInOptimalLaunchAngle,
+      hittraxAvgPoiYLast30Days,
+      hittraxPercentSwingsOutOfZone,
     });
   }
 
@@ -449,6 +600,16 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
             >
               Bat Speed
             </button>
+            <button
+              onClick={() => setViewMode('paireddata')}
+              className={`px-4 py-2 rounded-md font-medium text-sm transition-all whitespace-nowrap ${
+                viewMode === 'paireddata'
+                  ? 'bg-[#9BDDFF] text-black'
+                  : 'text-gray-400 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              Paired Data
+            </button>
           </div>
 
           {/* Mobile: Dropdown */}
@@ -460,6 +621,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
             >
               <option value="overview">Overview</option>
               <option value="batspeed">Bat Speed</option>
+              <option value="paireddata">Paired Data</option>
             </select>
           </div>
         </div>
@@ -513,172 +675,237 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       ) : viewMode === 'batspeed' ? (
         // Bat Speed Tab
         <BatSpeedSection athleteId={athleteId} />
+      ) : viewMode === 'paireddata' ? (
+        // Paired Data Tab
+        <PairedDataSection athleteId={athleteId} />
       ) : (
         // Linked State with Data - Overview Tab
         <div className="space-y-4">
           {/* Overview Stats Cards */}
           {overviewStats && (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-              {/* Card 1: Total Swings */}
+              {/* Card 1: Blast / HitTrax Swings */}
               <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">SWINGS</h4>
-                <div className="space-y-2 sm:space-y-3">
-                  <div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">All Time</p>
-                    <p className="text-lg sm:text-2xl font-bold text-white">{overviewStats.totalSwingsAllTime.toLocaleString()}</p>
-                  </div>
-                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Last 30 Days</p>
-                    <p className="text-sm sm:text-lg font-semibold text-white">{overviewStats.totalSwingsLast30Days.toLocaleString()}</p>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Qualified: {overviewStats.qualifiedSwingsLast30Days}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2: Bat Speed */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">BAT SPEED</h4>
-                <div className="space-y-2 sm:space-y-3">
-                  <div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Personal Record</p>
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-                      </svg>
-                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.highestBatSpeedPR)} mph</p>
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">BLAST / HITTRAX SWINGS</h4>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* Left: Blast Motion */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast All Time</p>
+                      <p className="text-base sm:text-xl font-bold text-white">{overviewStats.totalSwingsAllTime.toLocaleString()}</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast Last 30 Days</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">{overviewStats.totalSwingsLast30Days.toLocaleString()}</p>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500 mt-0.5 sm:mt-1">Qualified: {overviewStats.qualifiedSwingsLast30Days}</p>
                     </div>
                   </div>
-                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-2 sm:gap-3">
-                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgBatSpeedLast30Days)} mph</p>
-                      {(() => {
-                        const change = overviewStats.avgBatSpeedLast30Days - overviewStats.avgBatSpeedPrevious30Days;
-                        const percentChange = overviewStats.avgBatSpeedPrevious30Days > 0
-                          ? (change / overviewStats.avgBatSpeedPrevious30Days) * 100
-                          : 0;
-                        return (
-                          <div className={`flex items-center gap-1 sm:gap-2 ${
-                            change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
-                          }`}>
-                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              {change > 0 ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                              )}
-                            </svg>
-                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
-                          </div>
-                        );
-                      })()}
+                  {/* Right: HitTrax */}
+                  <div className="space-y-2 sm:space-y-3 border-l border-white/10 pl-2 sm:pl-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HitTrax All Time</p>
+                      <p className="text-base sm:text-xl font-bold text-white">{overviewStats.hittraxTotalSwingsAllTime.toLocaleString()}</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HitTrax Last 30 Days</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">{overviewStats.hittraxTotalSwingsLast30Days.toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card 3: Attack Angle */}
+              {/* Card 2: Bat Speed / Exit Velocity / Distance */}
               <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">ATTACK ANGLE</h4>
-                <div className="space-y-2 sm:space-y-3">
-                  <div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-2 sm:gap-3">
-                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgAttackAngleLast30Days)}°</p>
-                      {(() => {
-                        const change = overviewStats.avgAttackAngleLast30Days - overviewStats.avgAttackAnglePrevious30Days;
-                        const percentChange = overviewStats.avgAttackAnglePrevious30Days !== 0
-                          ? (change / Math.abs(overviewStats.avgAttackAnglePrevious30Days)) * 100
-                          : 0;
-                        return (
-                          <div className={`flex items-center gap-1 sm:gap-2 ${
-                            change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
-                          }`}>
-                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              {change > 0 ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                              )}
-                            </svg>
-                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
-                          </div>
-                        );
-                      })()}
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">BAT SPEED / EXIT VELO / DISTANCE</h4>
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                  {/* Column 1: Blast Bat Speed */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast Best</p>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3 h-3 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                        </svg>
+                        <p className="text-sm sm:text-base font-bold text-white">{formatMetric(overviewStats.highestBatSpeedPR)}</p>
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500">mph</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg (30d)</p>
+                      <p className="text-xs sm:text-sm font-semibold text-white">{formatMetric(overviewStats.avgBatSpeedLast30Days)} mph</p>
                     </div>
                   </div>
-                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">In Optimal Range (5-20°)</p>
-                    <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.percentSwingsInOptimalRange)}%</p>
+
+                  {/* Column 2: HitTrax Exit Velocity */}
+                  <div className="space-y-2 sm:space-y-3 border-l border-white/10 pl-2 sm:pl-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HTX Best</p>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3 h-3 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                        </svg>
+                        <p className="text-sm sm:text-base font-bold text-white">{formatMetric(overviewStats.hittraxMaxExitVelocity)}</p>
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500">mph EV</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg (30d)</p>
+                      <p className="text-xs sm:text-sm font-semibold text-white">{formatMetric(overviewStats.hittraxAvgExitVelocityLast30Days)} mph</p>
+                    </div>
+                  </div>
+
+                  {/* Column 3: HitTrax Distance */}
+                  <div className="space-y-2 sm:space-y-3 border-l border-white/10 pl-2 sm:pl-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HTX Best</p>
+                      <div className="flex items-center gap-1">
+                        <svg className="w-3 h-3 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                        </svg>
+                        <p className="text-sm sm:text-base font-bold text-white">{formatMetric(overviewStats.hittraxMaxDistance)}</p>
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500">feet</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg (30d)</p>
+                      <p className="text-xs sm:text-sm font-semibold text-white">{formatMetric(overviewStats.hittraxAvgDistanceLast30Days)} ft</p>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Card 4: Connection Metrics */}
+              {/* Card 3: Attack Angle / Launch Angle */}
               <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">CONNECTION</h4>
-                <div className="space-y-2 sm:space-y-3">
-                  <div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Early Connection (Last 30d)</p>
-                    <div className="flex items-baseline gap-2 sm:gap-3">
-                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgEarlyConnectionLast30Days)}°</p>
-                      {(() => {
-                        const change = overviewStats.avgEarlyConnectionLast30Days - overviewStats.avgEarlyConnectionPrevious30Days;
-                        const percentChange = overviewStats.avgEarlyConnectionPrevious30Days !== 0
-                          ? (change / Math.abs(overviewStats.avgEarlyConnectionPrevious30Days)) * 100
-                          : 0;
-                        // Closer to 90 is better (inverted logic)
-                        const dist = Math.abs(overviewStats.avgEarlyConnectionLast30Days - 90);
-                        const prevDist = Math.abs(overviewStats.avgEarlyConnectionPrevious30Days - 90);
-                        const isImproving = dist < prevDist;
-                        return (
-                          <div className={`flex items-center gap-1 sm:gap-2 ${
-                            isImproving ? 'text-emerald-400' : 'text-red-400'
-                          }`}>
-                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              {isImproving ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                              )}
-                            </svg>
-                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
-                          </div>
-                        );
-                      })()}
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">ATTACK ANGLE / LAUNCH ANGLE</h4>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* Left: Blast Attack Angle */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast Avg (30d)</p>
+                      <div className="flex items-baseline gap-1 sm:gap-2">
+                        <p className="text-base sm:text-xl font-bold text-white">{formatMetric(overviewStats.avgAttackAngleLast30Days)}°</p>
+                        {(() => {
+                          const change = overviewStats.avgAttackAngleLast30Days - overviewStats.avgAttackAnglePrevious30Days;
+                          const percentChange = overviewStats.avgAttackAnglePrevious30Days !== 0
+                            ? (change / Math.abs(overviewStats.avgAttackAnglePrevious30Days)) * 100
+                            : 0;
+                          return (
+                            <div className={`flex items-center gap-0.5 sm:gap-1 ${
+                              change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
+                            }`}>
+                              <svg className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                {change > 0 ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                ) : (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                )}
+                              </svg>
+                              <span className="text-[10px] sm:text-xs font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Optimal: 90° (green = closer, red = further)</p>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">% in Optimal (5-20°)</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">{formatMetric(overviewStats.percentSwingsInOptimalRange)}%</p>
+                    </div>
                   </div>
-                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Connection at Impact (Last 30d)</p>
-                    <div className="flex items-baseline gap-2 sm:gap-3">
-                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgConnectionAtImpactLast30Days)}°</p>
-                      {(() => {
-                        const change = overviewStats.avgConnectionAtImpactLast30Days - overviewStats.avgConnectionAtImpactPrevious30Days;
-                        const percentChange = overviewStats.avgConnectionAtImpactPrevious30Days !== 0
-                          ? (change / Math.abs(overviewStats.avgConnectionAtImpactPrevious30Days)) * 100
-                          : 0;
-                        // Closer to 90 is better (inverted logic)
-                        const dist = Math.abs(overviewStats.avgConnectionAtImpactLast30Days - 90);
-                        const prevDist = Math.abs(overviewStats.avgConnectionAtImpactPrevious30Days - 90);
-                        const isImproving = dist < prevDist;
-                        return (
-                          <div className={`flex items-center gap-1 sm:gap-2 ${
-                            isImproving ? 'text-emerald-400' : 'text-red-400'
-                          }`}>
-                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              {isImproving ? (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                              ) : (
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-                              )}
-                            </svg>
-                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
-                          </div>
-                        );
-                      })()}
+                  {/* Right: HitTrax Launch Angle */}
+                  <div className="space-y-2 sm:space-y-3 border-l border-white/10 pl-2 sm:pl-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HitTrax Avg (30d)</p>
+                      <p className="text-base sm:text-xl font-bold text-white">{formatMetric(overviewStats.hittraxAvgLaunchAngleLast30Days)}°</p>
                     </div>
-                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Optimal: 90° (green = closer, red = further)</p>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">% in Optimal (7-22°)</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">{formatMetric(overviewStats.hittraxPercentSwingsInOptimalLaunchAngle)}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 4: Connection / Point of Contact */}
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">CONNECTION / POINT OF CONTACT</h4>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* Left: Blast Connection */}
+                  <div className="space-y-2 sm:space-y-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast Early Conn (30d)</p>
+                      <div className="flex items-baseline gap-1 sm:gap-2">
+                        <p className="text-sm sm:text-base font-semibold text-white">{formatMetric(overviewStats.avgEarlyConnectionLast30Days)}°</p>
+                        {(() => {
+                          const change = overviewStats.avgEarlyConnectionLast30Days - overviewStats.avgEarlyConnectionPrevious30Days;
+                          const percentChange = overviewStats.avgEarlyConnectionPrevious30Days !== 0
+                            ? (change / Math.abs(overviewStats.avgEarlyConnectionPrevious30Days)) * 100
+                            : 0;
+                          // Closer to 90 is better (inverted logic)
+                          const dist = Math.abs(overviewStats.avgEarlyConnectionLast30Days - 90);
+                          const prevDist = Math.abs(overviewStats.avgEarlyConnectionPrevious30Days - 90);
+                          const isImproving = dist < prevDist;
+                          return (
+                            <div className={`flex items-center gap-0.5 sm:gap-1 ${
+                              isImproving ? 'text-emerald-400' : 'text-red-400'
+                            }`}>
+                              <svg className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                {isImproving ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                ) : (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                )}
+                              </svg>
+                              <span className="text-[10px] sm:text-xs font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500 mt-0.5">Target: 90°</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Blast At Impact (30d)</p>
+                      <div className="flex items-baseline gap-1 sm:gap-2">
+                        <p className="text-sm sm:text-base font-semibold text-white">{formatMetric(overviewStats.avgConnectionAtImpactLast30Days)}°</p>
+                        {(() => {
+                          const change = overviewStats.avgConnectionAtImpactLast30Days - overviewStats.avgConnectionAtImpactPrevious30Days;
+                          const percentChange = overviewStats.avgConnectionAtImpactPrevious30Days !== 0
+                            ? (change / Math.abs(overviewStats.avgConnectionAtImpactPrevious30Days)) * 100
+                            : 0;
+                          // Closer to 90 is better (inverted logic)
+                          const dist = Math.abs(overviewStats.avgConnectionAtImpactLast30Days - 90);
+                          const prevDist = Math.abs(overviewStats.avgConnectionAtImpactPrevious30Days - 90);
+                          const isImproving = dist < prevDist;
+                          return (
+                            <div className={`flex items-center gap-0.5 sm:gap-1 ${
+                              isImproving ? 'text-emerald-400' : 'text-red-400'
+                            }`}>
+                              <svg className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                {isImproving ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                ) : (
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                                )}
+                              </svg>
+                              <span className="text-[10px] sm:text-xs font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500 mt-0.5">Target: 90°</p>
+                    </div>
+                  </div>
+                  {/* Right: HitTrax Point of Contact */}
+                  <div className="space-y-2 sm:space-y-3 border-l border-white/10 pl-2 sm:pl-3">
+                    <div>
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">HitTrax Avg POI Depth</p>
+                      <p className="text-base sm:text-xl font-bold text-white">{formatMetric(overviewStats.hittraxAvgPoiYLast30Days)}"</p>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500 mt-0.5">(Last 30 Days)</p>
+                    </div>
+                    <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                      <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">% Swings Out of Zone</p>
+                      <p className="text-sm sm:text-base font-semibold text-white">{formatMetric(overviewStats.hittraxPercentSwingsOutOfZone)}%</p>
+                      <p className="text-[7px] sm:text-[8px] text-gray-500 mt-0.5">(Last 30 Days)</p>
+                    </div>
                   </div>
                 </div>
               </div>

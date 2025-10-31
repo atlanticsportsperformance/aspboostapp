@@ -126,16 +126,37 @@ export async function POST(
         let createdAtUtc: string;
 
         if (swing.created_at && typeof swing.created_at === 'string') {
-          // Parse "YYYY-MM-DD HH:MM:SS" format
+          // Parse "YYYY-MM-DD HH:MM:SS" format (UTC from Blast API)
           const parts = swing.created_at.split(' ');
-          recordedDate = parts[0] || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-          recordedTime = parts[1] || '00:00:00'; // HH:MM:SS
-          createdAtUtc = new Date(`${recordedDate}T${recordedTime}Z`).toISOString();
+          const utcDateStr = parts[0] || new Date().toISOString().split('T')[0];
+          const utcTimeStr = parts[1] || '00:00:00';
+
+          // Create UTC timestamp
+          createdAtUtc = new Date(`${utcDateStr}T${utcTimeStr}Z`).toISOString();
+
+          // Convert to local time for recorded_date/recorded_time
+          const localDate = new Date(createdAtUtc);
+          const year = localDate.getFullYear();
+          const month = String(localDate.getMonth() + 1).padStart(2, '0');
+          const day = String(localDate.getDate()).padStart(2, '0');
+          const hours = String(localDate.getHours()).padStart(2, '0');
+          const minutes = String(localDate.getMinutes()).padStart(2, '0');
+          const seconds = String(localDate.getSeconds()).padStart(2, '0');
+
+          recordedDate = `${year}-${month}-${day}`;
+          recordedTime = `${hours}:${minutes}:${seconds}`;
         } else {
           // Fallback if created_at is missing or malformed
           const now = new Date();
-          recordedDate = now.toISOString().split('T')[0];
-          recordedTime = '00:00:00';
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          const seconds = String(now.getSeconds()).padStart(2, '0');
+
+          recordedDate = `${year}-${month}-${day}`;
+          recordedTime = `${hours}:${minutes}:${seconds}`;
           createdAtUtc = now.toISOString();
           console.warn(`⚠️ Missing or invalid created_at for swing ${swing.blast_id}, using current date as fallback`);
         }
