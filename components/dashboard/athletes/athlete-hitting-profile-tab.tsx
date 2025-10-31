@@ -476,7 +476,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">No Blast Motion Account Linked</h3>
+              <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">No Blast Motion Account Linked</h3>
               <p className="text-gray-400 text-sm">
                 Link this athlete to their Blast Motion player account in the <strong>Settings</strong> tab to view hitting data.
               </p>
@@ -503,7 +503,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </svg>
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">No Swing Data Yet</h3>
+              <h3 className="text-sm sm:text-lg font-semibold text-white mb-2">No Swing Data Yet</h3>
               <p className="text-gray-400 text-sm">
                 Go to the <strong>Settings</strong> tab to sync swing data from Blast Motion.
               </p>
@@ -518,52 +518,57 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
         <div className="space-y-4">
           {/* Overview Stats Cards */}
           {overviewStats && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
               {/* Card 1: Total Swings */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">SWINGS</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">SWINGS</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">All Time</p>
-                    <p className="text-2xl font-bold text-white">{overviewStats.totalSwingsAllTime.toLocaleString()}</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">All Time</p>
+                    <p className="text-lg sm:text-2xl font-bold text-white">{overviewStats.totalSwingsAllTime.toLocaleString()}</p>
                   </div>
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-[9px] text-gray-500 mb-1">Last 30 Days</p>
-                    <p className="text-lg font-semibold text-white">{overviewStats.totalSwingsLast30Days.toLocaleString()}</p>
-                    <p className="text-[9px] text-gray-500 mt-1">Qualified: {overviewStats.qualifiedSwingsLast30Days}</p>
+                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Last 30 Days</p>
+                    <p className="text-sm sm:text-lg font-semibold text-white">{overviewStats.totalSwingsLast30Days.toLocaleString()}</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mt-0.5 sm:mt-1">Qualified: {overviewStats.qualifiedSwingsLast30Days}</p>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: Bat Speed */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">BAT SPEED</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">BAT SPEED</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Personal Record</p>
-                    <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.highestBatSpeedPR)} mph</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Personal Record</p>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                      </svg>
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.highestBatSpeedPR)} mph</p>
+                    </div>
                   </div>
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-lg font-semibold text-white">{formatMetric(overviewStats.avgBatSpeedLast30Days)} mph</p>
+                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgBatSpeedLast30Days)} mph</p>
                       {(() => {
                         const change = overviewStats.avgBatSpeedLast30Days - overviewStats.avgBatSpeedPrevious30Days;
                         const percentChange = overviewStats.avgBatSpeedPrevious30Days > 0
                           ? (change / overviewStats.avgBatSpeedPrevious30Days) * 100
                           : 0;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change > 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
@@ -573,50 +578,50 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </div>
 
               {/* Card 3: Attack Angle */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">ATTACK ANGLE</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">ATTACK ANGLE</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgAttackAngleLast30Days)}°</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgAttackAngleLast30Days)}°</p>
                       {(() => {
                         const change = overviewStats.avgAttackAngleLast30Days - overviewStats.avgAttackAnglePrevious30Days;
                         const percentChange = overviewStats.avgAttackAnglePrevious30Days !== 0
                           ? (change / Math.abs(overviewStats.avgAttackAnglePrevious30Days)) * 100
                           : 0;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change > 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-[9px] text-gray-500 mb-1">In Optimal Range (5-20°)</p>
-                    <p className="text-lg font-semibold text-white">{formatMetric(overviewStats.percentSwingsInOptimalRange)}%</p>
+                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">In Optimal Range (5-20°)</p>
+                    <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.percentSwingsInOptimalRange)}%</p>
                   </div>
                 </div>
               </div>
 
               {/* Card 4: Connection Metrics */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">CONNECTION</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">CONNECTION</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Early Connection (Last 30d)</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-lg font-semibold text-white">{formatMetric(overviewStats.avgEarlyConnectionLast30Days)}°</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Early Connection (Last 30d)</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgEarlyConnectionLast30Days)}°</p>
                       {(() => {
                         const change = overviewStats.avgEarlyConnectionLast30Days - overviewStats.avgEarlyConnectionPrevious30Days;
                         const percentChange = overviewStats.avgEarlyConnectionPrevious30Days !== 0
@@ -627,26 +632,26 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                         const prevDist = Math.abs(overviewStats.avgEarlyConnectionPrevious30Days - 90);
                         const isImproving = dist < prevDist;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             isImproving ? 'text-emerald-400' : 'text-red-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {isImproving ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
                     </div>
                   </div>
-                  <div className="pt-2 border-t border-white/10">
-                    <p className="text-[9px] text-gray-500 mb-1">Connection at Impact (Last 30d)</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-lg font-semibold text-white">{formatMetric(overviewStats.avgConnectionAtImpactLast30Days)}°</p>
+                  <div className="pt-1.5 sm:pt-2 border-t border-white/10">
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Connection at Impact (Last 30d)</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-sm sm:text-lg font-semibold text-white">{formatMetric(overviewStats.avgConnectionAtImpactLast30Days)}°</p>
                       {(() => {
                         const change = overviewStats.avgConnectionAtImpactLast30Days - overviewStats.avgConnectionAtImpactPrevious30Days;
                         const percentChange = overviewStats.avgConnectionAtImpactPrevious30Days !== 0
@@ -657,17 +662,17 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                         const prevDist = Math.abs(overviewStats.avgConnectionAtImpactPrevious30Days - 90);
                         const isImproving = dist < prevDist;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             isImproving ? 'text-emerald-400' : 'text-red-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {isImproving ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
@@ -677,30 +682,30 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </div>
 
               {/* Card 5: Peak Hand Speed */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">PEAK HAND SPEED</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">PEAK HAND SPEED</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgPeakHandSpeedLast30Days)} mph</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgPeakHandSpeedLast30Days)} mph</p>
                       {(() => {
                         const change = overviewStats.avgPeakHandSpeedLast30Days - overviewStats.avgPeakHandSpeedPrevious30Days;
                         const percentChange = overviewStats.avgPeakHandSpeedPrevious30Days > 0
                           ? (change / overviewStats.avgPeakHandSpeedPrevious30Days) * 100
                           : 0;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change > 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
@@ -710,13 +715,13 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </div>
 
               {/* Card 6: Time to Contact */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">TIME TO CONTACT</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">TIME TO CONTACT</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgTimeToContactLast30Days)} s</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgTimeToContactLast30Days)} s</p>
                       {(() => {
                         const change = overviewStats.avgTimeToContactLast30Days - overviewStats.avgTimeToContactPrevious30Days;
                         const percentChange = overviewStats.avgTimeToContactPrevious30Days > 0
@@ -724,17 +729,17 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                           : 0;
                         // Lower is better for time to contact
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change < 0 ? 'text-emerald-400' : change > 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change < 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
@@ -744,30 +749,30 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </div>
 
               {/* Card 7: Swing Efficiency */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">SWING EFFICIENCY</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">SWING EFFICIENCY</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgSwingEfficiencyLast30Days)}%</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgSwingEfficiencyLast30Days)}%</p>
                       {(() => {
                         const change = overviewStats.avgSwingEfficiencyLast30Days - overviewStats.avgSwingEfficiencyPrevious30Days;
                         const percentChange = overviewStats.avgSwingEfficiencyPrevious30Days > 0
                           ? (change / overviewStats.avgSwingEfficiencyPrevious30Days) * 100
                           : 0;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change > 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
@@ -777,30 +782,30 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
               </div>
 
               {/* Card 8: Rotational Acceleration */}
-              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-4 backdrop-blur-sm shadow-lg">
-                <h4 className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">ROTATIONAL ACCEL</h4>
-                <div className="space-y-3">
+              <div className="bg-gradient-to-br from-white/[0.07] to-white/[0.02] border border-white/10 rounded-lg p-3 sm:p-4 backdrop-blur-sm shadow-lg">
+                <h4 className="text-[9px] sm:text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">ROTATIONAL ACCEL</h4>
+                <div className="space-y-2 sm:space-y-3">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-1">Avg Last 30 Days</p>
-                    <div className="flex items-baseline gap-3">
-                      <p className="text-2xl font-bold text-white">{formatMetric(overviewStats.avgRotationalAccelerationLast30Days)} g</p>
+                    <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
+                    <div className="flex items-baseline gap-2 sm:gap-3">
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgRotationalAccelerationLast30Days)} g</p>
                       {(() => {
                         const change = overviewStats.avgRotationalAccelerationLast30Days - overviewStats.avgRotationalAccelerationPrevious30Days;
                         const percentChange = overviewStats.avgRotationalAccelerationPrevious30Days > 0
                           ? (change / overviewStats.avgRotationalAccelerationPrevious30Days) * 100
                           : 0;
                         return (
-                          <div className={`flex items-center gap-2 ${
+                          <div className={`flex items-center gap-1 sm:gap-2 ${
                             change > 0 ? 'text-emerald-400' : change < 0 ? 'text-red-400' : 'text-gray-400'
                           }`}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="w-4 h-4 sm:w-6 sm:h-6 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               {change > 0 ? (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                               ) : (
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
                               )}
                             </svg>
-                            <span className="text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
+                            <span className="text-sm sm:text-lg font-bold">{Math.abs(percentChange).toFixed(1)}%</span>
                           </div>
                         );
                       })()}
