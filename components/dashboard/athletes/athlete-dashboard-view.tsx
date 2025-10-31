@@ -9,6 +9,8 @@ import ResumeWorkoutModal from './resume-workout-modal';
 interface AthleteDashboardViewProps {
   athleteId: string;
   fullName: string;
+  jumpToToday?: number;
+  viewTypeName?: string | null;
 }
 
 function getGreeting() {
@@ -60,7 +62,7 @@ const CATEGORY_COLORS = {
   }
 };
 
-export default function AthleteDashboardView({ athleteId, fullName }: AthleteDashboardViewProps) {
+export default function AthleteDashboardView({ athleteId, fullName, jumpToToday, viewTypeName }: AthleteDashboardViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('month');
@@ -71,8 +73,47 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [resumeWorkoutInfo, setResumeWorkoutInfo] = useState<any>(null);
+  const [snapshotCarouselIndex, setSnapshotCarouselIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const supabase = createClient();
+
+  // Swipe handlers for snapshot carousel
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = (maxSlides: number) => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe && snapshotCarouselIndex < maxSlides - 1) {
+      setSnapshotCarouselIndex(prev => prev + 1);
+    }
+    if (isRightSwipe && snapshotCarouselIndex > 0) {
+      setSnapshotCarouselIndex(prev => prev - 1);
+    }
+  };
+
+  // Handle jump to today trigger
+  useEffect(() => {
+    if (jumpToToday && jumpToToday > 0) {
+      const today = new Date();
+      setSelectedDate(today);
+      setViewMode('day');
+    }
+  }, [jumpToToday]);
 
   // Check for active workout on mount
   useEffect(() => {
@@ -426,235 +467,350 @@ export default function AthleteDashboardView({ athleteId, fullName }: AthleteDas
             : 'h-[45vh] opacity-100 translate-y-0 pt-[5.25rem] border-white/10'
         }`}
       >
-        <div className="h-full px-4 pb-4 pt-1 overflow-y-auto max-w-4xl mx-auto">
-          {valdProfileId && forceProfile ? (
-            <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col" style={{
-              boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
-            }}>
-              {/* Glossy shine overlay */}
-              <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
-              }} />
-
-              <h2 className="text-2xl font-bold text-white mb-3 relative z-10">Force Profile</h2>
-
-              {/* Main Content - Circle Left, Metrics Right */}
-              <div className="flex-1 flex items-start gap-6">
-                {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
-                <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group overflow-hidden rounded-full" style={{ width: '176px', height: '176px' }}>
-                  <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block', background: 'transparent' }}>
-                      {/* Background circle - clean track */}
-                      <circle
-                        cx="88"
-                        cy="88"
-                        r="75"
-                        stroke="rgba(255, 255, 255, 0.1)"
-                        strokeWidth="12"
-                        fill="none"
-                      />
-
-                      {/* Progress circle - gradient emerging from black around the circle */}
-                      <defs>
-                        <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="0%" y2="100%">
-                          {forceProfile.percentile_rank >= 75 ? (
-                            <>
-                              <stop offset="0%" stopColor="#000000" />
-                              <stop offset="30%" stopColor="#10b981" />
-                              <stop offset="60%" stopColor="#34d399" />
-                              <stop offset="100%" stopColor="#6ee7b7" />
-                            </>
-                          ) : forceProfile.percentile_rank >= 50 ? (
-                            <>
-                              <stop offset="0%" stopColor="#000000" />
-                              <stop offset="30%" stopColor="#7BC5F0" />
-                              <stop offset="60%" stopColor="#9BDDFF" />
-                              <stop offset="100%" stopColor="#B0E5FF" />
-                            </>
-                          ) : forceProfile.percentile_rank >= 25 ? (
-                            <>
-                              <stop offset="0%" stopColor="#000000" />
-                              <stop offset="30%" stopColor="#f59e0b" />
-                              <stop offset="60%" stopColor="#fbbf24" />
-                              <stop offset="100%" stopColor="#fcd34d" />
-                            </>
-                          ) : (
-                            <>
-                              <stop offset="0%" stopColor="#000000" />
-                              <stop offset="30%" stopColor="#dc2626" />
-                              <stop offset="60%" stopColor="#ef4444" />
-                              <stop offset="100%" stopColor="#f87171" />
-                            </>
-                          )}
-                        </linearGradient>
-
-                        {/* Glossy shine overlay */}
-                        <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-                          <stop offset="30%" stopColor="rgba(255,255,255,0.2)" />
-                          <stop offset="60%" stopColor="rgba(255,255,255,0)" />
-                          <stop offset="100%" stopColor="rgba(0,0,0,0.3)" />
-                        </linearGradient>
-                      </defs>
-
-                      <circle
-                        cx="88"
-                        cy="88"
-                        r="75"
-                        stroke={`url(#gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'})`}
-                        strokeWidth="12"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 75}`}
-                        strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
-                        className="transition-all duration-1000"
-                        style={{
-                          filter: `drop-shadow(0 0 16px ${
-                            forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.7)' :
-                            forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.7)' :
-                            forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.7)' :
-                            'rgba(239,68,68,0.7)'
-                          })`,
-                        }}
-                      />
-
-                      {/* Glossy shine overlay on progress */}
-                      <circle
-                        cx="88"
-                        cy="88"
-                        r="75"
-                        stroke="url(#shine)"
-                        strokeWidth="10"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 75}`}
-                        strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
-                        className="transition-all duration-1000"
-                      />
-                  </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <div className={`text-5xl font-bold ${
-                      forceProfile.percentile_rank >= 75 ? 'text-green-400' :
-                      forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
-                      forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
-                      'text-red-400'
-                    }`} style={{
-                      textShadow: `0 0 20px ${
-                        forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.8)' :
-                        forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.8)' :
-                        forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.8)' :
-                        'rgba(239,68,68,0.8)'
-                      }, 0 2px 4px rgba(0,0,0,0.8)`,
-                    }}>{forceProfile.percentile_rank}</div>
-                    <div className="text-xs text-gray-200 uppercase tracking-widest font-bold mt-1" style={{
-                      textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+        <div className="h-full px-4 pb-4 pt-1 max-w-4xl mx-auto flex flex-col">
+          {/* Carousel Container */}
+          <div
+            className="flex-1 overflow-hidden relative"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={() => {
+              // Build slides array to determine max count
+              const slides = [];
+              slides.push('force-profile'); // Always include Force Profile
+              if (viewTypeName === 'Two Way Performance' || viewTypeName === 'Hitting Performance') {
+                slides.push('hitting');
+              }
+              if (viewTypeName === 'Two Way Performance' || viewTypeName === 'Pitching Performance') {
+                slides.push('pitching');
+              }
+              handleTouchEnd(slides.length);
+            }}
+          >
+            {/* Slides wrapper */}
+            <div
+              className="flex h-full transition-transform duration-300 ease-out"
+              style={{
+                transform: `translateX(-${snapshotCarouselIndex * 100}%)`,
+              }}
+            >
+              {/* Force Profile Card - Always present */}
+              <div className="w-full flex-shrink-0 pr-4">
+                <div className="h-full overflow-y-auto">
+                  {valdProfileId && forceProfile ? (
+                    <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col" style={{
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
                     }}>
-                      {forceProfile.percentile_rank >= 75 ? 'ELITE' :
-                       forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
-                       forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
-                       'BUILD'}
+                      {/* Glossy shine overlay */}
+                      <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+                      }} />
+
+                      <h2 className="text-2xl font-bold text-white mb-3 relative z-10">Force Profile</h2>
+
+                      {/* Main Content - Circle Left, Metrics Right */}
+                      <div className="flex-1 flex items-start gap-6">
+                        {/* LEFT: Composite Score Circle - 3D with Gradients & Depth */}
+                        <Link href="/athlete-dashboard/force-profile" className="flex-shrink-0 relative cursor-pointer group overflow-hidden rounded-full" style={{ width: '176px', height: '176px' }}>
+                          <svg className="transform -rotate-90 transition-transform group-hover:scale-105" width="176" height="176" viewBox="0 0 176 176" style={{ display: 'block', background: 'transparent' }}>
+                              {/* Background circle - clean track */}
+                              <circle
+                                cx="88"
+                                cy="88"
+                                r="75"
+                                stroke="rgba(255, 255, 255, 0.1)"
+                                strokeWidth="12"
+                                fill="none"
+                              />
+
+                              {/* Progress circle - gradient emerging from black around the circle */}
+                              <defs>
+                                <linearGradient id={`gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                                  {forceProfile.percentile_rank >= 75 ? (
+                                    <>
+                                      <stop offset="0%" stopColor="#000000" />
+                                      <stop offset="30%" stopColor="#10b981" />
+                                      <stop offset="60%" stopColor="#34d399" />
+                                      <stop offset="100%" stopColor="#6ee7b7" />
+                                    </>
+                                  ) : forceProfile.percentile_rank >= 50 ? (
+                                    <>
+                                      <stop offset="0%" stopColor="#000000" />
+                                      <stop offset="30%" stopColor="#7BC5F0" />
+                                      <stop offset="60%" stopColor="#9BDDFF" />
+                                      <stop offset="100%" stopColor="#B0E5FF" />
+                                    </>
+                                  ) : forceProfile.percentile_rank >= 25 ? (
+                                    <>
+                                      <stop offset="0%" stopColor="#000000" />
+                                      <stop offset="30%" stopColor="#f59e0b" />
+                                      <stop offset="60%" stopColor="#fbbf24" />
+                                      <stop offset="100%" stopColor="#fcd34d" />
+                                    </>
+                                  ) : (
+                                    <>
+                                      <stop offset="0%" stopColor="#000000" />
+                                      <stop offset="30%" stopColor="#dc2626" />
+                                      <stop offset="60%" stopColor="#ef4444" />
+                                      <stop offset="100%" stopColor="#f87171" />
+                                    </>
+                                  )}
+                                </linearGradient>
+
+                                {/* Glossy shine overlay */}
+                                <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+                                  <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+                                  <stop offset="30%" stopColor="rgba(255,255,255,0.2)" />
+                                  <stop offset="60%" stopColor="rgba(255,255,255,0)" />
+                                  <stop offset="100%" stopColor="rgba(0,0,0,0.3)" />
+                                </linearGradient>
+                              </defs>
+
+                              <circle
+                                cx="88"
+                                cy="88"
+                                r="75"
+                                stroke={`url(#gradient-${forceProfile.percentile_rank >= 75 ? 'green' : forceProfile.percentile_rank >= 50 ? 'blue' : forceProfile.percentile_rank >= 25 ? 'yellow' : 'red'})`}
+                                strokeWidth="12"
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 75}`}
+                                strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
+                                className="transition-all duration-1000"
+                                style={{
+                                  filter: `drop-shadow(0 0 16px ${
+                                    forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.7)' :
+                                    forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.7)' :
+                                    forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.7)' :
+                                    'rgba(239,68,68,0.7)'
+                                  })`,
+                                }}
+                              />
+
+                              {/* Glossy shine overlay on progress */}
+                              <circle
+                                cx="88"
+                                cy="88"
+                                r="75"
+                                stroke="url(#shine)"
+                                strokeWidth="10"
+                                fill="none"
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 75}`}
+                                strokeDashoffset={`${2 * Math.PI * 75 * (1 - forceProfile.percentile_rank / 100)}`}
+                                className="transition-all duration-1000"
+                              />
+                          </svg>
+
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div className={`text-5xl font-bold ${
+                              forceProfile.percentile_rank >= 75 ? 'text-green-400' :
+                              forceProfile.percentile_rank >= 50 ? 'text-[#9BDDFF]' :
+                              forceProfile.percentile_rank >= 25 ? 'text-yellow-400' :
+                              'text-red-400'
+                            }`} style={{
+                              textShadow: `0 0 20px ${
+                                forceProfile.percentile_rank >= 75 ? 'rgba(16,185,129,0.8)' :
+                                forceProfile.percentile_rank >= 50 ? 'rgba(155,221,255,0.8)' :
+                                forceProfile.percentile_rank >= 25 ? 'rgba(251,191,36,0.8)' :
+                                'rgba(239,68,68,0.8)'
+                              }, 0 2px 4px rgba(0,0,0,0.8)`,
+                            }}>{forceProfile.percentile_rank}</div>
+                            <div className="text-xs text-gray-200 uppercase tracking-widest font-bold mt-1" style={{
+                              textShadow: '0 1px 3px rgba(0,0,0,0.8)',
+                            }}>
+                              {forceProfile.percentile_rank >= 75 ? 'ELITE' :
+                               forceProfile.percentile_rank >= 50 ? 'OPTIMIZE' :
+                               forceProfile.percentile_rank >= 25 ? 'SHARPEN' :
+                               'BUILD'}
+                            </div>
+                          </div>
+                        </Link>
+
+                        {/* RIGHT: Best & Worst Metrics - 3D Sliders */}
+                        <div className="flex-1 flex flex-col justify-start gap-4 pt-2">
+                          {/* Best Metric */}
+                          {forceProfile.best_metric && (
+                            <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                              <div className="flex items-center justify-between mb-2 transition-colors">
+                                <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Strongest</span>
+                                <span className="text-lg font-bold bg-gradient-to-br from-green-300 to-green-500 bg-clip-text text-transparent">{forceProfile.best_metric.percentile}th</span>
+                              </div>
+                              <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
+                                {/* Inner shadow for depth */}
+                                <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
+
+                                {/* Progress bar emerging from black */}
+                                <div
+                                  className="h-full rounded-full relative transition-all duration-1000"
+                                  style={{
+                                    width: `${forceProfile.best_metric.percentile}%`,
+                                    background: 'linear-gradient(90deg, #000000 0%, #10b981 40%, #34d399 70%, #6ee7b7 100%)',
+                                    boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
+                                  }}
+                                >
+                                  {/* Glossy shine overlay from left */}
+                                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
+                                  {/* Top shine for 3D effect */}
+                                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <p className="text-sm text-white font-medium">{forceProfile.best_metric.name}</p>
+                                <p className="text-sm text-green-400 font-bold">
+                                  {forceProfile.best_metric.value.toFixed(1)}
+                                  <span className="text-xs text-gray-400 ml-1">
+                                    {forceProfile.best_metric.name.includes('Power/BM') ? 'W/kg' :
+                                     forceProfile.best_metric.name.includes('Power') ? 'W' :
+                                     forceProfile.best_metric.name.includes('Force') ? 'N' :
+                                     forceProfile.best_metric.name.includes('RSI') ? '' :
+                                     forceProfile.best_metric.name.includes('Relative') ? '' : ''}
+                                  </span>
+                                </p>
+                              </div>
+                            </Link>
+                          )}
+
+                          {/* Worst Metric */}
+                          {forceProfile.worst_metric && (
+                            <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                              <div className="flex items-center justify-between mb-2 transition-colors">
+                                <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Focus Area</span>
+                                <span className="text-lg font-bold bg-gradient-to-br from-red-300 to-red-500 bg-clip-text text-transparent">{forceProfile.worst_metric.percentile}th</span>
+                              </div>
+                              <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
+                                {/* Inner shadow for depth */}
+                                <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
+
+                                {/* Progress bar emerging from black */}
+                                <div
+                                  className="h-full rounded-full relative transition-all duration-1000"
+                                  style={{
+                                    width: `${forceProfile.worst_metric.percentile}%`,
+                                    background: 'linear-gradient(90deg, #000000 0%, #dc2626 40%, #ef4444 70%, #f87171 100%)',
+                                    boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
+                                  }}
+                                >
+                                  {/* Glossy shine overlay from left */}
+                                  <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
+                                  {/* Top shine for 3D effect */}
+                                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
+                                </div>
+                              </div>
+                              <div className="flex items-center justify-between mt-1.5">
+                                <p className="text-sm text-white font-medium">{forceProfile.worst_metric.name}</p>
+                                <p className="text-sm text-red-400 font-bold">
+                                  {forceProfile.worst_metric.value.toFixed(1)}
+                                  <span className="text-xs text-gray-400 ml-1">
+                                    {forceProfile.worst_metric.name.includes('Power/BM') ? 'W/kg' :
+                                     forceProfile.worst_metric.name.includes('Power') ? 'W' :
+                                     forceProfile.worst_metric.name.includes('Force') ? 'N' :
+                                     forceProfile.worst_metric.name.includes('RSI') ? '' :
+                                     forceProfile.worst_metric.name.includes('Relative') ? '' : ''}
+                                  </span>
+                                </p>
+                              </div>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+
                     </div>
-                  </div>
-                </Link>
-
-                {/* RIGHT: Best & Worst Metrics - 3D Sliders */}
-                <div className="flex-1 flex flex-col justify-start gap-4 pt-2">
-                  {/* Best Metric */}
-                  {forceProfile.best_metric && (
-                    <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
-                      <div className="flex items-center justify-between mb-2 transition-colors">
-                        <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Strongest</span>
-                        <span className="text-lg font-bold bg-gradient-to-br from-green-300 to-green-500 bg-clip-text text-transparent">{forceProfile.best_metric.percentile}th</span>
+                  ) : (
+                    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-6xl mb-4">⚡</div>
+                        <h3 className="text-xl font-bold text-white mb-2">No Force Profile Data</h3>
+                        <p className="text-gray-400 text-sm">Your force plate data will appear here once synced.</p>
                       </div>
-                      <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
-                        {/* Inner shadow for depth */}
-                        <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
-
-                        {/* Progress bar emerging from black */}
-                        <div
-                          className="h-full rounded-full relative transition-all duration-1000"
-                          style={{
-                            width: `${forceProfile.best_metric.percentile}%`,
-                            background: 'linear-gradient(90deg, #000000 0%, #10b981 40%, #34d399 70%, #6ee7b7 100%)',
-                            boxShadow: '0 0 12px rgba(16, 185, 129, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
-                          }}
-                        >
-                          {/* Glossy shine overlay from left */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
-                          {/* Top shine for 3D effect */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-sm text-white font-medium">{forceProfile.best_metric.name}</p>
-                        <p className="text-sm text-green-400 font-bold">
-                          {forceProfile.best_metric.value.toFixed(1)}
-                          <span className="text-xs text-gray-400 ml-1">
-                            {forceProfile.best_metric.name.includes('Power/BM') ? 'W/kg' :
-                             forceProfile.best_metric.name.includes('Power') ? 'W' :
-                             forceProfile.best_metric.name.includes('Force') ? 'N' :
-                             forceProfile.best_metric.name.includes('RSI') ? '' :
-                             forceProfile.best_metric.name.includes('Relative') ? '' : ''}
-                          </span>
-                        </p>
-                      </div>
-                    </Link>
-                  )}
-
-                  {/* Worst Metric */}
-                  {forceProfile.worst_metric && (
-                    <Link href="/athlete-dashboard/force-profile" className="block group cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]">
-                      <div className="flex items-center justify-between mb-2 transition-colors">
-                        <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Focus Area</span>
-                        <span className="text-lg font-bold bg-gradient-to-br from-red-300 to-red-500 bg-clip-text text-transparent">{forceProfile.worst_metric.percentile}th</span>
-                      </div>
-                      <div className="relative h-4 bg-black/40 rounded-full overflow-visible shadow-inner">
-                        {/* Inner shadow for depth */}
-                        <div className="absolute inset-0 rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]" />
-
-                        {/* Progress bar emerging from black */}
-                        <div
-                          className="h-full rounded-full relative transition-all duration-1000"
-                          style={{
-                            width: `${forceProfile.worst_metric.percentile}%`,
-                            background: 'linear-gradient(90deg, #000000 0%, #dc2626 40%, #ef4444 70%, #f87171 100%)',
-                            boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 1px 0 rgba(255,255,255,0.4)',
-                          }}
-                        >
-                          {/* Glossy shine overlay from left */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/30 via-transparent to-transparent" />
-                          {/* Top shine for 3D effect */}
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" style={{ height: '50%' }} />
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <p className="text-sm text-white font-medium">{forceProfile.worst_metric.name}</p>
-                        <p className="text-sm text-red-400 font-bold">
-                          {forceProfile.worst_metric.value.toFixed(1)}
-                          <span className="text-xs text-gray-400 ml-1">
-                            {forceProfile.worst_metric.name.includes('Power/BM') ? 'W/kg' :
-                             forceProfile.worst_metric.name.includes('Power') ? 'W' :
-                             forceProfile.worst_metric.name.includes('Force') ? 'N' :
-                             forceProfile.worst_metric.name.includes('RSI') ? '' :
-                             forceProfile.worst_metric.name.includes('Relative') ? '' : ''}
-                          </span>
-                        </p>
-                      </div>
-                    </Link>
+                    </div>
                   )}
                 </div>
               </div>
 
+              {/* Hitting Card - Show for Two Way Performance or Hitting Performance */}
+              {(viewTypeName === 'Two Way Performance' || viewTypeName === 'Hitting Performance') && (
+                <div className="w-full flex-shrink-0 pr-4">
+                  <div className="h-full overflow-y-auto">
+                    <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col items-center justify-center" style={{
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+                    }}>
+                      {/* Glossy shine overlay */}
+                      <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+                      }} />
+
+                      <div className="text-center relative z-10">
+                        <div className="text-7xl mb-6">⚾</div>
+                        <h2 className="text-2xl font-bold text-white mb-3">Hitting Performance</h2>
+                        <div className="inline-block px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-full">
+                          <p className="text-red-300 text-sm font-semibold">Coming Soon</p>
+                        </div>
+                        <p className="text-gray-400 text-sm mt-4 max-w-xs mx-auto">
+                          Your hitting metrics and performance data will appear here.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Pitching Card - Show for Two Way Performance or Pitching Performance */}
+              {(viewTypeName === 'Two Way Performance' || viewTypeName === 'Pitching Performance') && (
+                <div className="w-full flex-shrink-0 pr-4">
+                  <div className="h-full overflow-y-auto">
+                    <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col items-center justify-center" style={{
+                      boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
+                    }}>
+                      {/* Glossy shine overlay */}
+                      <div className="absolute inset-0 rounded-3xl pointer-events-none" style={{
+                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(0,0,0,0.3) 100%)',
+                      }} />
+
+                      <div className="text-center relative z-10">
+                        <div className="text-7xl mb-6">🥎</div>
+                        <h2 className="text-2xl font-bold text-white mb-3">Pitching Performance</h2>
+                        <div className="inline-block px-4 py-2 bg-blue-500/20 border border-blue-500/30 rounded-full">
+                          <p className="text-blue-300 text-sm font-semibold">Coming Soon</p>
+                        </div>
+                        <p className="text-gray-400 text-sm mt-4 max-w-xs mx-auto">
+                          Your pitching metrics and performance data will appear here.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 h-full flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-6xl mb-4">⚡</div>
-                <h3 className="text-xl font-bold text-white mb-2">No Force Profile Data</h3>
-                <p className="text-gray-400 text-sm">Your force plate data will appear here once synced.</p>
+          </div>
+
+          {/* Dot Navigation - Only show if more than 1 slide */}
+          {(() => {
+            const slides = [];
+            slides.push('force-profile');
+            if (viewTypeName === 'Two Way Performance' || viewTypeName === 'Hitting Performance') {
+              slides.push('hitting');
+            }
+            if (viewTypeName === 'Two Way Performance' || viewTypeName === 'Pitching Performance') {
+              slides.push('pitching');
+            }
+
+            return slides.length > 1 ? (
+              <div className="flex justify-center gap-2 pt-4 pb-2">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSnapshotCarouselIndex(index)}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      index === snapshotCarouselIndex
+                        ? 'w-8 bg-[#9BDDFF]'
+                        : 'w-2 bg-white/30'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            ) : null;
+          })()}
         </div>
       </div>
 
