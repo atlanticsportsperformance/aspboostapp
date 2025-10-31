@@ -81,8 +81,8 @@ export default function PlayerPreviewPage() {
 
   function handlePreview() {
     if (selectedAthleteId) {
-      // Redirect to athlete dashboard with preview mode
-      router.push(`/dashboard/athletes/${selectedAthleteId}?preview=true`);
+      // Redirect to athlete app dashboard (mobile-first view with calendar and force profile)
+      router.push(`/athlete-dashboard?athleteId=${selectedAthleteId}&preview=true`);
     }
   }
 

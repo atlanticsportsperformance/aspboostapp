@@ -1,76 +1,120 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AthleteDashboardView from '@/components/dashboard/athletes/athlete-dashboard-view';
 import DefaultAthleteView from '@/components/dashboard/athlete-views/DefaultAthleteView';
 
 export default function AthleteDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [athleteId, setAthleteId] = useState<string | null>(null);
   const [athleteName, setAthleteName] = useState<string>('');
   const [viewTypeId, setViewTypeId] = useState<string | null>(null);
   const [viewTypeName, setViewTypeName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   useEffect(() => {
     async function loadAthlete() {
       try {
         const supabase = createClient();
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        // Check if we're in preview mode (super admin viewing as athlete)
+        const previewAthleteId = searchParams?.get('athleteId');
+        const isPreview = searchParams?.get('preview') === 'true';
 
-        if (userError || !user) {
-          router.push('/athlete-login');
-          return;
-        }
+        if (isPreview && previewAthleteId) {
+          // Preview mode: Load the specified athlete's data
+          setIsPreviewMode(true);
 
-        // Get athlete profile with view_type_id
-        const { data: athlete, error: athleteError } = await supabase
-          .from('athletes')
-          .select(`
-            id,
-            first_name,
-            last_name,
-            view_type_id,
-            athlete_view_types (
+          const { data: athlete, error: athleteError } = await supabase
+            .from('athletes')
+            .select(`
               id,
-              name,
-              description
-            )
-          `)
-          .eq('user_id', user.id)
-          .single();
+              first_name,
+              last_name,
+              view_type_id,
+              athlete_view_types (
+                id,
+                name,
+                description
+              )
+            `)
+            .eq('id', previewAthleteId)
+            .single();
 
-        if (athleteError || !athlete) {
-          console.error('Failed to load athlete profile:', athleteError);
-          router.push('/athlete-login');
-          return;
-        }
+          if (athleteError || !athlete) {
+            console.error('Failed to load athlete for preview:', athleteError);
+            router.push('/dashboard/player-preview');
+            return;
+          }
 
-        console.log('Loaded athlete with view type:', athlete);
+          setAthleteId(athlete.id);
+          setAthleteName(`${athlete.first_name} ${athlete.last_name}`);
+          setViewTypeId(athlete.view_type_id);
 
-        setAthleteId(athlete.id);
-        setAthleteName(`${athlete.first_name} ${athlete.last_name}`);
-        setViewTypeId(athlete.view_type_id);
+          if (athlete.athlete_view_types) {
+            const viewType = athlete.athlete_view_types as any;
+            setViewTypeName(viewType.name);
+          }
+        } else {
+          // Normal mode: Get current user and load their athlete profile
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-        // Extract view type name if available
-        if (athlete.athlete_view_types) {
-          const viewType = athlete.athlete_view_types as any;
-          setViewTypeName(viewType.name);
+          if (userError || !user) {
+            router.push('/athlete-login');
+            return;
+          }
+
+          // Get athlete profile with view_type_id
+          const { data: athlete, error: athleteError } = await supabase
+            .from('athletes')
+            .select(`
+              id,
+              first_name,
+              last_name,
+              view_type_id,
+              athlete_view_types (
+                id,
+                name,
+                description
+              )
+            `)
+            .eq('user_id', user.id)
+            .single();
+
+          if (athleteError || !athlete) {
+            console.error('Failed to load athlete profile:', athleteError);
+            router.push('/athlete-login');
+            return;
+          }
+
+          console.log('Loaded athlete with view type:', athlete);
+
+          setAthleteId(athlete.id);
+          setAthleteName(`${athlete.first_name} ${athlete.last_name}`);
+          setViewTypeId(athlete.view_type_id);
+
+          // Extract view type name if available
+          if (athlete.athlete_view_types) {
+            const viewType = athlete.athlete_view_types as any;
+            setViewTypeName(viewType.name);
+          }
         }
       } catch (err) {
         console.error('Error loading athlete:', err);
-        router.push('/athlete-login');
+        if (!isPreviewMode) {
+          router.push('/athlete-login');
+        }
       } finally {
         setLoading(false);
       }
     }
 
     loadAthlete();
-  }, [router]);
+  }, [router, searchParams, isPreviewMode]);
 
   if (loading) {
     return (
@@ -102,6 +146,19 @@ export default function AthleteDashboardPage() {
   // Default view (current implementation)
   return (
     <div>
+      {/* Preview Mode Banner */}
+      {isPreviewMode && (
+        <div className="sticky top-0 z-50 bg-[#9BDDFF] text-black px-4 py-2 text-center font-medium text-sm">
+          Preview Mode: Viewing as {athleteName}
+          <button
+            onClick={() => router.push('/dashboard/player-preview')}
+            className="ml-4 px-3 py-1 bg-black/10 rounded hover:bg-black/20 transition-colors"
+          >
+            Back to Selection
+          </button>
+        </div>
+      )}
+
       {/* Show view type badge if set */}
       {viewTypeName && (
         <div className="bg-black border-b border-white/10 px-4 py-2">
