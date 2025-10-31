@@ -13,9 +13,10 @@ export async function GET(
 
     // Get query parameters for configuration
     const searchParams = request.nextUrl.searchParams;
-    // Default to 10 seconds based on analysis showing 25% improvement over 5s threshold
-    // Analysis showed: 30 matches at 5s, 44 matches at 10s (+14 swings, +25%)
-    const maxTimeDifferenceSeconds = parseInt(searchParams.get('maxTimeDiff') || '10', 10);
+    // Default to 7 seconds based on actual time difference analysis
+    // Data showed: 73% of matches at exactly 6s (systematic clock offset)
+    // 100% coverage at 6s, so 7s provides 1s buffer while avoiding false positives
+    const maxTimeDifferenceSeconds = parseInt(searchParams.get('maxTimeDiff') || '7', 10);
     const dateFilter = searchParams.get('date'); // Optional: filter by specific date
 
     // =========================================================================

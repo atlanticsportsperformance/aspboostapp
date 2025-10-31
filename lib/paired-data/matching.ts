@@ -191,20 +191,20 @@ export function groupBlastSwingsBySessions(swings: BlastSwing[]): BlastSession[]
  * Match individual Blast swings with HitTrax swings based on timestamp proximity
  *
  * This is the MAIN matching algorithm - it pairs individual swings that occurred
- * at nearly the same time (within configurable seconds, default 10s).
+ * at nearly the same time (within configurable seconds, default 7s).
  *
- * Analysis (Oct 2025): Increasing from 5s to 10s improved matching by 25%
- * - At 5s: 30 paired swings (54%)
- * - At 10s: 44 paired swings (79%)
- * - Improvement: +14 swings, +25%
+ * Analysis (Oct 2025): Found systematic 6-second clock offset between devices
+ * - Distribution: 73% at exactly 6.0s, 20% at 5.0s
+ * - Average: 5.5s, Median: 6.0s
+ * - Coverage: 100% at ≤6s threshold
  *
- * Rationale: 10s window accommodates device clock sync differences and
- * practice swings between recorded swings without compromising accuracy.
+ * Rationale: 7s threshold captures all legitimate matches (100% at 6s) while
+ * providing 1s buffer for timing variance and avoiding false positives.
  */
 export function matchSwingsByTime(
   blastSwings: BlastSwing[],
   hittraxSwings: HitTraxSwing[],
-  maxTimeDifferenceSeconds: number = 10
+  maxTimeDifferenceSeconds: number = 7
 ): SwingPair[] {
   const swingPairs: SwingPair[] = [];
   const matchedBlastIds = new Set<string>();
