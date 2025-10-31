@@ -116,18 +116,36 @@ export async function getCoachAthleteIds(coachId: string): Promise<string[]> {
 
 /**
  * Check if user can view specific content based on visibility settings
+ *
+ * @param workoutInstanceId - Optional: If provided and content is from a group workout, bypasses permission checks
  */
 export async function canViewContent(
   userId: string,
   userRole: 'super_admin' | 'admin' | 'coach' | 'athlete',
   contentType: 'exercises' | 'workouts' | 'routines',
-  contentCreatorId: string | null
+  contentCreatorId: string | null,
+  workoutInstanceId?: string
 ): Promise<boolean> {
   // Super admins can view everything - bypass permissions
   if (userRole === 'super_admin') return true;
 
   // Athletes can't access content management
   if (userRole === 'athlete') return false;
+
+  // If this is a workout from a group schedule, allow staff to view it
+  // (group workouts should always be visible to staff viewing athlete calendars)
+  if (contentType === 'workouts' && workoutInstanceId) {
+    const supabase = createClient();
+    const { data: instance } = await supabase
+      .from('workout_instances')
+      .select('source_type')
+      .eq('id', workoutInstanceId)
+      .single();
+
+    if (instance?.source_type === 'group') {
+      return true; // Bypass permissions for group-synced workouts
+    }
+  }
 
   // Get staff permissions
   const permissions = await getStaffPermissions(userId);
@@ -189,6 +207,21 @@ export async function canViewAthlete(
   }
 }
 
+/**
+ * Check if a workout instance is from a group schedule
+ * Helper function to determine if group workout permissions should apply
+ */
+export async function isGroupWorkout(workoutInstanceId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: instance } = await supabase
+    .from('workout_instances')
+    .select('source_type')
+    .eq('id', workoutInstanceId)
+    .single();
+
+  return instance?.source_type === 'group';
+}
+
 // ============================================================================
 // PERMISSION CHECKS - FEATURE PERMISSIONS
 // ============================================================================
@@ -220,18 +253,30 @@ export async function canCreateContent(
 
 /**
  * Check if user can edit specific content
+ *
+ * @param workoutInstanceId - Optional: If provided and content is from a group workout, allows editing after unlink
  */
 export async function canEditContent(
   userId: string,
   userRole: 'super_admin' | 'admin' | 'coach' | 'athlete',
   contentType: 'exercises' | 'workouts' | 'routines',
-  contentCreatorId: string | null
+  contentCreatorId: string | null,
+  workoutInstanceId?: string
 ): Promise<boolean> {
   // Super admins can edit everything - bypass permissions
   if (userRole === 'super_admin') return true;
 
   // Athletes can't edit content
   if (userRole === 'athlete') return false;
+
+  // If this is a workout from a group schedule, staff can edit it
+  // (editing will automatically unlink it from the group)
+  if (contentType === 'workouts' && workoutInstanceId) {
+    const isGroup = await isGroupWorkout(workoutInstanceId);
+    if (isGroup) {
+      return true; // Allow editing group workouts (will trigger unlink warning)
+    }
+  }
 
   // Get staff permissions
   const permissions = await getStaffPermissions(userId);

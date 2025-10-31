@@ -337,9 +337,32 @@ export async function storePPUTest(
       trialData[key] = unit;
     }
 
+    // Filter out any fields that don't exist in the table schema
+    // This prevents errors when VALD API returns new/unexpected fields
+    const validColumns = new Set([
+      'athlete_id', 'test_id', 'recorded_utc', 'recorded_timezone',
+      'peak_takeoff_force_trial_value', 'peak_takeoff_force_trial_unit',
+      'mean_flight_time_trial_value', 'mean_flight_time_trial_unit',
+      'peak_landing_force_trial_value', 'peak_landing_force_trial_unit',
+      'contraction_time_trial_value', 'contraction_time_trial_unit',
+      'push_up_rsi_trial_value', 'push_up_rsi_trial_unit',
+      'braking_rfd_trial_value', 'braking_rfd_trial_unit',
+      'propulsive_rfd_trial_value', 'propulsive_rfd_trial_unit',
+      'peak_propulsive_power_trial_value', 'peak_propulsive_power_trial_unit',
+    ]);
+
+    const filteredData: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(trialData)) {
+      if (validColumns.has(key)) {
+        filteredData[key] = value;
+      } else {
+        console.warn(`⚠️  Skipping unknown PPU column: ${key}`);
+      }
+    }
+
     const { error } = await supabase
       .from('ppu_tests')
-      .upsert(trialData, { onConflict: 'athlete_id,test_id' });
+      .upsert(filteredData, { onConflict: 'athlete_id,test_id' });
 
     if (error) {
       console.error('Error storing PPU test:', error);

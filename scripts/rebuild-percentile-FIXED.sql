@@ -1,123 +1,144 @@
--- REBUILD PERCENTILE LOOKUP - SIMPLE AND CORRECT
--- Combines Driveline seed data + athlete contributions
--- Then calculates percentiles 0-100 for each metric/play_level
+-- =====================================================
+-- SIMPLE PERCENTILE LOOKUP REBUILD - FIXED
+-- =====================================================
 
--- Step 1: Clear everything
-TRUNCATE percentile_lookup;
+BEGIN;
 
--- Step 2: Build from both sources
+-- Step 1: Clear the table
+TRUNCATE TABLE percentile_lookup;
+
+-- Step 2: Insert all percentiles
+INSERT INTO percentile_lookup (metric_column, play_level, value, percentile, total_count)
 WITH all_data AS (
-  -- CMJ Peak Power (W) - FROM DRIVELINE
-  SELECT 'peak_takeoff_power_trial_value' as metric, playing_level as level, peak_takeoff_power_trial_value as val
-  FROM driveline_seed_data WHERE peak_takeoff_power_trial_value IS NOT NULL
+  -- Combine driveline_seed_data + athlete_percentile_contributions
+  SELECT
+    playing_level as play_level,
+    'peak_takeoff_power_trial_value' as metric_column,
+    peak_takeoff_power_trial_value as value
+  FROM driveline_seed_data
+  WHERE peak_takeoff_power_trial_value IS NOT NULL
+
   UNION ALL
-  -- CMJ Peak Power (W) - FROM CONTRIBUTIONS
-  SELECT 'peak_takeoff_power_trial_value', playing_level, peak_takeoff_power_trial_value
+  SELECT playing_level, 'peak_takeoff_power_trial_value', peak_takeoff_power_trial_value
   FROM athlete_percentile_contributions WHERE peak_takeoff_power_trial_value IS NOT NULL
 
   UNION ALL
-
-  -- CMJ Peak Power/BM (W/kg) - FROM DRIVELINE
-  SELECT 'bodymass_relative_takeoff_power_trial_value', playing_level, bodymass_relative_takeoff_power_trial_value
+  SELECT playing_level, 'bodymass_relative_takeoff_power_trial_value', bodymass_relative_takeoff_power_trial_value
   FROM driveline_seed_data WHERE bodymass_relative_takeoff_power_trial_value IS NOT NULL
+
   UNION ALL
-  -- CMJ Peak Power/BM (W/kg) - FROM CONTRIBUTIONS
-  SELECT 'bodymass_relative_takeoff_power_trial_value', playing_level, bodymass_relative_takeoff_power_trial_value
+  SELECT playing_level, 'bodymass_relative_takeoff_power_trial_value', bodymass_relative_takeoff_power_trial_value
   FROM athlete_percentile_contributions WHERE bodymass_relative_takeoff_power_trial_value IS NOT NULL
 
   UNION ALL
-
-  -- SJ Peak Power (W) - FROM DRIVELINE
-  SELECT 'sj_peak_takeoff_power_trial_value', playing_level, sj_peak_takeoff_power_trial_value
+  SELECT playing_level, 'sj_peak_takeoff_power_trial_value', sj_peak_takeoff_power_trial_value
   FROM driveline_seed_data WHERE sj_peak_takeoff_power_trial_value IS NOT NULL
+
   UNION ALL
-  -- SJ Peak Power (W) - FROM CONTRIBUTIONS
-  SELECT 'sj_peak_takeoff_power_trial_value', playing_level, sj_peak_takeoff_power_trial_value
+  SELECT playing_level, 'sj_peak_takeoff_power_trial_value', sj_peak_takeoff_power_trial_value
   FROM athlete_percentile_contributions WHERE sj_peak_takeoff_power_trial_value IS NOT NULL
 
   UNION ALL
-
-  -- SJ Peak Power/BM (W/kg) - FROM DRIVELINE
-  SELECT 'sj_bodymass_relative_takeoff_power_trial_value', playing_level, sj_bodymass_relative_takeoff_power_trial_value
+  SELECT playing_level, 'sj_bodymass_relative_takeoff_power_trial_value', sj_bodymass_relative_takeoff_power_trial_value
   FROM driveline_seed_data WHERE sj_bodymass_relative_takeoff_power_trial_value IS NOT NULL
+
   UNION ALL
-  -- SJ Peak Power/BM (W/kg) - FROM CONTRIBUTIONS
-  SELECT 'sj_bodymass_relative_takeoff_power_trial_value', playing_level, sj_bodymass_relative_takeoff_power_trial_value
+  SELECT playing_level, 'sj_bodymass_relative_takeoff_power_trial_value', sj_bodymass_relative_takeoff_power_trial_value
   FROM athlete_percentile_contributions WHERE sj_bodymass_relative_takeoff_power_trial_value IS NOT NULL
 
   UNION ALL
-
-  -- HJ RSI - FROM DRIVELINE
-  SELECT 'hop_mean_rsi_trial_value', playing_level, hop_mean_rsi_trial_value
-  FROM driveline_seed_data WHERE hop_mean_rsi_trial_value IS NOT NULL
-  UNION ALL
-  -- HJ RSI - FROM CONTRIBUTIONS
-  SELECT 'hop_mean_rsi_trial_value', playing_level, hop_mean_rsi_trial_value
-  FROM athlete_percentile_contributions WHERE hop_mean_rsi_trial_value IS NOT NULL
-
-  UNION ALL
-
-  -- PPU Peak Force - FROM DRIVELINE
-  SELECT 'ppu_peak_takeoff_force_trial_value', playing_level, ppu_peak_takeoff_force_trial_value
-  FROM driveline_seed_data WHERE ppu_peak_takeoff_force_trial_value IS NOT NULL
-  UNION ALL
-  -- PPU Peak Force - FROM CONTRIBUTIONS
-  SELECT 'ppu_peak_takeoff_force_trial_value', playing_level, ppu_peak_takeoff_force_trial_value
-  FROM athlete_percentile_contributions WHERE ppu_peak_takeoff_force_trial_value IS NOT NULL
-
-  UNION ALL
-
-  -- IMTP Net Peak Force - FROM DRIVELINE
-  SELECT 'net_peak_vertical_force_trial_value', playing_level, net_peak_vertical_force_trial_value
+  SELECT playing_level, 'net_peak_vertical_force_trial_value', net_peak_vertical_force_trial_value
   FROM driveline_seed_data WHERE net_peak_vertical_force_trial_value IS NOT NULL
+
   UNION ALL
-  -- IMTP Net Peak Force - FROM CONTRIBUTIONS
-  SELECT 'net_peak_vertical_force_trial_value', playing_level, net_peak_vertical_force_trial_value
+  SELECT playing_level, 'net_peak_vertical_force_trial_value', net_peak_vertical_force_trial_value
   FROM athlete_percentile_contributions WHERE net_peak_vertical_force_trial_value IS NOT NULL
 
   UNION ALL
-
-  -- IMTP Relative Strength - FROM DRIVELINE
-  SELECT 'relative_strength_trial_value', playing_level, relative_strength_trial_value
+  SELECT playing_level, 'relative_strength_trial_value', relative_strength_trial_value
   FROM driveline_seed_data WHERE relative_strength_trial_value IS NOT NULL
+
   UNION ALL
-  -- IMTP Relative Strength - FROM CONTRIBUTIONS
-  SELECT 'relative_strength_trial_value', playing_level, relative_strength_trial_value
+  SELECT playing_level, 'relative_strength_trial_value', relative_strength_trial_value
   FROM athlete_percentile_contributions WHERE relative_strength_trial_value IS NOT NULL
+
+  UNION ALL
+  SELECT playing_level, 'hop_mean_rsi_trial_value', hop_mean_rsi_trial_value
+  FROM driveline_seed_data WHERE hop_mean_rsi_trial_value IS NOT NULL
+
+  UNION ALL
+  SELECT playing_level, 'hop_mean_rsi_trial_value', hop_mean_rsi_trial_value
+  FROM athlete_percentile_contributions WHERE hop_mean_rsi_trial_value IS NOT NULL
+
+  UNION ALL
+  SELECT playing_level, 'ppu_peak_takeoff_force_trial_value', ppu_peak_takeoff_force_trial_value
+  FROM driveline_seed_data WHERE ppu_peak_takeoff_force_trial_value IS NOT NULL
+
+  UNION ALL
+  SELECT playing_level, 'ppu_peak_takeoff_force_trial_value', ppu_peak_takeoff_force_trial_value
+  FROM athlete_percentile_contributions WHERE ppu_peak_takeoff_force_trial_value IS NOT NULL
 ),
-ranked AS (
-  SELECT
-    metric,
-    level,
-    val,
-    ROW_NUMBER() OVER (PARTITION BY metric, level ORDER BY val ASC) - 1 as rank,
-    COUNT(*) OVER (PARTITION BY metric, level) as total
-  FROM all_data
+-- Add Overall play level (combine all levels)
+all_data_with_overall AS (
+  SELECT * FROM all_data
+  UNION ALL
+  SELECT 'Overall' as play_level, metric_column, value FROM all_data
 ),
-calcs AS (
-  SELECT
-    metric as metric_column,
-    level as play_level,
-    val as value,
-    LEAST(100, GREATEST(0, ROUND((rank::numeric / NULLIF(total - 1, 0)) * 100)::integer)) as percentile,
-    total as total_count
-  FROM ranked
-),
-deduped AS (
+-- Calculate percentiles first
+percentiles_calculated AS (
   SELECT
     metric_column,
     play_level,
-    AVG(value) as value,
+    value,
+    ROUND(PERCENT_RANK() OVER (
+      PARTITION BY metric_column, play_level
+      ORDER BY value
+    ) * 100)::INTEGER as percentile,
+    COUNT(*) OVER (PARTITION BY metric_column, play_level) as total_count
+  FROM all_data_with_overall
+),
+-- Then add row numbers to handle duplicates
+ranked_data AS (
+  SELECT
+    metric_column,
+    play_level,
+    value,
     percentile,
-    MAX(total_count) as total_count
-  FROM calcs
-  GROUP BY metric_column, play_level, percentile
+    total_count,
+    ROW_NUMBER() OVER (
+      PARTITION BY metric_column, play_level, percentile
+      ORDER BY value
+    ) as rn
+  FROM percentiles_calculated
 )
-INSERT INTO percentile_lookup (metric_column, play_level, value, percentile, total_count)
-SELECT metric_column, play_level, value, percentile, total_count FROM deduped;
+-- Only keep first value for each percentile
+SELECT
+  metric_column,
+  play_level,
+  value,
+  percentile,
+  total_count
+FROM ranked_data
+WHERE rn = 1
+ORDER BY metric_column, play_level, percentile;
 
--- Show results
-SELECT metric_column, play_level, COUNT(*) as rows
+COMMIT;
+
+-- Verification
+SELECT
+  play_level,
+  COUNT(*) as total_rows,
+  COUNT(DISTINCT metric_column) as unique_metrics
+FROM percentile_lookup
+GROUP BY play_level
+ORDER BY play_level;
+
+SELECT
+  metric_column,
+  play_level,
+  COUNT(*) as percentile_count,
+  MIN(percentile) as min_p,
+  MAX(percentile) as max_p
 FROM percentile_lookup
 GROUP BY metric_column, play_level
 ORDER BY metric_column, play_level;

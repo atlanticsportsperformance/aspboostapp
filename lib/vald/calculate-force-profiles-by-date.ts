@@ -92,20 +92,22 @@ export async function calculateForceProfilesByDate(
         .filter(r => r.percentile_overall !== null)
         .map(r => r.percentile_overall);
 
-      if (playLevelPercentiles.length === 0 && overallPercentiles.length === 0) {
-        console.log(`  ${dateKey}: No valid percentiles, skipping`);
+      // Require BOTH play_level and overall to have the SAME number of metrics
+      if (playLevelPercentiles.length !== overallPercentiles.length) {
+        console.log(`  ${dateKey}: Inconsistent metric counts (play_level=${playLevelPercentiles.length}, overall=${overallPercentiles.length}), skipping`);
         continue;
       }
 
-      const avgPlayLevel = playLevelPercentiles.length > 0
-        ? playLevelPercentiles.reduce((sum, p) => sum + p, 0) / playLevelPercentiles.length
-        : null;
+      // Require ALL 6 metrics for complete Force Profile
+      if (playLevelPercentiles.length < 6) {
+        console.log(`  ${dateKey}: Incomplete metrics (${playLevelPercentiles.length}/6), need all 6, skipping`);
+        continue;
+      }
 
-      const avgOverall = overallPercentiles.length > 0
-        ? overallPercentiles.reduce((sum, p) => sum + p, 0) / overallPercentiles.length
-        : null;
+      const avgPlayLevel = playLevelPercentiles.reduce((sum, p) => sum + p, 0) / playLevelPercentiles.length;
+      const avgOverall = overallPercentiles.reduce((sum, p) => sum + p, 0) / overallPercentiles.length;
 
-      console.log(`  ${dateKey}: ${metricsCount}/6 metrics, play_level=${avgPlayLevel?.toFixed(1)}, overall=${avgOverall?.toFixed(1)}`);
+      console.log(`  ${dateKey}: ${metricsCount}/6 metrics, play_level=${avgPlayLevel.toFixed(1)}, overall=${avgOverall.toFixed(1)}`);
 
       // Check if we already have a FORCE_PROFILE entry for this date
       const { data: existing } = await supabase

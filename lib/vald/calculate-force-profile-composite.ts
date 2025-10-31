@@ -84,25 +84,32 @@ export async function calculateForceProfileComposite(
       }
     }
 
-    // Only skip if NO metrics found at all
-    if (playLevelPercentiles.length === 0 && overallPercentiles.length === 0) {
-      console.log('  No composite metrics found for Force Profile calculation');
-      return { success: false, error: 'No composite metrics found' };
+    // Require BOTH play_level and overall to have the SAME number of metrics
+    // This ensures they're averaging the same set of metrics (no inconsistency)
+    if (playLevelPercentiles.length !== overallPercentiles.length) {
+      console.log(`  ⚠️  Cannot create Force Profile: Inconsistent metric counts`);
+      console.log(`    Play level percentiles: ${playLevelPercentiles.length}/6`);
+      console.log(`    Overall percentiles: ${overallPercentiles.length}/6`);
+      return {
+        success: false,
+        error: `Inconsistent metrics: ${playLevelPercentiles.length} play level vs ${overallPercentiles.length} overall`
+      };
     }
 
-    // Warn if we don't have all 6 metrics (but still create FORCE_PROFILE with what we have)
+    // Require ALL 6 metrics for complete Force Profile
     if (playLevelPercentiles.length < 6) {
-      console.log(`  ⚠️  Warning: Only found ${playLevelPercentiles.length}/6 metrics. Some test types may be missing.`);
+      console.log(`  ⚠️  Cannot create Force Profile: Incomplete metrics (${playLevelPercentiles.length}/6)`);
+      console.log(`    Need all 6 metrics for accurate Force Profile`);
+      return {
+        success: false,
+        error: `Insufficient metrics: ${playLevelPercentiles.length}/6 (need all 6)`
+      };
     }
 
-    // Calculate averages of the 6 INDIVIDUAL composite metric percentiles
-    const avgPlayLevel = playLevelPercentiles.length > 0
-      ? playLevelPercentiles.reduce((sum, p) => sum + p, 0) / playLevelPercentiles.length
-      : null;
-
-    const avgOverall = overallPercentiles.length > 0
-      ? overallPercentiles.reduce((sum, p) => sum + p, 0) / overallPercentiles.length
-      : null;
+    // Calculate averages of the INDIVIDUAL composite metric percentiles
+    // Both arrays have the same length now (guaranteed by checks above)
+    const avgPlayLevel = playLevelPercentiles.reduce((sum, p) => sum + p, 0) / playLevelPercentiles.length;
+    const avgOverall = overallPercentiles.reduce((sum, p) => sum + p, 0) / overallPercentiles.length;
 
     console.log(`\n  Force Profile Composite (average of ${playLevelPercentiles.length} metrics):`);
     console.log(`    play_level=${avgPlayLevel?.toFixed(1)}`);

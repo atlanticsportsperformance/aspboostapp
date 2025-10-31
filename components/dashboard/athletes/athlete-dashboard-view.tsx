@@ -494,7 +494,7 @@ export default function AthleteDashboardView({ athleteId, fullName, jumpToToday,
               }}
             >
               {/* Force Profile Card - Always present */}
-              <div className="w-full flex-shrink-0 pr-4">
+              <div className="w-full flex-shrink-0 pr-2">
                 <div className="h-full overflow-y-auto">
                   {valdProfileId && forceProfile ? (
                     <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col" style={{
@@ -729,7 +729,7 @@ export default function AthleteDashboardView({ athleteId, fullName, jumpToToday,
 
               {/* Hitting Card - Show for Two Way Performance or Hitting Performance */}
               {(viewTypeName === 'Two Way Performance' || viewTypeName === 'Hitting Performance') && (
-                <div className="w-full flex-shrink-0 pr-4">
+                <div className="w-full flex-shrink-0 pr-2">
                   <div className="h-full overflow-y-auto">
                     <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col items-center justify-center" style={{
                       boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
@@ -756,7 +756,7 @@ export default function AthleteDashboardView({ athleteId, fullName, jumpToToday,
 
               {/* Pitching Card - Show for Two Way Performance or Pitching Performance */}
               {(viewTypeName === 'Two Way Performance' || viewTypeName === 'Pitching Performance') && (
-                <div className="w-full flex-shrink-0 pr-4">
+                <div className="w-full flex-shrink-0 pr-2">
                   <div className="h-full overflow-y-auto">
                     <div className="relative bg-black rounded-3xl p-6 h-full flex flex-col items-center justify-center" style={{
                       boxShadow: '0 20px 60px rgba(0,0,0,0.8), inset 0 1px 1px rgba(255,255,255,0.1)',

@@ -380,15 +380,16 @@ export async function POST(
       }
     }
 
-    // 9a. Calculate and update composite_score_overall
-    if (syncedCount > 0 && playLevel) {
-      try {
-        await updateCompositeScoreAfterSync(serviceSupabase, athleteId);
-      } catch (compositeError) {
-        console.error('Error updating composite score:', compositeError);
-        // Don't fail the sync if composite score calculation fails
-      }
-    }
+    // 9a. DEPRECATED: Old composite score system (averaged test types, not metrics)
+    // Now using calculateForceProfilesByDate() instead which properly calculates
+    // both percentile_play_level and percentile_overall from 6 individual metrics
+    // if (syncedCount > 0 && playLevel) {
+    //   try {
+    //     await updateCompositeScoreAfterSync(serviceSupabase, athleteId);
+    //   } catch (compositeError) {
+    //     console.error('Error updating composite score:', compositeError);
+    //   }
+    // }
 
     // 9b. Calculate Force Profile Composite Scores for EACH test date
     // This creates a Force Profile entry for each unique test date that has metrics
