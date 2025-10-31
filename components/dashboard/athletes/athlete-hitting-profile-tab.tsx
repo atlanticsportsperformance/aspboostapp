@@ -136,20 +136,25 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
     const previous30DaysStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
     const previous30DaysEnd = last30DaysStart;
 
+    // Get total count of all swings for this athlete
+    const { count: totalSwingsAllTime } = await supabase
+      .from('blast_swings')
+      .select('*', { count: 'exact', head: true })
+      .eq('athlete_id', athleteId);
+
     // Get ALL swings for this athlete (no filter by swing type for overview stats)
+    // We need to fetch more than the default 1000 limit for calculations
     const { data: allSwings } = await supabase
       .from('blast_swings')
       .select('bat_speed, attack_angle, swing_details, recorded_date, early_connection, connection_at_impact')
       .eq('athlete_id', athleteId)
-      .order('recorded_date', { ascending: false });
+      .order('recorded_date', { ascending: false })
+      .limit(10000); // Increase limit to handle large datasets
 
     if (!allSwings || allSwings.length === 0) {
       setOverviewStats(null);
       return;
     }
-
-    // Total swings all time
-    const totalSwingsAllTime = allSwings.length;
 
     // Filter for last 30 days
     const last30Swings = allSwings.filter(s => {
@@ -239,7 +244,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
       : 0;
 
     setOverviewStats({
-      totalSwingsAllTime,
+      totalSwingsAllTime: totalSwingsAllTime || 0,
       totalSwingsLast30Days,
       highestBatSpeedPR,
       avgBatSpeedLast30Days,
