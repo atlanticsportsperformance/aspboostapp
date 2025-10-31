@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 interface BatSpeedSectionProps {
   athleteId: string;
@@ -258,9 +258,12 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
           {/* Charts Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Chart: Bat Speed Trend */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-white mb-4">Bat Speed Trend</h4>
-              <ResponsiveContainer width="100%" height={300}>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 md:p-4">
+              <div className="mb-3">
+                <h4 className="text-sm md:text-base font-semibold text-white">Bat Speed Trend</h4>
+                <p className="text-xs text-gray-400 mt-1">Average and maximum bat speed by session</p>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorMax" x1="0" y1="0" x2="0" y2="1">
@@ -276,15 +279,16 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
                   <XAxis
                     dataKey="date"
                     stroke="#9ca3af"
-                    style={{ fontSize: '12px' }}
+                    style={{ fontSize: '11px' }}
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={70}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     stroke="#9ca3af"
-                    style={{ fontSize: '12px' }}
-                    label={{ value: 'mph', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af' } }}
+                    style={{ fontSize: '11px' }}
+                    label={{ value: 'mph', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: '12px' } }}
                   />
                   <Tooltip
                     contentStyle={{
@@ -318,23 +322,29 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
             </div>
 
             {/* Right Chart: Consistency */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-              <h4 className="text-sm font-semibold text-white mb-4">Consistency Metrics</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={chartData}>
+            <div className="bg-white/5 border border-white/10 rounded-lg p-3 md:p-4">
+              <div className="mb-3">
+                <h4 className="text-sm md:text-base font-semibold text-white">Power Consistency</h4>
+                <p className="text-xs text-gray-400 mt-1">
+                  % of swings reaching 90% of max speed (session vs. all-time)
+                </p>
+              </div>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={chartData} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
                   <XAxis
                     dataKey="date"
                     stroke="#9ca3af"
-                    style={{ fontSize: '12px' }}
+                    style={{ fontSize: '11px' }}
                     angle={-45}
                     textAnchor="end"
-                    height={80}
+                    height={70}
+                    interval="preserveStartEnd"
                   />
                   <YAxis
                     stroke="#9ca3af"
-                    style={{ fontSize: '12px' }}
-                    label={{ value: '% Above 90%', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af' } }}
+                    style={{ fontSize: '11px' }}
+                    label={{ value: '% of Swings', angle: -90, position: 'insideLeft', style: { fill: '#9ca3af', fontSize: '12px' } }}
                     domain={[0, 100]}
                   />
                   <Tooltip
@@ -346,38 +356,38 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
                     }}
                     formatter={(value: any) => [`${value}%`, '']}
                   />
-                  <Legend />
-                  <Line
-                    type="monotone"
+                  <Legend
+                    wrapperStyle={{ fontSize: '12px' }}
+                    iconType="rect"
+                  />
+                  <Bar
                     dataKey="sessionConsistency"
-                    stroke="#a855f7"
-                    strokeWidth={3}
-                    dot={{ fill: '#a855f7', r: 4 }}
-                    name="% Above Session Max"
+                    fill="#a855f7"
+                    radius={[4, 4, 0, 0]}
+                    name="90% of Session Max"
                   />
-                  <Line
-                    type="monotone"
+                  <Bar
                     dataKey="athleteConsistency"
-                    stroke="#f59e0b"
-                    strokeWidth={3}
-                    dot={{ fill: '#f59e0b', r: 4 }}
-                    name="% Above Athlete Max"
+                    fill="#f59e0b"
+                    radius={[4, 4, 0, 0]}
+                    name="90% of All-Time Max"
                   />
-                </LineChart>
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
 
           {/* Session History Table */}
           <div className="bg-white/5 border border-white/10 rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-white/10">
-              <h4 className="text-sm font-semibold text-white">Session History</h4>
+            <div className="p-3 md:p-4 border-b border-white/10">
+              <h4 className="text-sm md:text-base font-semibold text-white">Session History</h4>
               <p className="text-xs text-gray-400 mt-1">
                 Showing {sessions.length} session{sessions.length !== 1 ? 's' : ''}
               </p>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-black/40 border-b border-white/10">
                   <tr>
@@ -424,6 +434,38 @@ export default function BatSpeedSection({ athleteId }: BatSpeedSectionProps) {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden divide-y divide-white/5">
+              {sessions.map((session) => (
+                <div key={session.date} className="p-3 hover:bg-white/5 transition-colors">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm text-white font-medium">
+                      {new Date(session.date).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </div>
+                    <div className="text-xs text-gray-400">
+                      {session.swingCount} swing{session.swingCount !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2">
+                      <p className="text-[10px] text-blue-400/80 uppercase font-medium mb-1">Avg Speed</p>
+                      <p className="text-lg font-bold text-blue-400">{session.avgBatSpeed.toFixed(1)}</p>
+                      <p className="text-[10px] text-gray-400">mph</p>
+                    </div>
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2">
+                      <p className="text-[10px] text-emerald-400/80 uppercase font-medium mb-1">Max Speed</p>
+                      <p className="text-lg font-bold text-emerald-400">{session.maxBatSpeed.toFixed(1)}</p>
+                      <p className="text-[10px] text-gray-400">mph</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </>
