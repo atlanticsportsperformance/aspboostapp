@@ -721,7 +721,7 @@ export default function HittingProfileTab({ athleteId, athleteName }: HittingPro
                   <div>
                     <p className="text-[8px] sm:text-[9px] text-gray-500 mb-0.5 sm:mb-1">Avg Last 30 Days</p>
                     <div className="flex items-baseline gap-2 sm:gap-3">
-                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgTimeToContactLast30Days)} s</p>
+                      <p className="text-lg sm:text-2xl font-bold text-white">{formatMetric(overviewStats.avgTimeToContactLast30Days, 2)} s</p>
                       {(() => {
                         const change = overviewStats.avgTimeToContactLast30Days - overviewStats.avgTimeToContactPrevious30Days;
                         const percentChange = overviewStats.avgTimeToContactPrevious30Days > 0
